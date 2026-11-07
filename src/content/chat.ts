@@ -1,6 +1,6 @@
 // Scripted studio assistant. Answers are built from the same config the site uses, so prices,
 // address and policies never drift. Swap `answer()` for an AI call later without touching the UI.
-import { planClasses, pricing, singleClass, teenSingleClass, teensPlan } from "../config/pricing";
+import { MAT_OFF_PER_CLASS, planClasses, pricing, singleClass, teenSingleClass, teensPlan } from "../config/pricing";
 import { packageById } from "../config/packages";
 import { isTodo, mapsLink, siteConfig } from "../config/site";
 import { founder, instructors } from "../config/team";
@@ -92,8 +92,8 @@ export const intents: Intent[] = [
     keys: ["type", "kind", "what classes", "which classes", "reformer", "mat ", "difference", "what do you offer", "offer", "סוג", "סוגי", "אילו שיעורים", "איזה שיעורים", "רפורמר", "מזרן", "מכשירים", "ההבדל", "מה יש"],
     reply: (he) => ({
       text: he
-        ? "יש לנו:\n• רפורמר בקבוצות של עד 5 (50 דק׳)\n• פילאטיס מזרן בקבוצה קטנה\n• אימון פרטי 1:1\n• אימון זוגי\n• פילאטיס לנערות 12–17\n• קבוצות סגורות ואירועים: סוגרים את הסטודיו בשבילכן\n• קבוצת נשים בלבד, בתיאום\nרפורמר הוא מיטה עם קפיצים שמוסיפים התנגדות או תמיכה, ומזרן מתמקד בליבה ובגמישות. המנויים לרפורמר ולמזרן באותו מחיר."
-        : "We offer:\n• Reformer in groups of up to 5 (50 min)\n• Mat Pilates in a small group\n• Private 1:1\n• Duo training\n• Teen Pilates (girls 12–17)\n• Closed groups & events: the studio is yours\n• Women-only groups, by request\nThe Reformer uses springs for resistance or support; Mat focuses on core and mobility. Reformer and Mat plans cost the same.",
+        ? "יש לנו:\n• רפורמר בקבוצות של עד 5 (50 דק׳)\n• פילאטיס מזרן בקבוצה קטנה\n• אימון פרטי 1:1\n• אימון זוגי\n• פילאטיס לנערות 12–17\n• קבוצות סגורות ואירועים: סוגרים את הסטודיו בשבילכן\n• קבוצת נשים בלבד, בתיאום\nרפורמר הוא מיטה עם קפיצים שמוסיפים התנגדות או תמיכה, ומזרן מתמקד בליבה ובגמישות. פילאטיס מזרן זול ב־₪5 לשיעור מרפורמר."
+        : "We offer:\n• Reformer in groups of up to 5 (50 min)\n• Mat Pilates in a small group\n• Private 1:1\n• Duo training\n• Teen Pilates (girls 12–17)\n• Closed groups & events: the studio is yours\n• Women-only groups, by request\nThe Reformer uses springs for resistance or support; Mat focuses on core and mobility. Mat Pilates is ₪5 a class less than Reformer.",
       actions: [{ label: he ? "לכל השירותים" : "All services", to: "services" }, book(he)],
     }),
   },
@@ -172,8 +172,8 @@ export const intents: Intent[] = [
     keys: ["price", "cost", "how much", "membership", "pass", "package", "monthly", "card", "punch", "מחיר", "עלות", "כמה עולה", "מנוי", "כרטיסייה", "חבילה", "חודשי"],
     reply: (he) => ({
       text: he
-        ? `שיעור בודד: ₪${singleClass.price}\n\nמנוי חודשי (בתוקף לחודש)${launch ? ", מחירי השקה" : ""}:\n${monthly(he)}\n\nכרטיסיות (בתוקף חודשיים):\n${passes(he)}\n\nרפורמר ומזרן באותו מחיר. נערות: ${teensPlan?.price ?? ""} ₪ לחודש.${launch ? "\nמחירי ההשקה תקפים לרכישות במהלך חודש ההשקה בלבד." : ""}`
-        : `Single class: ₪${singleClass.price}\n\nMonthly (valid one month)${launch ? ", launch prices" : ""}:\n${monthly(he)}\n\nPasses (valid 2 months):\n${passes(he)}\n\nReformer and Mat cost the same. Teens: ₪${teensPlan?.price ?? ""} a month.${launch ? "\nLaunch prices are for purchases during the launch month only." : ""}`,
+        ? `שיעור בודד: ₪${singleClass.price}\n\nמנוי חודשי (בתוקף לחודש)${launch ? ", מחירי השקה" : ""}:\n${monthly(he)}\n\nכרטיסיות (בתוקף חודשיים):\n${passes(he)}\n\nהמחירים לרפורמר; מזרן זול ב־₪${MAT_OFF_PER_CLASS} לשיעור. נערות: ${teensPlan?.price ?? ""} ₪ לחודש.${launch ? "\nמחירי ההשקה תקפים לרכישות במהלך חודש ההשקה בלבד." : ""}`
+        : `Single class: ₪${singleClass.price}\n\nMonthly (valid one month)${launch ? ", launch prices" : ""}:\n${monthly(he)}\n\nPasses (valid 2 months):\n${passes(he)}\n\nReformer prices; Mat is ₪${MAT_OFF_PER_CLASS} a class less. Teens: ₪${teensPlan?.price ?? ""} a month.${launch ? "\nLaunch prices are for purchases during the launch month only." : ""}`,
       actions: [prices(he)],
     }),
   },

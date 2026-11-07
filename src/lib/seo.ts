@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { allPlans } from "../config/pricing";
+import { allPlans, priceFor, type ClassKind } from "../config/pricing";
 import { isTodo, mapsLink, siteConfig } from "../config/site";
 import { founder } from "../config/team";
 
@@ -46,7 +46,8 @@ export const localBusinessLd = (lang: string) => {
   const abs = (path: string) => (path.startsWith("http") ? path : origin + path);
   const he = lang === "he";
   const known = (v?: string) => (isTodo(v) ? undefined : v);
-  const offer = (p: (typeof allPlans)[number]) => ({
+  const kindName = (k: ClassKind) => (k === "mat" ? (he ? "מזרן" : "Mat") : he ? "רפורמר" : "Reformer");
+  const offer = (p: (typeof allPlans)[number], kind: ClassKind = "reformer") => ({
     "@type": "Offer",
     name:
       p.track === "teens"
@@ -60,7 +61,8 @@ export const localBusinessLd = (lang: string) => {
         : p.sessions === 1
           ? he ? "שיעור בודד" : "Single class"
           : he ? `כרטיסיית ${p.sessions} שיעורים` : `${p.sessions}-class pass`,
-    price: siteConfig.flags.launchPricing && p.launchPrice ? p.launchPrice : p.price,
+    ...(p.track ? {} : { category: kindName(kind) }),
+    price: priceFor(p, kind),
     priceCurrency: p.currency,
     url: `${origin || siteConfig.siteUrl}/${lang}/pricing`,
   });
@@ -77,7 +79,7 @@ export const localBusinessLd = (lang: string) => {
       : "Boutique Reformer Pilates studio in Hod Hasharon. Groups of up to 5, plus Mat Pilates, private and duo sessions.",
     url: `${origin}/`,
     logo: abs(siteConfig.studioMedia.logoDisc),
-    image: [abs(siteConfig.studioMedia.heroPoster), abs(siteConfig.studioMedia.ogImage)],
+    image: [abs(siteConfig.studioMedia.heroPoster), abs(siteConfig.studioMedia.ogStudio), abs(siteConfig.studioMedia.ogImage)],
     ...(known(c.phone) && { telephone: `+${c.whatsapp}` }),
     ...(known(c.email) && { email: c.email }),
     address: {
@@ -101,7 +103,7 @@ export const localBusinessLd = (lang: string) => {
     currenciesAccepted: "ILS",
     knowsLanguage: ["he", "en"],
     founder: { "@type": "Person", name: he ? founder.nameHe : founder.nameEn },
-    makesOffer: allPlans.filter((p) => p.active && p.approved).map(offer),
+    makesOffer: allPlans.filter((p) => p.active && p.approved).flatMap((p) => (p.track ? [offer(p)] : [offer(p, "reformer"), offer(p, "mat")])),
     // Booking is built into the site (no outside booking system).
     potentialAction: { "@type": "ReserveAction", target: `${origin || siteConfig.siteUrl}/${lang}/schedule`, name: he ? "הזמנת שיעור" : "Book a class" },
     sameAs: [s.instagram, s.tiktok, s.facebook, known(s.googleBusiness)].filter(Boolean),

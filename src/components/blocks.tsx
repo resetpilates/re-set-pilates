@@ -1,7 +1,7 @@
 import { motion } from "motion/react";
 import { useEffect, useState, type CSSProperties, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { classPrices, generalPlans, intro, perClass, planClasses, pricing, teensPlan, type ClassKind, type PricingItem } from "../config/pricing";
+import { classPrices, generalPlans, intro, perClass, planClasses, priceFor, pricing, teensPlan, type ClassKind, type PricingItem } from "../config/pricing";
 import { packages } from "../config/packages";
 import { services, type ServiceConfig, type ServiceId } from "../config/services";
 import { isTodo, mapsEmbedSrc, siteConfig } from "../config/site";
@@ -78,8 +78,8 @@ export const listName = (p: PricingItem, t: Content) =>
   siteConfig.flags.launchPricing && p.billingType === "pass" && p.bonusSessions ? t.pricing.plusOne.replace("{n}", String(p.sessions)) : planName(p, t);
 
 export const pricesVisible = (p: PricingItem) => p.active && (p.approved || siteConfig.flags.showUnapprovedPrices);
-export const effectivePrice = (p: PricingItem) =>
-  siteConfig.flags.launchPricing && p.launchPrice ? p.launchPrice : p.price;
+/** The price to show and charge: the Reformer price, or ₪5 a class less for Mat (`kind`). */
+export const effectivePrice = (p: PricingItem, kind?: ClassKind | null) => priceFor(p, kind);
 
 /** Where a service's primary CTA leads. */
 export const serviceTarget = (s: ServiceConfig, href: (p?: string) => string) =>
@@ -136,7 +136,7 @@ export function SlotRow({ slot, index = 0, roster }: { slot: ClassSlot; index?: 
       </span>
       {intro.active && (
         <span className="slot2__price">
-          <b>₪{classPrices("adult").single}</b> {t.schedule.introSingle} <i aria-hidden>·</i> {t.schedule.introFrom}<b>₪{classPrices("adult").plan}</b> {t.schedule.introPlan}
+          <b>₪{classPrices("adult", undefined, slot.service).single}</b> {t.schedule.introSingle} <i aria-hidden>·</i> {t.schedule.introFrom}<b>₪{classPrices("adult", undefined, slot.service).plan}</b> {t.schedule.introPlan}
         </span>
       )}
       {beds && <BedsRow beds={beds} />}
@@ -194,8 +194,8 @@ function BedsRow({ beds }: { beds: BedSeat[] }) {
 type PriceTab = "monthly" | "passes" | "teens" | "groups";
 
 /**
- * The price list: Monthly / Passes (Reformer or Mat, same prices — the switch picks which class the plan is for
- * and travels to checkout), plus the Teens plan and the closed-group packages on their own tabs.
+ * The price list: Monthly / Passes (the switch picks Reformer or Mat, Mat being ₪5 a class less, and travels to
+ * checkout), plus the Teens plan and the closed-group packages on their own tabs.
  */
 export function PricingList({ next, limit, initialKind }: { next?: string; limit?: boolean; initialKind?: ClassKind }) {
   const { t, href } = useI18n();
@@ -264,17 +264,19 @@ export function PricingList({ next, limit, initialKind }: { next?: string; limit
                   </span>
                   <span className="tiny">
                     {t.pricing.kinds[kind]} ·{" "}
-                    {p.billingType === "monthly" || p.sessions === 1
+                    {p.sessions === 1 || p.perWeek === "unlimited"
                       ? t.pricing.validMonth
-                      : `${t.pricing.classes.replace("{n}", String(planClasses(p, launch)))} · ₪${perClass(p, launch)} ${t.pricing.perSession}${launch && p.bonusSessions ? ` · ${t.pricing.bonus}` : ""}`}
+                      : p.billingType === "monthly"
+                        ? `${t.pricing.validMonth} · ${t.pricing.classes.replace("{n}", String(planClasses(p, launch)))} · ₪${perClass(p, launch, kind)} ${t.pricing.perSession}`
+                        : `${t.pricing.classes.replace("{n}", String(planClasses(p, launch)))} · ₪${perClass(p, launch, kind)} ${t.pricing.perSession}${launch && p.bonusSessions ? ` · ${t.pricing.bonus}` : ""}`}
                   </span>
                 </span>
-                <Price amount={effectivePrice(p)} was={launch && p.launchPrice ? p.price : null} />
+                <Price amount={effectivePrice(p, kind)} was={launch && p.launchPrice ? p.price : null} />
               </Link>
             ))}
           </div>
           <p className="tiny">
-            {t.pricing.validity}
+            {t.pricing.validity} {t.pricing.concession}
             {launch ? ` ${t.pricing.launchNote}` : ""}
           </p>
           {anyUnapproved && (
@@ -324,7 +326,9 @@ export function TeensPlan({ plan, next, brief }: { plan: PricingItem; next?: str
           <span className="tiny">{t.pricing.teensNote}</span>
           {intro.active && (
             <span className="tiny">
-              {t.pricing.singlePrice.replace("{price}", String(classPrices("teen").single))} · {t.pricing.singlePlan.replace("{price}", String(classPrices("teen").plan))}
+              {classPrices("teen").single <= classPrices("teen").plan
+                ? t.pricing.concession
+                : `${t.pricing.singlePrice.replace("{price}", String(classPrices("teen").single))} · ${t.pricing.singlePlan.replace("{price}", String(classPrices("teen").plan))}`}
             </span>
           )}
         </span>
@@ -530,7 +534,7 @@ export function ScheduleBoard() {
   const { t, href } = useI18n();
   const [params, setParams] = useSearchParams();
   const service: BookableService = params.get("service") === "mat" && hasClasses("mat") ? "mat" : "reformer";
-  const days = upcomingDays(10);
+  const days = upcomingDays(14); // two weeks ahead
   // Default to the first day that still has classes (today may already be over).
   const [firstOpen, setFirstOpen] = useState(toISO(days[0]));
   // A shared or bookmarked link with a past ?date= falls back to the first open day.
@@ -637,12 +641,13 @@ export function ScheduleBoard() {
   );
 }
 
-/** Introductory month: one class on its own against one class with a plan, adults and teens, and the saving. */
+/** Class prices: one class on its own against one class with a plan, adults and teens/soldiers, and the saving (when there is one). */
 export function IntroPrices() {
   const { t, href } = useI18n();
-  const rows: { who: "adult" | "teen"; label: string }[] = [
-    { who: "adult", label: t.schedule.introAdults },
-    { who: "teen", label: t.schedule.introTeens },
+  const rows: { who: "adult" | "teen"; kind: ClassKind | null; label: string }[] = [
+    { who: "adult", kind: "reformer", label: t.schedule.introAdults },
+    { who: "adult", kind: "mat", label: t.schedule.introMat },
+    { who: "teen", kind: null, label: t.schedule.introTeens },
   ];
   return (
     <div className="intro card">
@@ -653,10 +658,10 @@ export function IntroPrices() {
         </Link>
       </div>
       <div className="intro__grid">
-        {rows.map(({ who, label }) => {
-          const p = classPrices(who);
+        {rows.map(({ who, kind, label }) => {
+          const p = classPrices(who, undefined, kind);
           return (
-            <div key={who} className="intro__row">
+            <div key={`${who}-${kind}`} className="intro__row">
               <span className="intro__who">{label}</span>
               <span className="intro__cell">
                 <b>₪{p.single}</b>
@@ -670,7 +675,7 @@ export function IntroPrices() {
                   {t.schedule.introPlan} · {t.schedule.introPerClass}
                 </small>
               </span>
-              <span className="intro__save">{t.schedule.introSave.replace("{n}", String(p.single - p.plan))}</span>
+              {p.single > p.plan && <span className="intro__save">{t.schedule.introSave.replace("{n}", String(p.single - p.plan))}</span>}
             </div>
           );
         })}

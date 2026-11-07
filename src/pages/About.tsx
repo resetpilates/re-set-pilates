@@ -128,7 +128,7 @@ export function Faq() {
       <div className="wrap wrap--narrow pbody">
         <div className="screen stack gap-32">
           <Accordion items={t.faq.items} defaultOpen={0} />
-          <div className="card row between gap-16" style={{ flexWrap: "wrap" }}>
+          <div className="card row between gap-16 faq-more">
             <span className="display d-sm">{t.faq.more}</span>
             <Link to={href("contact")} className="btn btn--primary btn--sm">
               {t.nav.contact}
