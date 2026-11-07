@@ -95,21 +95,22 @@ export default function Gift() {
         <div className="split split--top">
           <div className="stack gap-12 gift-preview">
             <div className="gift-card" aria-label={t.gift.preview}>
-              <div className="row between" style={{ position: "relative" }}>
+              <div className="gift-card__top">
                 <Wordmark />
-                <span className="price">
+                <span className="gift-card__amount">
                   <small>₪</small>
                   {value || 0}
                 </span>
               </div>
-              <div className="stack gap-4" style={{ position: "relative" }}>
-                <span className="eyebrow">{t.gift.cardLine}</span>
-                <span className="display d-md">{to || "·"}</span>
-                <span className="small muted">
+              <span className="gift-card__chip" aria-hidden />
+              <div className="gift-card__bottom">
+                <span className="gift-card__eyebrow">{t.gift.cardLine}</span>
+                <span className={`gift-card__name ${to ? "" : "is-empty"}`}>{to || "· · · ·"}</span>
+                <span className="gift-card__meta">
                   {label}
                   {from ? ` · ${from}` : ""}
                 </span>
-                {note && <span className="display italic" style={{ fontSize: 17 }}>“{note}”</span>}
+                {note && <span className="gift-card__note">“{note}”</span>}
               </div>
             </div>
           </div>

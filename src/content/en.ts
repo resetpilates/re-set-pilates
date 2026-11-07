@@ -273,7 +273,8 @@ export const en = {
     introFrom: "from ", // trailing space; Hebrew joins with a maqaf
     introPerClass: "per class",
     introSave: "Save up to ₪{n} on every class",
-    introAdults: "Adults",
+    introAdults: "Reformer",
+    introMat: "Mat",
     introTeens: "Teens & soldiers",
     introSeePlans: "See all plans",
     spotsLeft: "spots left",
@@ -331,7 +332,7 @@ export const en = {
   },
   pricing: {
     title: "Pricing",
-    sub: "Memberships and passes for Reformer and Mat, same price. Pick your class, pick your plan.",
+    sub: "Memberships and passes for Reformer and Mat. Pick your class, pick your plan.",
     monthly: "Monthly",
     passes: "Passes",
     teens: "Teens",
@@ -357,7 +358,7 @@ export const en = {
     singleSave: "or save with a membership",
     concession: "Teens and active-duty soldiers never pay more than ₪50 a class, single or with a plan.",
     bonus: "+1 class free · launch month",
-    validity: "Monthly plans are valid one month from purchase. Passes are valid two months. Reformer and Mat share the same prices. A class is never under ₪50.",
+    validity: "Monthly plans are valid one month from purchase. Passes are valid two months. Mat Pilates is ₪5 a class less than Reformer. A Reformer class is never under ₪50.",
     launchNote: "Launch prices and the free class are for purchases during the launch month only.",
     pendingApproval: "Prices pending final approval",
     choose: "Choose",

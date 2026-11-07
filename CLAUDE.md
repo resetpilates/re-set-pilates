@@ -26,7 +26,8 @@ bun run build        # tsc (app + worker) + vite build; run before every PR
 
 ## Pricing rules (owner, 7 Nov 2026)
 
-- A single class is ₪60. A class is never cheaper than ₪50 on any plan (`PRICE_FLOOR`); plans step the price down slowly.
+- A Reformer single class is ₪60. A Reformer class is never cheaper than ₪50 on any plan (`PRICE_FLOOR`). Monthly plans and passes share one per-class ladder by class count (4–5: ₪60, 8: ₪58, 10–12: ₪55, 15–16: ₪50).
+- Mat Pilates is ₪5 a class less than Reformer on every general plan (`priceFor(plan, kind)`); never type Mat prices by hand.
 - Teens and active-duty soldiers never pay more than ₪50 a class, single or with a plan (`CONCESSION_MAX`).
 - Private group ₪375, event package ₪750. Gift cards sell the passes (₪300 / ₪550 / ₪750).
 - No launch overlay: `flags.launchPricing` is off and no item carries `launchPrice` / `bonusSessions`. `src/config/pricing.test.ts` enforces all of this; update the tests with any price change.

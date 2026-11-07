@@ -2380,3 +2380,45 @@ html[lang="he"] .paycards__label { letter-spacing: 0.04em; font-size: 12.5px; }
 .gift-shop { margin-top: 48px; align-items: center; text-align: center; padding: 28px 22px; }
 .gift-shop .stack { align-items: center; }
 .gift-shop .btn { margin-top: 4px; }
+
+/* ───────── v3.9 · gift card as a real card: one type scale, bigger embossed wordmark, bigger chip, laminated face ───────── */
+.gift-card {
+  aspect-ratio: 1.586; padding: clamp(18px, 6cqw, 28px) clamp(20px, 6.5cqw, 30px); border-radius: clamp(16px, 5cqw, 24px);
+  display: flex; flex-direction: column; justify-content: space-between; gap: 0; container-type: inline-size; overflow: hidden;
+  background:
+    radial-gradient(90% 70% at 100% 100%, rgba(212, 229, 241, 0.75) 0%, transparent 60%),
+    radial-gradient(120% 90% at 8% 0%, #ffffff 0%, transparent 52%),
+    linear-gradient(140deg, #fbe4de 0%, #f6e3d6 48%, #e6edf3 100%);
+  color: #1f1612;
+  box-shadow: 0 26px 50px rgba(31, 22, 18, 0.24), 0 2px 6px rgba(31, 22, 18, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.7), inset 0 -1px 0 rgba(0, 0, 0, 0.08);
+}
+/* The old corner ring is retired: the laminated face and the hairline frame are enough */
+.gift-card::before { display: none; }
+.gift-card > * { position: relative; z-index: 2; }
+.gift-card__top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.gift-card .wordmark { font-size: clamp(44px, 17cqw, 66px); line-height: 0.86; }
+.gift-card .wordmark i { color: var(--clay); }
+.gift-card .wordmark__sub { font-size: 0.3em; letter-spacing: 0.44em; margin-top: 0.24em; opacity: 0.9; font-weight: 600; }
+.gift-card__amount { font-family: var(--font-display); font-size: clamp(30px, 11cqw, 44px); font-weight: 600; line-height: 1; white-space: nowrap; direction: ltr; letter-spacing: -0.02em; margin-top: 0.1em;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6), 0 -1px 0 rgba(31, 22, 18, 0.14); }
+.gift-card__amount small { font-size: 0.6em; font-weight: 500; margin-inline-end: 0.08em; opacity: 0.8; }
+/* EMV chip: bigger, in flow between the wordmark and the cardholder block (the old pseudo-element chip is retired) */
+.gift-card::after { inset: 8px; border-radius: calc(clamp(16px, 5cqw, 24px) - 8px); }
+.gift-card__chip {
+  display: block; width: clamp(46px, 15cqw, 60px); aspect-ratio: 1.28; border-radius: clamp(6px, 2cqw, 9px); margin-block: clamp(10px, 4cqw, 18px) 0;
+  background:
+    linear-gradient(90deg, transparent 31%, rgba(120, 90, 40, 0.55) 31%, rgba(120, 90, 40, 0.55) 33%, transparent 33%, transparent 66%, rgba(120, 90, 40, 0.55) 66%, rgba(120, 90, 40, 0.55) 68%, transparent 68%),
+    linear-gradient(0deg, transparent 47%, rgba(120, 90, 40, 0.55) 47%, rgba(120, 90, 40, 0.55) 53%, transparent 53%),
+    linear-gradient(135deg, #f4e0ac, #c9a35c 55%, #ecd398);
+  border: 1px solid rgba(120, 90, 40, 0.45); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65), 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+.gift-card .gift-card__chip + .gift-card__bottom { margin-top: clamp(10px, 3.5cqw, 16px); }
+/* Cardholder block: one scale, every line the same family of sizes */
+.gift-card__bottom { display: flex; flex-direction: column; gap: clamp(2px, 1cqw, 5px); min-width: 0; }
+.gift-card__eyebrow { font-size: clamp(10px, 3.3cqw, 12px); font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: var(--clay); }
+html[lang="he"] .gift-card__eyebrow { letter-spacing: 0.06em; }
+.gift-card__name { font-family: var(--font-display); font-size: clamp(20px, 7.2cqw, 28px); font-weight: 600; line-height: 1.05; letter-spacing: 0.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.55), 0 -1px 0 rgba(31, 22, 18, 0.12); }
+.gift-card__meta { font-size: clamp(11.5px, 3.8cqw, 14px); font-weight: 600; letter-spacing: 0.04em; color: rgba(31, 22, 18, 0.72); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gift-card__note { font-family: var(--font-display); font-style: italic; font-size: clamp(13px, 4.2cqw, 16px); line-height: 1.25; color: rgba(31, 22, 18, 0.8); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.gift-card__name.is-empty { opacity: 0.35; letter-spacing: 0.2em; }

@@ -4,7 +4,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { instructorName } from "../components/blocks";
 import { openChat } from "../components/ChatWidget";
 import { Check, Sheet, Switch } from "../components/ui";
-import { classPrices, intro, planById, singleClass } from "../config/pricing";
+import { classPrices, intro, planById, priceFor, singleClass } from "../config/pricing";
 import { serviceById } from "../config/services";
 import { track } from "../lib/analytics";
 import { bookingProvider, fromISO, rememberBed, slotStart, type ClassSlot } from "../lib/booking";
@@ -133,9 +133,9 @@ export default function ClassDetail() {
         </div>
 
         <p className="single-price">
-          <b>{t.pricing.singlePrice.replace("{price}", String(singleClass.price))}</b>
+          <b>{t.pricing.singlePrice.replace("{price}", String(priceFor(singleClass, slot.service)))}</b>
           <Link to={href(`pricing?kind=${slot.service}&next=${slot.id}`)} className="link small">
-            {intro.active ? t.pricing.singlePlan.replace("{price}", String(classPrices("adult").plan)) : t.pricing.singleSave}
+            {intro.active ? t.pricing.singlePlan.replace("{price}", String(classPrices("adult", undefined, slot.service).plan)) : t.pricing.singleSave}
           </Link>
         </p>
 
@@ -296,7 +296,7 @@ export default function ClassDetail() {
                     track("membership_click", { plan: singleClass.id, kind: slot.service });
                   }}
                 >
-                  {t.confirm.single.replace("{price}", String(singleClass.price))}
+                  {t.confirm.single.replace("{price}", String(priceFor(singleClass, slot.service)))}
                 </Link>
                 <Link to={href(`pricing?kind=${slot.service}&next=${slot.id}`)} className="btn btn--secondary btn--block" onClick={() => rememberBed(slot.id, isReformer ? bed : null)}>
                   {t.confirm.choosePlan}

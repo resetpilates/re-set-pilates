@@ -7,22 +7,23 @@ Everything below works on screen as a demo. This is what each flow still needs b
 
 Rules: a single class is ₪60; a class is never under ₪50 on any plan (`PRICE_FLOOR`); plans step the price down slowly; teens and active-duty soldiers never pay over ₪50 a class, single or with a plan.
 
-| Plan | Price | Per class | Valid |
-| --- | --- | --- | --- |
-| Single class | ₪60 (teens / soldiers ₪50) | | |
-| 1× a week | ₪240 | ₪60 | 1 month from purchase |
-| 2× a week | ₪465 | ₪58 | 1 month |
-| 3× a week | ₪660 | ₪55 | 1 month |
-| 4× a week | ₪835 | ₪52 | 1 month |
-| Unlimited | ₪1000 | | 1 month |
-| 5-class pass | ₪300 | ₪60 | 2 months from purchase |
-| 10-class pass | ₪550 | ₪55 | 2 months |
-| 15-class pass | ₪750 | ₪50 | 2 months |
-| Teens monthly (4 classes) | ₪200 | ₪50 | 1 month |
-| Private group / event package | ₪375 / ₪750 per group | | by request |
+| Plan | Reformer | Per class | Mat (−₪5 a class) | Valid |
+| --- | --- | --- | --- | --- |
+| Single class | ₪60 (teens / soldiers ₪50) | | ₪55 | |
+| 1× a week (4 classes) | ₪240 | ₪60 | ₪220 | 1 month from purchase |
+| 2× a week (8) | ₪465 | ₪58 | ₪425 | 1 month |
+| 3× a week (12) | ₪660 | ₪55 | ₪600 | 1 month |
+| 4× a week (16) | ₪800 | ₪50 | ₪720 | 1 month |
+| Unlimited | ₪1000 | | ₪900 | 1 month |
+| 5-class pass | ₪300 | ₪60 | ₪275 | 2 months from purchase |
+| 10-class pass | ₪550 | ₪55 | ₪500 | 2 months |
+| 15-class pass | ₪750 | ₪50 | ₪675 | 2 months |
+| Teens monthly (4 classes) | ₪200 | ₪50 | | 1 month |
+| Private group / event package | ₪375 / ₪750 per group | | | by request |
 
-Gift cards sell the three passes (₪300 / ₪550 / ₪750) or a custom amount. There is no launch overlay any more (`flags.launchPricing` is off and no item carries `launchPrice` / `bonusSessions`): the old "+1 class" took the 15-pass to ₪47, under the floor. Reformer and Mat share this list.
-- [ ] **Airtable *Plans & Prices* is what the Worker charges**: update it to these numbers (m1x 240, m2x 465, m3x 660, m4x 835, munl 1000, teens 200, single 60, tsingle 50, p5 300, p10 550, p15 750) and clear the *Launch price* and *Bonus* columns. Until then the site shows one price and the Worker charges another.
+Monthly plans and passes share one ladder by class count: 4–5 classes ₪60, 8 ₪58, 10–12 ₪55, 15–16 ₪50. Mat is derived in code (`priceFor`), never typed in twice.
+Gift cards sell the three Reformer passes (₪300 / ₪550 / ₪750) or a custom amount. There is no launch overlay any more (`flags.launchPricing` is off and no item carries `launchPrice` / `bonusSessions`): the old "+1 class" took the 15-pass to ₪47, under the floor. Reformer and Mat share this list.
+- [ ] **Airtable *Plans & Prices* is what the Worker charges**: update it to these numbers (m1x 240, m2x 465, m3x 660, m4x 800, munl 1000, teens 200, single 60, tsingle 50, p5 300, p10 550, p15 750) and clear the *Launch price* and *Bonus* columns. Mat is ₪5 a class less: the Worker's charge must take the chosen class into account (today it charges one price per plan id), so either add Mat rows or deduct per class in the Worker before payments go live. Until then the site shows one price and the Worker charges another.
 
 ## Launch prep decisions (owner review, 20 Oct 2026)
 - **No Arbox.** The booking system is built in-house (site + Cloudflare Worker + Airtable). Arbox was removed from checkout, config, chat answers, receipts and the schema.

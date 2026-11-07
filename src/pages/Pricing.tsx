@@ -61,7 +61,7 @@ export function Checkout() {
   const [sentVia, setSentVia] = useState<string[]>([]);
   const plan = planById(planId);
   const next = params.get("next");
-  // Reformer or Mat (same price). Teens plans carry no kind; a general plan defaults to Reformer.
+  // Reformer or Mat (Mat is ₪5 a class less). Teens plans carry no kind; a general plan defaults to Reformer.
   const kindParam = params.get("kind");
   const kind = plan?.track ? null : isClassKind(kindParam) ? kindParam : "reformer";
 
@@ -133,7 +133,7 @@ export function Checkout() {
       no,
       lang,
       contact,
-      line: { label: itemLabel, ...(carry ? { detail: t.checkout.carried.replace("{n}", String(carry)) } : {}), amount: effectivePrice(plan) },
+      line: { label: itemLabel, ...(carry ? { detail: t.checkout.carried.replace("{n}", String(carry)) } : {}), amount: effectivePrice(plan, kind) },
       method: method.id,
       classesTotal: passClasses,
       validUntil: planEnd(plan, new Date().toISOString()),
@@ -161,7 +161,7 @@ export function Checkout() {
       prefTime: teens ? "Teen evening" : "Adult morning",
       source: next ? "Booking" : "Pricing",
       planId: plan.id,
-      wanted: `${planName(plan, t, slotLabel ? null : kind)} · ₪${effectivePrice(plan)} · ${payLabel[method]}`,
+      wanted: `${planName(plan, t, slotLabel ? null : kind)} · ₪${effectivePrice(plan, kind)} · ${payLabel[method]}`,
       slot: slotLabel,
       consent: x.consent,
       website: x.website,
@@ -212,7 +212,7 @@ export function Checkout() {
             {hold === "held" && <p className="small hi">{t.launchWaitlist.bedHeld}</p>}
             {hold === "full" && <p className="small hi">{t.launchWaitlist.classFull}</p>}
             <p className="small">
-              <b>{t.launchWaitlist.youChose}:</b> {[`${planName(plan, t, slotLabel ? null : kind)} · ₪${effectivePrice(plan)}`, slotLabel].filter(Boolean).join(" · ")}
+              <b>{t.launchWaitlist.youChose}:</b> {[`${planName(plan, t, slotLabel ? null : kind)} · ₪${effectivePrice(plan, kind)}`, slotLabel].filter(Boolean).join(" · ")}
             </p>
             <Link to={href("schedule")} className="btn btn--sand btn--block">
               {t.checkout.doneCta}
@@ -266,7 +266,7 @@ export function Checkout() {
                   </span>
                 )}
               </span>
-              <Price amount={effectivePrice(plan)} was={launch && plan.launchPrice ? plan.price : null} />
+              <Price amount={effectivePrice(plan, kind)} was={launch && plan.launchPrice ? plan.price : null} />
             </div>
             {activeUntil && (
               <div className="notice stack gap-8" role="alert">
@@ -288,7 +288,7 @@ export function Checkout() {
             </fieldset>
             <div className="kv" style={{ borderBottom: 0, fontSize: 16 }}>
               <span>{t.checkout.total}</span>
-              <span style={{ direction: "ltr" }}>₪{effectivePrice(plan)}</span>
+              <span style={{ direction: "ltr" }}>₪{effectivePrice(plan, kind)}</span>
             </div>
             <div className="stack gap-12">
               <label className="tick">

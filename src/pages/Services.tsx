@@ -2,7 +2,7 @@ import { Link, useParams } from "react-router-dom";
 import { PageHead, Packages, TeensPlan, pricesVisible, serviceTarget } from "../components/blocks";
 import { classPrices, intro, teensPlan } from "../config/pricing";
 
-/** Group classes that can also be bought one at a time (shows "Single class: ₪60", teens ₪50). */
+/** Group classes that can also be bought one at a time (shows "Single class: ₪60", Mat ₪55, teens ₪50). */
 const SINGLE_CLASS = ["reformer", "mat", "teens"];
 import { serviceBySlug, services } from "../config/services";
 import { track } from "../lib/analytics";
@@ -52,7 +52,7 @@ export function ServiceDetail() {
   const { t, href } = useI18n();
   const s = serviceBySlug(slug) ?? services[0];
   const c = t.services.items[s.id];
-  const cp = classPrices(s.id === "teens" ? "teen" : "adult");
+  const cp = classPrices(s.id === "teens" ? "teen" : "adult", undefined, s.id === "mat" ? "mat" : "reformer");
   useSeo({ title: `${c.name} | re:set pilates`, desc: c.desc });
   return (
     <div className="page page--bleed tone-dark page--still">
