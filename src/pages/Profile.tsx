@@ -10,6 +10,11 @@ import { addressLine, siteConfig } from "../config/site";
 import { useI18n } from "../lib/i18n";
 import { useSeo } from "../lib/seo";
 import { planEnd, planUsage } from "../lib/plan";
+import { trainerConfig } from "../config/trainer";
+import { useTrainerCopy } from "../content/trainer";
+import { allWeeks, buildWeeks, goalFor, nextAction, streaks, weekStart, type NextAction } from "../lib/trainer";
+import { useTrainer } from "../lib/trainerStore";
+import { toISO } from "../lib/booking";
 import { useStore } from "../lib/store";
 
 export default function Profile() {
@@ -41,7 +46,7 @@ export default function Profile() {
   return (
     <div className="page page--app tone-dark has-tabbar">
       <div className="wrap wrap--app stack gap-24 screen">
-        <div className="row gap-16">
+        <div className="row gap-16 profile-hello">
           <span className="avatar avatar--brand" aria-hidden>
             <Wordmark />
           </span>
@@ -226,23 +231,31 @@ export default function Profile() {
   );
 }
 
-/** Class milestones: the bar fills stop by stop, each stop a badge. */
-const MILESTONES = [0, 5, 10, 25, 50, 100];
+/** Class milestones, the next one shown as a target. */
+const MILESTONES = [5, 10, 25, 50, 100];
 
-/** "My progress": a milestone bar that fills with every class attended. */
+/**
+ * "My progress": three numbers from the AI trainer (classes, week streak, this week against the goal) and the trainer's
+ * one next step. Everything is computed by `src/lib/trainer.ts`, the same logic as the progress page.
+ */
 function ProgressCard({ done }: { done: number }) {
   const { t, href } = useI18n();
-  const last = MILESTONES.length - 1;
-  const i = MILESTONES.findIndex((m) => m > done); // next stop, -1 once past the last
-  const next = i === -1 ? undefined : MILESTONES[i];
-  // Stops are evenly spaced; between two stops the fill grows in proportion
-  const pos = i === -1 ? 1 : (i - 1 + (done - MILESTONES[i - 1]) / (MILESTONES[i] - MILESTONES[i - 1])) / last;
-  const line =
-    done === 0
-      ? t.profile.progressStart
-      : next === undefined
-        ? t.profile.progressTop.replace("{count}", String(done))
-        : t.profile.progressNext.replace("{n}", String(next - done)).replace("{m}", String(next));
+  const c = useTrainerCopy();
+  const tr = useTrainer();
+  const store = useStore();
+  const now = new Date();
+  const sessions = tr.allSessions;
+  const attended = Math.max(done, sessions.filter((s) => s.status === "attended").length);
+  const weeks = buildWeeks(sessions, tr.goals, tr.pauses, now, trainerConfig.consistency.graphWeeks);
+  const streak = tr.onboarded ? streaks(allWeeks(sessions, tr.goals, tr.pauses, now)).current : 0;
+  const week = weeks[weeks.length - 1];
+  const goal = goalFor(toISO(weekStart(now)), tr.goals);
+  const action: NextAction = tr.onboarded
+    ? nextAction({ onboarded: true, reviews: tr.reviews, sessions, checkins: tr.checkins, assessments: tr.assessments, weeks, hasUpcoming: store.upcoming.length > 0, now, resourceId: "r1" })
+    : { kind: "onboarding" };
+  const [nextTitle] = c.actions[action.kind];
+  const next = MILESTONES.find((m) => m > attended);
+  const line = attended === 0 ? t.profile.progressStart : next ? t.profile.progressNext.replace("{n}", String(next - attended)).replace("{m}", String(next)) : t.profile.progressTop;
   return (
     <Link to={href("progress")} className="nextstep nextstep--progress pgcard" aria-label={`${t.nav.progress}. ${line}`}>
       <span className="pgcard__head">
@@ -252,17 +265,27 @@ function ProgressCard({ done }: { done: number }) {
         <b className="nextstep__title">{t.nav.progress}</b>
         <span className="chev" aria-hidden />
       </span>
-      <span className="pgcard__track" aria-hidden>
-        <span className="pgcard__fill" style={{ width: `${pos * 100}%` }} />
-        {MILESTONES.slice(1).map((m, k) => (
-          <span key={m} className={`pgcard__stop ${done >= m ? "is-won" : ""}`} style={{ insetInlineStart: `${((k + 1) / last) * 100}%` }}>
-            <i />
-            <small>{m}</small>
-          </span>
-        ))}
+      <span className="pgcard__stats">
+        <span className="pgcard__stat">
+          <b>{attended}</b>
+          <small>{c.g1.sessions}</small>
+        </span>
+        <span className="pgcard__stat">
+          <b>{streak}</b>
+          <small>{c.g1.streak}</small>
+        </span>
+        <span className="pgcard__stat">
+          <b>
+            {week?.attended ?? 0}
+            {goal ? <i>/{goal}</i> : null}
+          </b>
+          <small>{c.g1.thisWeek.replace(/\s*\(.*\)$/, "")}</small>
+        </span>
       </span>
-      <span className="pgcard__line">
-        <b className="pgcard__count">{done}</b> {line}
+      <span className="pgcard__next">
+        <span className="pgcard__ai">{c.dash.next}</span>
+        <span className="pgcard__line">{nextTitle}</span>
+        {next && <span className="pgcard__tiny">{line}</span>}
       </span>
     </Link>
   );

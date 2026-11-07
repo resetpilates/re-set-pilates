@@ -26,7 +26,7 @@ export default function My() {
       <div className="wrap wrap--app pbody stack gap-24 screen">
 
         {store.upcoming.length === 0 ? (
-          <div className="card card--dashed stack gap-12 center" style={{ padding: 28 }}>
+          <div className="my-empty stack gap-12 center">
             <div className="media media--bare my-empty__img" aria-hidden>
               <img src="/assets/ex-rest.webp" alt="" style={{ objectPosition: "50% 40%" }} />
             </div>
