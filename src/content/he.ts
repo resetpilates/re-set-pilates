@@ -277,7 +277,7 @@ export const he: Content = {
     introSave: "חיסכון של עד ₪{n} בכל שיעור",
     introAdults: "רפורמר",
     introMat: "מזרן",
-    introTeens: "נערות וחיילות",
+    introTeens: "נערות\nוחיילות",
     introSeePlans: "לכל המנויים",
     spotsLeft: "מקומות פנויים",
     lastSpot: "מקום אחרון",

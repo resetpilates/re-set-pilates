@@ -2486,3 +2486,22 @@ html[lang="he"] .pgcard__ai { letter-spacing: 0.04em; font-size: 11.5px; }
   .hdr .wrap { padding-inline: 10px 18px; }
   .hdr .wordmark, .hdr__brand .wordmark { font-size: 52px; }
 }
+
+/* ───────── v4.2 · teens cards off blue, "Teens & Soldiers" on two lines, beds laid out like the room (3 + 2), signed-out card, menu contact lines ───────── */
+#classes .reveal:nth-child(6) .flow-row { --cat: #fffdfa; } /* Teens: white (was pale blue) */
+.intro__who { white-space: pre-line; line-height: 1.15; }
+
+/* Five reformers as they stand in the studio: three in the first row, two in the second, centred */
+.beds5 { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px 8px; justify-items: center; max-width: 300px; }
+.beds5 .bed5 { grid-column: span 2; max-width: 84px; width: 100%; }
+.beds5 .bed5:nth-child(4) { grid-column: 2 / span 2; }
+.beds5 .bed5:nth-child(5) { grid-column: 4 / span 2; }
+.beds5 .bed5 svg { max-width: 64px; }
+
+/* Signed out: a light beige card, Sign up as the dark button */
+.card--signedout { background: #fbf4ea; border: 2px solid #1f1612; }
+.card--signedout .btn--blue { background: #fffdfa; }
+
+/* Menu: the phone and email lines read like the rest of the menu */
+.menu__tel, .menu__mail { font-size: 16px; font-weight: 600; color: #1f1612; min-height: 44px; display: flex; align-items: center; justify-content: center; }
+.menu__foot { gap: 6px; }

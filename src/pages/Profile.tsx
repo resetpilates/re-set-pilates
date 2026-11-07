@@ -69,14 +69,14 @@ export default function Profile() {
         ))}
 
         {!signedIn && (
-          <div className="card card--blue stack gap-12">
+          <div className="card card--signedout stack gap-12">
             <h2 className="display d-sm">{t.profile.signedOut}</h2>
             <p className="small muted">{t.profile.signedOutSub}</p>
             <div className="row gap-8" style={{ flexWrap: "wrap" }}>
               <button className="btn btn--blue" style={{ flex: 1 }} onClick={() => setSignIn(true)}>
                 {t.profile.signIn}
               </button>
-              <Link to={href("pricing")} className="btn btn--secondary" style={{ flex: 1 }}>
+              <Link to={href("pricing")} className="btn btn--dark" style={{ flex: 1 }}>
                 {t.profile.signUp}
               </Link>
             </div>

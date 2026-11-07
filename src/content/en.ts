@@ -275,7 +275,7 @@ export const en = {
     introSave: "Save up to ₪{n} on every class",
     introAdults: "Reformer",
     introMat: "Mat",
-    introTeens: "Teens & soldiers",
+    introTeens: "Teens &\nSoldiers",
     introSeePlans: "See all plans",
     spotsLeft: "spots left",
     lastSpot: "Last spot",
