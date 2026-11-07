@@ -61,8 +61,9 @@ export const siteConfig = {
     pregnancyUpTo: TODO, // e.g. "week 30": Orit to confirm
   },
   flags: {
-    // Launch pricing overlay (never overwrites the core pricing model).
-    launchPricing: true,
+    // Launch pricing overlay (never overwrites the core pricing model). Off: the price list carries no overlay
+    // any more, a class is never under ₪50 (see PRICE_FLOOR in pricing.ts).
+    launchPricing: false,
     // Prototype: show unapproved prices with a "pending approval" marker.
     showUnapprovedPrices: true,
     // Prototype: member/visitor switch on the profile screen. Remove in production.
@@ -88,7 +89,10 @@ export const siteConfig = {
     heroVideo: "/media/hero.mp4", // Seedance 1.5 Pro: empty studio at dawn, dolly in to the gold-ring sign (12s, 1080p, silent); replace with real footage after the shoot
     heroVideoPhone: "/media/hero-720.mp4", // lighter 720p encode served below 1000px (made by the compress-hero workflow)
     heroPoster: "/assets/hero-poster.webp", // first frame of the hero video (studio + sign); studio-wide.jpg is the plain studio photo
-    ogImage: "/assets/og-studio.jpg",
+    // Link preview (WhatsApp, Instagram, Facebook, Google): the re:set wordmark on cream, 1200×630. og-studio.jpg (the five
+    // reformers) stays for the schema.org photo list only; the owner asked that a shared link shows the logo, not the studio.
+    ogImage: "/assets/og-logo.jpg",
+    ogStudio: "/assets/og-studio.jpg",
     logoDisc: "/assets/logo-gold-ring.webp",
     music: "", // optional user-uploaded track; never autoplays
   },

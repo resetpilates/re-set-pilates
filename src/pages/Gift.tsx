@@ -193,13 +193,13 @@ export default function Gift() {
           )}
         </div>
 
-        <section className="card row between gap-16" style={{ marginTop: 48, flexWrap: "wrap" }}>
+        <section className="card gift-shop stack gap-12">
           <div className="stack gap-4">
             <span className="eyebrow">{t.gift.shopEyebrow}</span>
             <h2 className="display d-sm">{t.gift.shopTitle}</h2>
             <p className="small muted">{t.gift.shopBody}</p>
           </div>
-          <Link to={href("shop")} className="btn btn--secondary btn--sm">
+          <Link to={href("shop")} className="btn btn--sand btn--sm">
             {t.gift.shopLink}
           </Link>
         </section>

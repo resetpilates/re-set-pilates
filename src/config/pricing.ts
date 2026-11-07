@@ -1,19 +1,16 @@
 /**
  * PRICE LIST — single source of truth for the whole site (pricing page, Home cards, checkout, receipts, chat, schema.org).
- * Mirrors the owner's three final posters (Oct 2026):
+ * Owner's rules (7 Nov 2026):
  *
- *   Poster 1 "אימוני פילאטיס מכשירים" (regular prices)
- *     Monthly (valid one month from purchase):  1×/wk ₪240 · 2×/wk ₪460 · 3×/wk ₪630 · 4×/wk ₪800 · Unlimited ₪990
- *     Passes  (valid two months from purchase): 5 = ₪300 (₪60/class) · 10 = ₪550 (₪55/class) · 15 = ₪750 (₪50/class)
- *   Poster 2 "חודש ההשקה" passes:   5+1 = 6 classes ₪300 · 10+1 = 11 classes ₪550 · 15+1 = 16 classes ₪750
- *                                   (the +1 is for purchases during the launch month only, passes only)
- *   Poster 3 "חודש ההשקה" monthly:  1× ₪220 (was 240) · 2× ₪430 (460) · 3× ₪590 (630) · 4× ₪750 (800) · Unlimited ₪920 (990)
- *                                   (launch prices for purchases during the launch month only)
+ *   A class is never cheaper than ₪50 and a single class is ₪60. Plans discount a class step by step, never below the floor:
+ *     Monthly (valid one month):  1×/wk ₪240 (₪60/class) · 2×/wk ₪465 (₪58) · 3×/wk ₪660 (₪55) · 4×/wk ₪835 (₪52) · Unlimited ₪1000
+ *     Passes  (valid two months): 5 = ₪300 (₪60/class) · 10 = ₪550 (₪55/class) · 15 = ₪750 (₪50/class)
+ *   Teens and active-duty soldiers never pay more than ₪50 a class, single or with a plan: teens ₪200/month (4 classes), single ₪50.
+ *   Closed groups: private group ₪375, event package ₪750 (`packages.ts`). Gift cards sell the passes (₪300 / ₪550 / ₪750).
  *
- * Launch overlays apply while `siteConfig.flags.launchPricing` is on (`launchPrice` on monthly plans, `bonusSessions` on passes).
- * Not on the posters, from the owner's earlier flyers / 21 Oct notes: Teens ₪180/month (4 classes), single class ₪55
- * (teens ₪50), closed-group packages in `packages.ts`. The Worker charges what Airtable *Plans & Prices* says, so that table
- * must carry the same numbers (see LAUNCH-CHECKLIST.md "Pricing").
+ * There is no launch overlay any more (it took a class under the floor): `launchPrice` / `bonusSessions` stay supported by the
+ * code but no item carries them, and `siteConfig.flags.launchPricing` is off. The Worker charges what Airtable *Plans & Prices*
+ * says, so that table must carry the same numbers (see LAUNCH-CHECKLIST.md "Pricing").
  */
 import { siteConfig } from "./site";
 
@@ -30,8 +27,8 @@ export interface PricingItem {
   perWeek?: number | "unlimited";
   sessions?: number;
   price: number;
-  launchPrice?: number; // monthly launch overlay (poster 3)
-  bonusSessions?: number; // pass launch overlay, +1 class (poster 2)
+  launchPrice?: number; // optional launch overlay on a monthly plan (unused now: it must never take a class under PRICE_FLOOR)
+  bonusSessions?: number; // optional launch overlay on a pass, +N classes (unused now, same reason)
   currency: "ILS";
   popular?: boolean;
   tone: "cream" | "sand" | "ink"; // membership card colour, same on pricing and the member's profile
@@ -40,24 +37,30 @@ export interface PricingItem {
   approved: boolean; // false => shown with a "pending approval" note (or hidden)
 }
 
+/** A class never costs less than this, on any plan, for anyone (owner's rule). The tests pin every plan to it. */
+export const PRICE_FLOOR = 50;
+/** The teens / active-duty soldiers rate: a class is never more than this for them, single or with a plan. */
+export const CONCESSION_MAX = 50;
+
 export const pricing: { memberships: PricingItem[]; passes: PricingItem[] } = {
   memberships: [
-    { id: "m1x", tone: "cream", billingType: "monthly", perWeek: 1, price: 240, launchPrice: 220, currency: "ILS", validityMonths: 1, active: true, approved: true },
-    { id: "m2x", tone: "sand", billingType: "monthly", perWeek: 2, price: 460, launchPrice: 430, currency: "ILS", validityMonths: 1, active: true, approved: true },
-    { id: "m3x", tone: "sand", billingType: "monthly", perWeek: 3, price: 630, launchPrice: 590, currency: "ILS", validityMonths: 1, popular: true, active: true, approved: true },
-    { id: "m4x", tone: "ink", billingType: "monthly", perWeek: 4, price: 800, launchPrice: 750, currency: "ILS", validityMonths: 1, active: true, approved: true },
-    { id: "munl", tone: "ink", billingType: "monthly", perWeek: "unlimited", price: 990, launchPrice: 920, currency: "ILS", validityMonths: 1, active: true, approved: true },
-    // Teens (girls 12-17): once a week, 4 sessions a month, up to 5 girls. No launch overlay (flyer price).
-    { id: "teens", track: "teens", tone: "cream", billingType: "monthly", perWeek: 1, price: 180, currency: "ILS", validityMonths: 1, active: true, approved: true },
+    // 4 classes a month per weekly slot: ₪60 → ₪58 → ₪55 → ₪52 a class, then Unlimited.
+    { id: "m1x", tone: "cream", billingType: "monthly", perWeek: 1, price: 240, currency: "ILS", validityMonths: 1, active: true, approved: true },
+    { id: "m2x", tone: "sand", billingType: "monthly", perWeek: 2, price: 465, currency: "ILS", validityMonths: 1, active: true, approved: true },
+    { id: "m3x", tone: "sand", billingType: "monthly", perWeek: 3, price: 660, currency: "ILS", validityMonths: 1, popular: true, active: true, approved: true },
+    { id: "m4x", tone: "ink", billingType: "monthly", perWeek: 4, price: 835, currency: "ILS", validityMonths: 1, active: true, approved: true },
+    { id: "munl", tone: "ink", billingType: "monthly", perWeek: "unlimited", price: 1000, currency: "ILS", validityMonths: 1, active: true, approved: true },
+    // Teens (girls 12-17): once a week, 4 sessions a month, up to 5 girls, ₪50 a class (the teens / soldiers rate).
+    { id: "teens", track: "teens", tone: "cream", billingType: "monthly", perWeek: 1, price: 200, currency: "ILS", validityMonths: 1, active: true, approved: true },
   ],
   passes: [
     // One class, Reformer or Mat, adults. Shown on every class page. (Airtable Plans & Prices row `single` must match.)
-    { id: "single", tone: "cream", billingType: "pass", sessions: 1, price: 55, currency: "ILS", validityMonths: 1, active: true, approved: true },
+    { id: "single", tone: "cream", billingType: "pass", sessions: 1, price: 60, currency: "ILS", validityMonths: 1, active: true, approved: true },
     // One class for the teens group (Airtable row `tsingle`).
     { id: "tsingle", track: "teens", tone: "cream", billingType: "pass", sessions: 1, price: 50, currency: "ILS", validityMonths: 1, active: true, approved: true },
-    { id: "p5", tone: "cream", billingType: "pass", sessions: 5, price: 300, bonusSessions: 1, currency: "ILS", validityMonths: 2, active: true, approved: true },
-    { id: "p10", tone: "sand", billingType: "pass", sessions: 10, price: 550, bonusSessions: 1, currency: "ILS", validityMonths: 2, popular: true, active: true, approved: true },
-    { id: "p15", tone: "ink", billingType: "pass", sessions: 15, price: 750, bonusSessions: 1, currency: "ILS", validityMonths: 2, active: true, approved: true },
+    { id: "p5", tone: "cream", billingType: "pass", sessions: 5, price: 300, currency: "ILS", validityMonths: 2, active: true, approved: true },
+    { id: "p10", tone: "sand", billingType: "pass", sessions: 10, price: 550, currency: "ILS", validityMonths: 2, popular: true, active: true, approved: true },
+    { id: "p15", tone: "ink", billingType: "pass", sessions: 15, price: 750, currency: "ILS", validityMonths: 2, active: true, approved: true },
   ],
 };
 
@@ -86,12 +89,12 @@ const bestPerClass = (plans: PricingItem[], launch: boolean) =>
   Math.min(...plans.filter((p) => p.active && p.approved && p.sessions !== 1).map((p) => perClass(p, launch) ?? Infinity));
 
 /**
- * Introductory month (owner, 21 Oct 2026, limited time): what one class costs on its own and, at best, with a plan.
- * Adults: single ₪55, with a plan from ₪50 (15-pass; ₪47 with the launch +1). Teens: single ₪50, ₪45 with the monthly plan.
+ * Class-price strip (schedule, class rows, service pages): what one class costs on its own and, at best, with a plan.
+ * Adults: single ₪60, with a plan from ₪50 (15-pass). Teens and soldiers: ₪50 either way.
  * The "with a plan" figure is derived from the price list above so it can never drift from it.
  */
 export const intro = { active: true };
 export const classPrices = (who: "adult" | "teen", launch = siteConfig.flags.launchPricing) =>
   who === "teen"
-    ? { single: teenSingleClass.price, plan: (teensPlan && perClass(teensPlan, launch)) || 45 }
+    ? { single: teenSingleClass.price, plan: (teensPlan && perClass(teensPlan, launch)) || CONCESSION_MAX }
     : { single: singleClass.price, plan: bestPerClass(allPlans.filter((p) => !p.track), launch) };

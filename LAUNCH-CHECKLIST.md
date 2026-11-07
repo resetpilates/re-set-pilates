@@ -2,34 +2,38 @@
 
 Everything below works on screen as a demo. This is what each flow still needs before real customers use it.
 
-## Pricing — the owner's three posters are the source of truth (21 Oct 2026)
-`src/config/pricing.ts` holds the whole list and every page, the checkout, receipts, the chat and the schema.org data read from it (`src/config/pricing.test.ts` pins it to the posters).
+## Pricing — the owner's rules (7 Nov 2026) are the source of truth
+`src/config/pricing.ts` holds the whole list and every page, the checkout, receipts, the chat and the schema.org data read from it (`src/config/pricing.test.ts` pins it to the rules below).
 
-| Plan | Regular (poster 1) | Launch month (posters 2–3) | Valid |
-|---|---|---|---|
-| 1× a week | ₪240 | ₪220 | 1 month from purchase |
-| 2× a week | ₪460 | ₪430 | 1 month |
-| 3× a week | ₪630 | ₪590 | 1 month |
-| 4× a week | ₪800 | ₪750 | 1 month |
-| Unlimited | ₪990 | ₪920 | 1 month |
-| 5-class pass | ₪300 (₪60/class) | 5 + 1 = 6 classes, ₪300 | 2 months from purchase |
-| 10-class pass | ₪550 (₪55/class) | 10 + 1 = 11 classes, ₪550 | 2 months |
-| 15-class pass | ₪750 (₪50/class) | 15 + 1 = 16 classes, ₪750 | 2 months |
+Rules: a single class is ₪60; a class is never under ₪50 on any plan (`PRICE_FLOOR`); plans step the price down slowly; teens and active-duty soldiers never pay over ₪50 a class, single or with a plan.
 
-Launch prices and the free class are for purchases during the launch month only (`flags.launchPricing`; turn it off when the month ends — the price list, checkout, chat and schema all follow). Reformer and Mat share this list. Not on the posters: Teens ₪180/month (4 classes, single ₪50), single adult class ₪55, closed groups ₪350 / event ₪750 (`packages.ts`).
-- [ ] **Airtable *Plans & Prices* is what the Worker charges**: it must carry the same regular / launch / bonus numbers; row `single` = 55, add row `tsingle` = 50 (still open). When launch month ends, clear the *Launch price* and *Bonus* columns there too.
-- [ ] **Owner to confirm:** a single class (₪55) is cheaper per class than the 5-pass (₪60/class). Either is fine, but it is worth a conscious decision.
+| Plan | Price | Per class | Valid |
+| --- | --- | --- | --- |
+| Single class | ₪60 (teens / soldiers ₪50) | | |
+| 1× a week | ₪240 | ₪60 | 1 month from purchase |
+| 2× a week | ₪465 | ₪58 | 1 month |
+| 3× a week | ₪660 | ₪55 | 1 month |
+| 4× a week | ₪835 | ₪52 | 1 month |
+| Unlimited | ₪1000 | | 1 month |
+| 5-class pass | ₪300 | ₪60 | 2 months from purchase |
+| 10-class pass | ₪550 | ₪55 | 2 months |
+| 15-class pass | ₪750 | ₪50 | 2 months |
+| Teens monthly (4 classes) | ₪200 | ₪50 | 1 month |
+| Private group / event package | ₪375 / ₪750 per group | | by request |
+
+Gift cards sell the three passes (₪300 / ₪550 / ₪750) or a custom amount. There is no launch overlay any more (`flags.launchPricing` is off and no item carries `launchPrice` / `bonusSessions`): the old "+1 class" took the 15-pass to ₪47, under the floor. Reformer and Mat share this list.
+- [ ] **Airtable *Plans & Prices* is what the Worker charges**: update it to these numbers (m1x 240, m2x 465, m3x 660, m4x 835, munl 1000, teens 200, single 60, tsingle 50, p5 300, p10 550, p15 750) and clear the *Launch price* and *Bonus* columns. Until then the site shows one price and the Worker charges another.
 
 ## Launch prep decisions (owner review, 20 Oct 2026)
 - **No Arbox.** The booking system is built in-house (site + Cloudflare Worker + Airtable). Arbox was removed from checkout, config, chat answers, receipts and the schema.
 - **Payments not live yet** (`flags.paymentsLive: false` in `src/config/site.ts`). Every buy/book button (pricing, booking a class, gift cards) ends in the launch waitlist form instead of a sample purchase. Sign-ups land in Airtable **Launch Waitlist** (name, phone, optional email, class type, Adult morning / Teen evening, what they wanted, which class slot, source, contacted ✓). Name + phone are required.
 - [ ] **Choose the payment provider** for Bit + credit card (not chosen yet; e.g. Grow/Meshulam, PayPlus, Cardcom, Tranzila). Then add the links in `siteConfig.payments`, set `paymentsLive: true`, and call everyone on the Launch Waitlist.
 - [ ] Airtable: create an automation "New Launch Waitlist row → email Orit" (same as the lead email) and a view sorted by Submitted, filtered on Contacted = off.
-- **Introductory month (owner, 21 Oct 2026, limited time):** adults ₪55 a single class / ₪50 per class with any plan; teens ₪50 / ₪45. Shown as a strip on the schedule and on every class row (`intro` in `src/config/pricing.ts`; set `active: false` when it ends). [ ] Airtable *Plans & Prices*: set row `single` to 55 and add row `tsingle` (teen single class, 50).
+- **Class-price strip** (schedule, class rows, service pages): adults ₪60 a single class / from ₪50 per class with a plan; teens and soldiers ₪50 either way (`intro` in `src/config/pricing.ts`; derived from the price list).
 - **Requests (private, duo, closed groups):** the `/request` page (type tiles, preferred days and times, name, phone, note) replaces the old contact-form link; it arrives as a lead whose message carries the type, days, times and package. The "Private or Duo session" card under the schedule is gone.
 - **Team:** only Orit is listed; every class shows "with Orit". Add instructors in `src/config/team.ts` when they join.
 - **Hero (21 Oct):** greeting, headline and two buttons only, centred; the facts line, the sub-line and the launch note were removed at the owner's request. The photo/motion stays until a new hero asset exists.
-- **Single class: ₪55** (teens ₪50). Shown on every Reformer class page next to time/length/instructor, on the Reformer, Mat and Teens service pages, at the top of the punch-card list, and as "Single class · ₪50" in the booking sheet. Airtable *Plans & Prices* now has rows `single` (₪50) and `teens` (₪180).
+- **Single class: ₪60** (teens / soldiers ₪50). Shown on every Reformer class page next to time/length/instructor, on the Reformer, Mat and Teens service pages, at the top of the punch-card list, and in the booking sheet. Airtable *Plans & Prices* rows `single` and `teens` must be updated to ₪60 and ₪200.
 - **Schedule (planned):** 50-minute classes on the hour, 10-minute changeover (owner, 21 Oct). Sun–Fri mornings 08:00, 09:00, 10:00, 11:00 = adults (Reformer for now). Sun–Thu evenings 17:00–20:00 = teens (by request until the teen timetable is set). Closed Saturday; no Friday evening. Final timetable is set closer to opening (`src/lib/booking.ts`).
 - [ ] **Mat:** no Mat slots until Mat instructors join, so the Mat schedule tab is hidden and Mat shows "By request". When it starts: up to 8 people, set `bookable: true` in `src/config/services.ts` and add slots in `src/lib/booking.ts` (Mat capacity is not modelled yet).
 - [ ] **Circuit class (idea):** 5 reformers + 3 mat stations, up to 8 people, each station a different exercise. Not on the site yet; decide name, price and slots before adding it.
@@ -71,7 +75,7 @@ Launch prices and the free class are for purchases during the launch month only 
 ## Before going live
 - Live at https://resetpilates.org (Cloudflare, auto-published from `main`). Open items: `CLOUDFLARE-PLAN.md` section 1.
 - Turn off demo mode (`flags.demoMode`) and confirm launch pricing on/off.
-- New offers (Oct 2026 flyers): add a "Teens" plan in Airtable *Plans & Prices* with Website ID `teens`, regular price 180, monthly, validity 1 month, or the teens checkout returns "unknown plan". Reformer and Mat share one price list; the chosen class is written into the membership name, e.g. "2× per week (Mat)". Group packages (private group 350, event 750) are request-only and arrive as leads with interest "Event" and the package in the message. (The `teens` row now exists in Airtable.)
+- New offers (Oct 2026 flyers): add a "Teens" plan in Airtable *Plans & Prices* with Website ID `teens`, regular price 200, monthly, validity 1 month, or the teens checkout returns "unknown plan". Reformer and Mat share one price list; the chosen class is written into the membership name, e.g. "2× per week (Mat)". Group packages (private group 375, event 750) are request-only and arrive as leads with interest "Event" and the package in the message. (The `teens` row now exists in Airtable.)
 - Photos for Teens and Closed groups are stand-ins (`ex-rest`, `studio`) until the shoot.
 - Google Analytics ID (or Cloudflare Web Analytics). Sitemap and `robots.txt` are set for `resetpilates.org`.
 - Check on a real iPhone and Android phone, in Hebrew and English.

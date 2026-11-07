@@ -1,5 +1,5 @@
 // Closed-group packages: the studio closes for one group, by appointment (never bookable in the schedule).
-// Prices from the owner's flyers (Oct 2026). Copy lives in content/*.ts under services.packages.
+// Prices: owner, 7 Nov 2026 (private group ₪375, event package ₪750). Copy lives in content/*.ts under services.packages.
 export type PackageId = "group" | "event";
 
 export interface PackageConfig {
@@ -13,7 +13,7 @@ export interface PackageConfig {
 }
 
 export const packages: PackageConfig[] = [
-  { id: "group", price: 350, minutes: 50, capacity: 5, approved: true, image: "/assets/ex-group-team.webp", pos: "50% 45%" },
+  { id: "group", price: 375, minutes: 50, capacity: 5, approved: true, image: "/assets/ex-group-team.webp", pos: "50% 45%" },
   { id: "event", price: 750, minutes: 90, capacity: 5, approved: true, image: "/assets/ex-event.webp", pos: "50% 45%" },
 ];
 

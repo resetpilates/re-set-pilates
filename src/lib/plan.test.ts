@@ -4,7 +4,7 @@ import { planById, type PricingItem } from "../config/pricing";
 import { carryOver, checkPurchase, planUsage } from "./plan";
 import type { Booking } from "./store";
 
-const p5 = planById("p5")!; // 5 + 1 launch bonus = 6
+const p5 = planById("p5")!; // 5 classes (no launch bonus any more)
 const p10 = planById("p10")!;
 const m2x = planById("m2x")!;
 const munl = planById("munl")!;
@@ -15,15 +15,15 @@ let n = 0;
 const booking = (date: string, at: Date): Booking => ({ id: `b${++n}`, slotId: `reformer_${date}_${n}`, service: "reformer", date, time: "18:00", minutes: 50, instructorId: "orit", bed: null, remind: false, bookedAt: iso(at) });
 const current = (plan: PricingItem, bookings: Booking[], start: Date, carry = 0) => ({ plan, bookings, planStart: iso(start), carry });
 
-test("2 classes left on a pass + a new 5-class pass = 7 (plus the launch bonus)", () => {
+test("2 classes left on a pass + a new 5-class pass = 7", () => {
   const start = daysAgo(20);
-  const used = [1, 2, 3, 4].map((i) => booking(`2026-10-0${i + 1}`, start)); // 4 of 6 used → 2 left
+  const used = [1, 2, 3].map((i) => booking(`2026-10-0${i + 1}`, start)); // 3 of 5 used → 2 left
   expect(planUsage(p5, used, now, iso(start)).left).toBe(2);
   const check = checkPurchase(p5, current(p5, used, start), now);
   expect(check).toEqual({ ok: true, carry: 2 });
-  // after buying: 5 + 1 bonus + 2 carried
-  expect(planUsage(p5, used, now, iso(now), 2).cap).toBe(8);
-  expect(planUsage(p5, used, now, iso(now), 2).left).toBe(8);
+  // after buying: 5 + 2 carried
+  expect(planUsage(p5, used, now, iso(now), 2).cap).toBe(7);
+  expect(planUsage(p5, used, now, iso(now), 2).left).toBe(7);
 });
 
 test("an expired pass carries nothing", () => {
@@ -54,8 +54,8 @@ test("unlimited carries nothing (there is no count to move)", () => {
 test("the same plan bought again within minutes asks to confirm, then carries", () => {
   const start = new Date(now.getTime() - 2 * 60_000);
   const first = checkPurchase(p5, current(p5, [], start), now);
-  expect(first).toEqual({ ok: false, reason: "repeat", carry: 6 });
-  expect(checkPurchase(p5, current(p5, [], start), now, true)).toEqual({ ok: true, carry: 6 });
+  expect(first).toEqual({ ok: false, reason: "repeat", carry: 5 });
+  expect(checkPurchase(p5, current(p5, [], start), now, true)).toEqual({ ok: true, carry: 5 });
 });
 
 test("carried classes on a weekly membership cover bookings above the weekly cap", () => {

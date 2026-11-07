@@ -77,7 +77,7 @@ export const localBusinessLd = (lang: string) => {
       : "Boutique Reformer Pilates studio in Hod Hasharon. Groups of up to 5, plus Mat Pilates, private and duo sessions.",
     url: `${origin}/`,
     logo: abs(siteConfig.studioMedia.logoDisc),
-    image: [abs(siteConfig.studioMedia.heroPoster), abs(siteConfig.studioMedia.ogImage)],
+    image: [abs(siteConfig.studioMedia.heroPoster), abs(siteConfig.studioMedia.ogStudio), abs(siteConfig.studioMedia.ogImage)],
     ...(known(c.phone) && { telephone: `+${c.whatsapp}` }),
     ...(known(c.email) && { email: c.email }),
     address: {

@@ -264,9 +264,11 @@ export function PricingList({ next, limit, initialKind }: { next?: string; limit
                   </span>
                   <span className="tiny">
                     {t.pricing.kinds[kind]} ·{" "}
-                    {p.billingType === "monthly" || p.sessions === 1
+                    {p.sessions === 1 || p.perWeek === "unlimited"
                       ? t.pricing.validMonth
-                      : `${t.pricing.classes.replace("{n}", String(planClasses(p, launch)))} · ₪${perClass(p, launch)} ${t.pricing.perSession}${launch && p.bonusSessions ? ` · ${t.pricing.bonus}` : ""}`}
+                      : p.billingType === "monthly"
+                        ? `${t.pricing.validMonth} · ${t.pricing.classes.replace("{n}", String(planClasses(p, launch)))} · ₪${perClass(p, launch)} ${t.pricing.perSession}`
+                        : `${t.pricing.classes.replace("{n}", String(planClasses(p, launch)))} · ₪${perClass(p, launch)} ${t.pricing.perSession}${launch && p.bonusSessions ? ` · ${t.pricing.bonus}` : ""}`}
                   </span>
                 </span>
                 <Price amount={effectivePrice(p)} was={launch && p.launchPrice ? p.price : null} />
@@ -274,7 +276,7 @@ export function PricingList({ next, limit, initialKind }: { next?: string; limit
             ))}
           </div>
           <p className="tiny">
-            {t.pricing.validity}
+            {t.pricing.validity} {t.pricing.concession}
             {launch ? ` ${t.pricing.launchNote}` : ""}
           </p>
           {anyUnapproved && (
@@ -324,7 +326,9 @@ export function TeensPlan({ plan, next, brief }: { plan: PricingItem; next?: str
           <span className="tiny">{t.pricing.teensNote}</span>
           {intro.active && (
             <span className="tiny">
-              {t.pricing.singlePrice.replace("{price}", String(classPrices("teen").single))} · {t.pricing.singlePlan.replace("{price}", String(classPrices("teen").plan))}
+              {classPrices("teen").single <= classPrices("teen").plan
+                ? t.pricing.concession
+                : `${t.pricing.singlePrice.replace("{price}", String(classPrices("teen").single))} · ${t.pricing.singlePlan.replace("{price}", String(classPrices("teen").plan))}`}
             </span>
           )}
         </span>
@@ -637,7 +641,7 @@ export function ScheduleBoard() {
   );
 }
 
-/** Introductory month: one class on its own against one class with a plan, adults and teens, and the saving. */
+/** Class prices: one class on its own against one class with a plan, adults and teens/soldiers, and the saving (when there is one). */
 export function IntroPrices() {
   const { t, href } = useI18n();
   const rows: { who: "adult" | "teen"; label: string }[] = [
@@ -670,7 +674,7 @@ export function IntroPrices() {
                   {t.schedule.introPlan} · {t.schedule.introPerClass}
                 </small>
               </span>
-              <span className="intro__save">{t.schedule.introSave.replace("{n}", String(p.single - p.plan))}</span>
+              {p.single > p.plan && <span className="intro__save">{t.schedule.introSave.replace("{n}", String(p.single - p.plan))}</span>}
             </div>
           );
         })}

@@ -2,7 +2,7 @@ import { Link, useParams } from "react-router-dom";
 import { PageHead, Packages, TeensPlan, pricesVisible, serviceTarget } from "../components/blocks";
 import { classPrices, intro, teensPlan } from "../config/pricing";
 
-/** Group classes that can also be bought one at a time (shows "Single class: ₪50"). */
+/** Group classes that can also be bought one at a time (shows "Single class: ₪60", teens ₪50). */
 const SINGLE_CLASS = ["reformer", "mat", "teens"];
 import { serviceBySlug, services } from "../config/services";
 import { track } from "../lib/analytics";
@@ -52,6 +52,7 @@ export function ServiceDetail() {
   const { t, href } = useI18n();
   const s = serviceBySlug(slug) ?? services[0];
   const c = t.services.items[s.id];
+  const cp = classPrices(s.id === "teens" ? "teen" : "adult");
   useSeo({ title: `${c.name} | re:set pilates`, desc: c.desc });
   return (
     <div className="page page--bleed tone-dark page--still">
@@ -90,9 +91,9 @@ export function ServiceDetail() {
               <div>
                 <span className="muted">{t.pricing.single}</span>
                 <span className="stack" style={{ alignItems: "flex-end", gap: 2, paddingBlock: 10 }}>
-                  <b>₪{classPrices(s.id === "teens" ? "teen" : "adult").single}</b>
+                  <b>₪{cp.single}</b>
                   <Link to={href(s.id === "teens" ? "pricing" : `pricing?kind=${s.id}`)} className="link tiny">
-                    {intro.active ? t.pricing.singlePlan.replace("{price}", String(classPrices(s.id === "teens" ? "teen" : "adult").plan)) : t.pricing.singleSave}
+                    {intro.active ? (cp.plan < cp.single ? t.pricing.singlePlan.replace("{price}", String(cp.plan)) : t.pricing.concession) : t.pricing.singleSave}
                   </Link>
                 </span>
               </div>
