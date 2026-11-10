@@ -20,12 +20,13 @@ test("under 18 needs the parent's or guardian's name and phone", () => {
   expect(guardianMissing(ok)).toBe(false);
 });
 
-test("a declaration lasts a year and is asked again when the wording version changes", () => {
-  const at = new Date(2026, 10, 11);
+test("a declaration lasts a year on the studio's calendar, in any time zone, and is asked again when the wording changes", () => {
+  const at = new Date("2026-11-11T10:00:00Z"); // 12:00 in Israel
   const rec = { at: at.toISOString(), version: HEALTH_VERSION, validUntil: validUntil(at), clearance: false, answers: ok };
   expect(rec.validUntil).toBe("2027-11-11");
-  expect(healthValid(rec, new Date(2027, 10, 10))).toBe(true);
-  expect(healthValid(rec, new Date(2027, 10, 12))).toBe(false);
+  expect(healthValid(rec, new Date("2027-11-11T20:00:00Z"))).toBe(true); // 22:00 in Israel on the last day
+  expect(healthValid(rec, new Date("2027-11-11T22:30:00Z"))).toBe(false); // 00:30 in Israel the next day (still the 11th in UTC)
+  expect(validUntil(new Date("2026-11-10T22:30:00Z"))).toBe("2027-11-11"); // 00:30 on 11 Nov in Israel counts as the 11th
   expect(healthValid({ ...rec, version: "old" }, at)).toBe(false);
   expect(healthValid(undefined, at)).toBe(false);
 });

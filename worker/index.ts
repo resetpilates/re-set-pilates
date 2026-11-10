@@ -22,6 +22,7 @@ import type {
   RelayEvent,
   RenewalMsg,
   HealthMsg,
+  HealthStatusMsg,
   RelayReply,
   SlotRef,
   WaitlistMsg,
@@ -29,7 +30,7 @@ import type {
 import { HEARD_FROM, LAUNCH_TIMES, PREF_TIMES, SHOW_AS, normalizePhone, scheduleName, type RosterReply } from "../src/lib/relayTypes";
 import { Airtable, AirtableError, F, T, q, type AirRecord, type Fields } from "./airtable";
 import { isReceiptNumber, type ReceiptData } from "../src/lib/receipt";
-import { CLEARANCE_QUESTIONS, HEALTH_VALID_MONTHS, PREGNANCY, clearanceReasons, guardianMissing, type HealthAnswers } from "../src/lib/health";
+import { CLEARANCE_QUESTIONS, HEALTH_VALID_MONTHS, HEALTH_VERSION, PREGNANCY, clearanceReasons, guardianMissing, type HealthAnswers } from "../src/lib/health";
 import { channelsFor, receiptLink, sendReceipt, serveReceipt } from "./notify";
 
 declare global {
@@ -207,11 +208,16 @@ interface MemberOpts {
 }
 
 /** Finds the person by phone (any formatting) or creates them. Fills gaps, never overwrites what the studio entered. */
+/** The member with this phone (local 05… digits), matching however the number was typed in Airtable. */
+async function memberByPhone(at: Airtable, phone: string): Promise<AirRecord | undefined> {
+  const digits = `REGEX_REPLACE({${F.members.phone}}&'','[^0-9]','')`;
+  const [found] = await at.find(T.members, `OR(${digits}=${q(phone)},${digits}=${q(`972${phone.slice(1)}`)})`);
+  return found;
+}
+
 async function upsertMember(at: Airtable, c: Contact, o: MemberOpts): Promise<AirRecord> {
   const M = F.members;
-  const intl = `972${c.phone.slice(1)}`;
-  const digits = `REGEX_REPLACE({${M.phone}}&'','[^0-9]','')`;
-  const [found] = await at.find(T.members, `OR(${digits}=${q(c.phone)},${digits}=${q(intl)})`);
+  const found = await memberByPhone(at, c.phone);
   const today = todayIL();
   const consent: Fields = o.consent ? { [M.consent]: true, [M.consentDate]: today, [M.consentSource]: o.consentSource ?? "Website form" } : {};
 
@@ -541,9 +547,14 @@ const handlers: Record<RelayEvent, Handler> = {
 
   // Health declaration: one new row in the restricted "Health & Consent" table per declaration (an audit trail).
   // Only short labels go to Airtable; the free-text injury note is capped. A doctor's approval is flagged on the first line.
-  async "health-declaration"(at, b) {
+  async "health-declaration"(at, b, ctx) {
     const m = b as unknown as HealthMsg;
     const c = contact(m.contact);
+    // Same bot check as the lead form: this writes into Orit's restricted health table.
+    const secret = ctx.env.TURNSTILE_SECRET;
+    const viaRetry = !!secret && (await validRetryPass(secret, "health-declaration", m.retry));
+    if (!viaRetry && !(await passesTurnstile(secret, m.turnstile, ctx.ip))) throw new BotCheckFailed();
+    ctx.botChecked = !!secret && !viaRetry;
     const raw = (m.answers ?? {}) as unknown as Record<string, unknown>;
     const yes = (k: string) => {
       if (typeof raw[k] !== "boolean") throw new BadRequest("missing answer");
@@ -582,6 +593,29 @@ const handlers: Record<RelayEvent, Handler> = {
       [H.member]: [member.id],
     });
     return { ok: true, id: rec.id };
+  },
+
+  // Is there a current declaration on file? Lets a member who declared on another device (or on paper) book without
+  // declaring again. Asks for the phone and the last name, and answers only a date, so it reveals nothing about health.
+  async "health-status"(at, b) {
+    const m = b as unknown as HealthStatusMsg;
+    const phone = phoneDigits(m.phone);
+    const last = text(m.lastName, 60, true).toLowerCase();
+    const member = await memberByPhone(at, phone);
+    if (!member || String(member.fields[F.members.lastName] ?? "").trim().toLowerCase() !== last) return { ok: true };
+    const ids = linkIds(member.fields[F.members.health]).slice(0, 20);
+    if (!ids.length) return { ok: true };
+    const H = F.health;
+    const rows = await at.find(T.health, `OR(${ids.map((id) => `RECORD_ID()=${q(id)}`).join(",")})`, ids.length);
+    const today = todayIL();
+    // Online declarations count only in the current wording; paper or QR ones that Orit entered always count.
+    const best = rows
+      .filter((r) => r.fields[H.signed] === true && String(r.fields[H.validUntil] ?? "") >= today)
+      .filter((r) => r.fields[H.via] !== "Profile (online)" || String(r.fields[H.conditions] ?? "").includes(`Wording: ${HEALTH_VERSION}`))
+      .map((r) => String(r.fields[H.validUntil]))
+      .sort()
+      .pop();
+    return { ok: true, ...(best ? { validUntil: best } : {}) };
   },
 
   async waitlist(at, b) {

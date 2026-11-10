@@ -40,7 +40,8 @@ beforeEach(() => {
     if (id) return ok(rows.find((x) => x.id === id) ?? Object.values(db).flat().find((x) => x.id === id));
     // Tiny formula support: equality on one field id, or phone digits match.
     const f = url.searchParams.get("filterByFormula") ?? "";
-    const want = [...f.matchAll(/'([^']*)'/g)].map((m) => m[1]);
+    // The phone lookup's own pieces ('' and '[^0-9]' inside REGEX_REPLACE) are not values to match.
+    const want = [...f.matchAll(/'([^']*)'/g)].map((m) => m[1]).filter((w) => w !== "" && w !== "[^0-9]");
     // RECORD_ID() lists (a member's memberships), optionally with IS_AFTER({renews}, 'date')
     if (f.includes("RECORD_ID()")) {
       const after = /IS_AFTER\(\{(\w+)\},'([^']*)'\)/.exec(f);
@@ -168,6 +169,38 @@ test("health declaration: missing answers, or under 18 without a guardian, is re
   expect((await call("health-declaration", { lang: "en", contact: maya, version: "v", answers: noChest })).status).toBe(400);
   expect((await call("health-declaration", { lang: "en", contact: maya, version: "v", answers: { ...healthy, adult: false } })).status).toBe(400);
   expect(db[T.health]).toBeUndefined();
+});
+
+test("health declaration with Turnstile on: needs a good token (or a retry pass), like the lead form", async () => {
+  const body = { lang: "he", contact: maya, version: "health-decl-v0-draft", answers: healthy };
+  expect((await call("health-declaration", body, undefined, guarded)).status).toBe(403);
+  expect((await call("health-declaration", { ...body, turnstile: "bad" }, undefined, guarded)).status).toBe(403);
+  expect(db[T.health]).toBeUndefined();
+  expect((await call("health-declaration", { ...body, turnstile: "good" }, undefined, guarded)).status).toBe(200);
+  expect(db[T.health].length).toBe(1);
+});
+
+test("health status: a current declaration on file is found by phone + last name, and nothing else is revealed", async () => {
+  await call("health-declaration", { lang: "he", contact: maya, version: "health-decl-v0-draft", answers: { ...healthy, heart: true } });
+  // Airtable fills the member's side of the link itself; the stand-in needs it set by hand.
+  db[T.members][0].fields[F.members.health] = [db[T.health][0].id];
+  const status = async (body: unknown) => (await (await call("health-status", body)).json()) as { ok: boolean; validUntil?: string; [k: string]: unknown };
+
+  const found = await status({ lang: "he", phone: "050-123-4567", lastName: "test" });
+  expect(found.validUntil).toBe(String(db[T.health][0].fields[F.health.validUntil]));
+  expect(Object.keys(found).sort()).toEqual(["ok", "validUntil"]); // a date only: no answers, no doctor's-approval flag
+
+  expect((await status({ lang: "he", phone: "050-123-4567", lastName: "Someone" })).validUntil).toBeUndefined();
+  expect((await status({ lang: "he", phone: "050-999-9999", lastName: "Test" })).validUntil).toBeUndefined();
+
+  // An online declaration in older wording no longer counts; one Orit entered from a paper form does.
+  db[T.health][0].fields[F.health.conditions] = "No doctor's approval needed\nWording: health-decl-old";
+  expect((await status({ lang: "he", phone: "050-123-4567", lastName: "Test" })).validUntil).toBeUndefined();
+  db[T.health][0].fields[F.health.via] = "Paper";
+  expect((await status({ lang: "he", phone: "050-123-4567", lastName: "Test" })).validUntil).toBeDefined();
+  // An expired one never counts.
+  db[T.health][0].fields[F.health.validUntil] = "2020-01-01";
+  expect((await status({ lang: "he", phone: "050-123-4567", lastName: "Test" })).validUntil).toBeUndefined();
 });
 
 test("checkout without accepted terms is refused", async () => {

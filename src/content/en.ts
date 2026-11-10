@@ -929,6 +929,7 @@ export const en = {
     clearanceWa: "Send it on WhatsApp",
     waText: "Hi, here is my doctor's approval for Pilates.",
     back: "Back to my class",
+    backCheckout: "Continue to payment",
     validUntil: "Valid until {date}",
     needed: "Needed before your first class",
     expired: "Please renew your health declaration",

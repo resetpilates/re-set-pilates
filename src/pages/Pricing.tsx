@@ -15,6 +15,7 @@ import { relay } from "../lib/relay";
 import type { Contact, SlotRef } from "../lib/relayTypes";
 import { useStore } from "../lib/store";
 import { ConsentField, ContactFields, HeardField, profileFrom, readContact, readExtras, termsAccepted, TermsField, HealthNextStep } from "../components/forms";
+import { healthValid } from "../lib/health";
 import { bookingProvider, fromISO, rememberBed, rememberedBed } from "../lib/booking";
 
 export function Pricing() {
@@ -292,7 +293,17 @@ export function Checkout() {
                 </Link>
               </div>
             )}
-            {!activeUntil && (
+            {!activeUntil && next && !healthValid(store.profile.health) && (
+              // Booking a class holds the bed, so the declaration comes first (studio terms §1, §10)
+              <div className="notice stack gap-8" role="status">
+                <b>{t.health.gateTitle}</b>
+                <span className="small">{t.health.gateSub}</span>
+                <Link to={href(`health?next=${encodeURIComponent(`checkout/${plan.id}?${params.toString()}`)}`)} className="btn btn--sand btn--block">
+                  {t.health.gateCta}
+                </Link>
+              </div>
+            )}
+            {!activeUntil && (!next || healthValid(store.profile.health)) && (
             <>
             <fieldset className="stack gap-12" style={{ border: 0, padding: 0, margin: 0 }}>
               <legend className="eyebrow" style={{ marginBottom: 12 }}>
