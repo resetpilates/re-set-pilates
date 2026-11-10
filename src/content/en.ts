@@ -384,6 +384,12 @@ export const en = {
   },
   checkout: {
     title: "Checkout",
+    // One line of the terms that matter most, shown right above the "I accept the studio terms" box
+    keyMonthly: "Monthly membership · cancel a class up to {hours} hours before, or it counts as used",
+    keyPass: "Class pass · valid {months} months · does not renew · cancel a class up to {hours} hours before, or it counts as used",
+    autoRenew: "Renew automatically every month",
+    autoRenewSub: "Optional. Switch it on or off any time in your profile.",
+    autoRenewTag: "auto-renew",
     summary: "Your plan",
     details: "Your details",
     name: "Full name",
@@ -487,6 +493,10 @@ export const en = {
     hello: "Hi",
     signOutSub: "Start fresh as a new visitor. Your bookings and progress on this device are cleared.",
     signOutConfirm: "Sign out and clear everything saved on this device?",
+    autoRenew: "Auto-renew",
+    autoRenewOn: "Renews every month until you switch it off.",
+    autoRenewOff: "Ends on {date}. Switch on to keep your membership going.",
+    ends: "Ends",
   },
   about: {
     eyebrow: "The studio",
@@ -780,9 +790,9 @@ export const en = {
         "Exceptional requests to extend a pass are reviewed by the studio management.",
       ] },
       { h: "5. Monthly memberships", items: [
-        "A membership is a monthly plan that renews automatically.",
-        "You are charged once a month according to the plan you chose and the consent you gave when signing up.",
-        "The membership keeps renewing until it is cancelled.",
+        "A membership is a monthly plan. Auto-renewal is your choice: you can switch it on when you buy and switch it on or off at any time in the app.",
+        "With auto-renewal on, you are charged once a month according to the plan you chose and the consent you gave.",
+        "The membership keeps renewing until auto-renewal is switched off or the membership is cancelled.",
         "No new approval is needed each month.",
         "Unused classes do not carry over to the next month, subject to applicable law.",
         "You can ask to cancel your membership at any time. Billing stops and the balance is settled in accordance with the law.",

@@ -144,7 +144,7 @@ export function readContact(f: FormData): Contact {
 
 export function readExtras(f: FormData) {
   const heard = HEARD_FROM.find((h) => h === f.get("heard")) as HeardFrom | undefined;
-  return { heard, consent: f.get("consent") === "on", terms: f.get("terms") === "on", website: String(f.get("website") ?? "") };
+  return { heard, consent: f.get("consent") === "on", terms: f.get("terms") === "on", autoRenew: f.get("autoRenew") === "on", website: String(f.get("website") ?? "") };
 }
 
 /** What to remember on this device after a successful form. */

@@ -16,9 +16,10 @@ import { allWeeks, buildWeeks, goalFor, nextAction, streaks, weekStart, type Nex
 import { useTrainer } from "../lib/trainerStore";
 import { toISO } from "../lib/booking";
 import { useStore } from "../lib/store";
+import { relay } from "../lib/relay";
 
 export default function Profile() {
-  const { t, href, isHe, fmtDate } = useI18n();
+  const { t, href, isHe, fmtDate, lang } = useI18n();
   useSeo(t.meta.profile);
   const store = useStore();
   const [hint, setHint] = useState(false);
@@ -45,6 +46,13 @@ export default function Profile() {
   const pct = usage && usage.cap ? Math.min(1, usage.used / usage.cap) : 1;
   const since = store.memberSince ? new Date(store.memberSince) : null;
   const until = plan ? planEnd(plan, store.planStart) : new Date();
+  const monthly = plan?.billingType === "monthly";
+  const renews = monthly && !!store.autoRenew;
+  // Auto-renew is part of the membership: on or off any time. The studio's Airtable record follows when we know it.
+  const setRenewal = (on: boolean) => {
+    store.setRenewal(on);
+    if (store.membershipId && store.profile.phone) relay("renewal", { lang, membershipId: store.membershipId, phone: store.profile.phone, autoRenew: on });
+  };
 
   return (
     <div className="page page--app tone-dark has-tabbar">
@@ -93,7 +101,7 @@ export default function Profile() {
               <div className="row between gap-12">
                 <Wordmark />
                 <span className="mcard__renew">
-                  {plan.billingType === "monthly" ? t.profile.renews : t.profile.validUntil}{" "}
+                  {renews ? t.profile.renews : monthly ? t.profile.ends : t.profile.validUntil}{" "}
                   <b dir="ltr">
                     {until.getDate()}.{until.getMonth() + 1}
                   </b>
@@ -120,6 +128,19 @@ export default function Profile() {
                 </span>
               </div>
             </div>
+            {monthly && (
+              <div className="card rows renew-row" style={{ paddingBlock: 4 }}>
+                <div>
+                  <span className="stack gap-4">
+                    <span>{t.profile.autoRenew}</span>
+                    <span className="tiny muted">
+                      {renews ? t.profile.autoRenewOn : t.profile.autoRenewOff.replace("{date}", `${until.getDate()}.${until.getMonth() + 1}`)}
+                    </span>
+                  </span>
+                  <Switch checked={renews} onChange={setRenewal} label={t.profile.autoRenew} />
+                </div>
+              </div>
+            )}
             <Link to={href("pricing")} className="btn btn--secondary btn--sm" style={{ alignSelf: "flex-start" }}>
               {t.profile.manage}
             </Link>

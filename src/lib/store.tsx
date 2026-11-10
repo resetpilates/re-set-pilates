@@ -48,6 +48,8 @@ interface Persisted {
   memberSince: string | null;
   planStart: string | null; // when the current plan was bought; pass balances and validity count from here
   carry?: number; // classes carried over from the previous plan into the current one
+  autoRenew?: boolean; // monthly membership renews every month (opted in at checkout, switched on/off in the profile)
+  membershipId?: string; // Airtable record of the current membership, so the profile switch can update it
   receipts?: ReceiptData[]; // newest first
   notices?: Notice[]; // newest first
   bookings: Booking[];
@@ -71,6 +73,8 @@ interface Store extends Persisted {
   setPlan: (planId: string | null, kind?: ClassKind | null, carry?: number) => void;
   /** Keep a purchase's receipt and notify in the app. */
   addReceipt: (r: ReceiptData) => void;
+  /** Auto-renew on/off for the current monthly membership; `membershipId` is kept when given. */
+  setRenewal: (on: boolean, membershipId?: string) => void;
   markNoticesRead: () => void;
   setReminders: (on: boolean) => void;
   markWelcomeSeen: () => void;
@@ -163,7 +167,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setS((p) => {
         // Every purchase starts a fresh plan period (carrying unused classes over); "member since" keeps the first one
         const now = new Date().toISOString();
-        return { ...p, planId, planKind: planId ? kind : null, planStart: planId ? now : null, carry: planId ? carry : 0, memberSince: planId ? (p.memberSince ?? now) : null };
+        return { ...p, planId, planKind: planId ? kind : null, planStart: planId ? now : null, carry: planId ? carry : 0, memberSince: planId ? (p.memberSince ?? now) : null, autoRenew: false, membershipId: undefined };
       }),
     [],
   );
@@ -178,6 +182,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   );
   const markNoticesRead = useCallback(
     () => setS((p) => (p.notices?.some((n) => !n.read) ? { ...p, notices: p.notices.map((n) => ({ ...n, read: true })) } : p)),
+    [],
+  );
+  const setRenewal = useCallback(
+    (on: boolean, membershipId?: string) => setS((p) => ({ ...p, autoRenew: on, ...(membershipId ? { membershipId } : {}) })),
     [],
   );
   const setReminders = useCallback((on: boolean) => setS((p) => ({ ...p, reminders: on })), []);
@@ -239,6 +247,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       leaveWaitlist,
       setPlan,
       addReceipt,
+      setRenewal,
       markNoticesRead,
       setReminders,
       markWelcomeSeen,
@@ -247,7 +256,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       signOut,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- tick only forces the clock-based split to recompute
-  }, [s, tick, book, cancel, joinWaitlist, leaveWaitlist, setPlan, addReceipt, markNoticesRead, setReminders, markWelcomeSeen, saveProfile, setRemoteId, signOut]);
+  }, [s, tick, book, cancel, joinWaitlist, leaveWaitlist, setPlan, addReceipt, setRenewal, markNoticesRead, setReminders, markWelcomeSeen, saveProfile, setRemoteId, signOut]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

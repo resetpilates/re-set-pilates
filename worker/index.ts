@@ -20,6 +20,7 @@ import type {
   QuizContactMsg,
   QuizMsg,
   RelayEvent,
+  RenewalMsg,
   RelayReply,
   SlotRef,
   WaitlistMsg,
@@ -37,6 +38,7 @@ declare global {
 
 const TZ = "Asia/Jerusalem";
 const CANCEL_HOURS = siteConfig.policies.cancelHours; // same policy the site shows
+const AUTO_RENEW = " · Auto-renew"; // tag on the membership name while the member has auto-renew on
 const MAX_BODY = 8 * 1024;
 
 class BadRequest extends Error {}
@@ -430,7 +432,7 @@ const handlers: Record<RelayEvent, Handler> = {
     const [y, mo] = today.split("-").map(Number);
     const membership = await at.create(T.memberships, {
       // Status stays empty until Orit confirms the payment and sets it to Active.
-      [S.name]: `${fullName(c)} · ${p.name}${kindLabel ? ` (${kindLabel})` : ""} · ${MONTHS[mo - 1]} ${y}${carry ? ` · +${carry} carried over` : ""}`,
+      [S.name]: `${fullName(c)} · ${p.name}${kindLabel ? ` (${kindLabel})` : ""} · ${MONTHS[mo - 1]} ${y}${carry ? ` · +${carry} carried over` : ""}${p.type !== "Pass" && m.autoRenew === true ? AUTO_RENEW : ""}`,
       [S.member]: [member.id],
       [S.plan]: [p.plan.id],
       [S.start]: today,
@@ -516,6 +518,23 @@ const handlers: Record<RelayEvent, Handler> = {
       [B.status]: hours >= CANCEL_HOURS ? "Cancelled on time" : "Late cancel",
       [B.cancelledOn]: new Date().toISOString(),
     });
+    return { ok: true, id };
+  },
+
+  // Auto-renew switched on or off in the profile. Until Airtable has its own field, the membership name carries " · Auto-renew".
+  async renewal(at, b) {
+    const m = b as unknown as RenewalMsg;
+    const id = text(m.membershipId, 17, true);
+    if (!/^rec[A-Za-z0-9]{14}$/.test(id) || typeof m.autoRenew !== "boolean") throw new BadRequest("bad membership");
+    const S = F.memberships;
+    const ms = await at.get(T.memberships, id);
+    const [memberId] = linkIds(ms.fields[S.member]);
+    if (!memberId) throw new BadRequest("not found");
+    const member = await at.get(T.members, memberId);
+    const onFile = String(member.fields[F.members.phone] ?? "").replace(/\D/g, "").replace(/^972/, "0");
+    if (onFile !== phoneDigits(m.phone)) throw new BadRequest("not found");
+    const base = String(ms.fields[S.name] ?? "").replace(AUTO_RENEW, "");
+    await at.update(T.memberships, id, { [S.name]: m.autoRenew ? base + AUTO_RENEW : base });
     return { ok: true, id };
   },
 
