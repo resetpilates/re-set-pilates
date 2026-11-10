@@ -117,6 +117,23 @@ test("an Origin of \"null\" is refused like any other foreign origin, not a cras
   expect(r.status).toBe(403);
 });
 
+test("auto-renew: opted in at checkout, then switched off and on from the profile (phone must match)", async () => {
+  const r = await call("checkout", { lang: "en", contact: maya, planId: "m3x", method: "card", consent: false, termsAccepted: true, autoRenew: true });
+  expect(r.status).toBe(200);
+  const ms = db[T.memberships][0];
+  expect(ms.fields[F.memberships.name]).toMatch(/ · Auto-renew$/);
+  expect((await call("renewal", { lang: "en", membershipId: ms.id, phone: "0509999999", autoRenew: false })).status).toBe(400);
+  expect((await call("renewal", { lang: "en", membershipId: ms.id, phone: "050-123-4567", autoRenew: false })).status).toBe(200);
+  expect(db[T.memberships][0].fields[F.memberships.name]).not.toMatch(/Auto-renew/);
+  expect((await call("renewal", { lang: "en", membershipId: ms.id, phone: "050-123-4567", autoRenew: true })).status).toBe(200);
+  expect(db[T.memberships][0].fields[F.memberships.name]).toMatch(/· Auto-renew$/);
+});
+
+test("checkout without auto-renew leaves the membership name untagged", async () => {
+  await call("checkout", { lang: "en", contact: maya, planId: "m3x", method: "card", consent: false, termsAccepted: true });
+  expect(db[T.memberships][0].fields[F.memberships.name]).not.toMatch(/Auto-renew/);
+});
+
 test("checkout without accepted terms is refused", async () => {
   const r = await call("checkout", { lang: "en", contact: maya, planId: "m3x", method: "card", consent: false });
   expect(r.status).toBe(400);
