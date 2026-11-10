@@ -85,17 +85,20 @@ export function About() {
               <p className="lede">{isHe ? founder.bioHe : founder.bioEn}</p>
             </Reveal>
           </div>
-          {instructors.length > 0 && (
-            <Reveal className="stack gap-16">
-              <p className="eyebrow">{t.about.team}</p>
-              <div className="grid-3">
-                {instructors.map((ins) => (
-                  <PersonCard key={ins.id} p={ins} sample />
-                ))}
-              </div>
-              <p className="tiny">{t.home.teamNote}</p>
-            </Reveal>
-          )}
+          <Reveal className="stack gap-16">
+            <p className="eyebrow">{t.about.team}</p>
+            <p className="lede">{t.about.teamIntro}</p>
+            {instructors.length > 0 && (
+              <>
+                <div className="grid-3">
+                  {instructors.map((ins) => (
+                    <PersonCard key={ins.id} p={ins} sample />
+                  ))}
+                </div>
+                <p className="tiny">{t.home.teamNote}</p>
+              </>
+            )}
+          </Reveal>
           {pressMentions.length > 0 && (
             <Reveal className="stack gap-12">
               <p className="eyebrow">{t.about.press}</p>

@@ -14,8 +14,8 @@ export interface ChatAction {
 export interface ChatReply {
   text: string;
   actions?: ChatAction[];
-  handoff?: boolean; // offer WhatsApp to Orit
-  intent?: string; // id of the scripted answer used; empty when handed to Orit
+  handoff?: boolean; // offer WhatsApp to the studio
+  intent?: string; // id of the scripted answer used; empty when handed to the studio
 }
 interface Intent {
   id: string;
@@ -184,10 +184,10 @@ export const intents: Intent[] = [
       text: he
         ? siteConfig.flags.paymentsLive
           ? "אפשר לשלם ב־bit או בכרטיס אשראי, בשלב האחרון של הרכישה. השיעורים עצמם יורדים מהמנוי או מהכרטיסייה, בלי חיוב נוסף."
-          : "התשלום באתר (bit או אשראי) ייפתח בקרוב. בינתיים אפשר להצטרף לרשימת ההמתנה בשלב הרכישה, ואורית תתקשר לשריין מקום."
+          : "התשלום באתר (bit או אשראי) ייפתח בקרוב. בינתיים אפשר להצטרף לרשימת ההמתנה בשלב הרכישה, והסטודיו יתקשר לשריין מקום."
         : siteConfig.flags.paymentsLive
           ? "You can pay with Bit or by credit card at the last step of checkout. Classes are then taken from your membership or pass, with no extra charge."
-          : "Online payment (Bit or card) opens soon. Until then you can join the waitlist at the purchase step, and Orit will call you to save your spot.",
+          : "Online payment (Bit or card) opens soon. Until then you can join the waitlist at the purchase step, and the studio will call you to save your spot.",
       actions: [prices(he)],
     }),
   },
@@ -224,8 +224,8 @@ export const intents: Intent[] = [
     keys: ["parking", "do i park", "to park", " park", "car ", "bus", "accessible", "wheelchair", "elevator", "חניה", "חנייה", "חונים", "לחנות", "איפה חונים", "רכב", "אוטובוס", "נגיש", "נגישות", "מעלית"],
     reply: (he) => ({
       text: he
-        ? `${c.parking.he}. לשאלות על נגישות, שלחי הודעה ואורית תענה.`
-        : `${c.parking.en}. For access questions, send a message and Orit will reply.`,
+        ? `${c.parking.he}. לשאלות על נגישות, שלחי הודעה והצוות יענה.`
+        : `${c.parking.en}. For access questions, send a message and the team will reply.`,
     }),
   },
   {
@@ -233,8 +233,8 @@ export const intents: Intent[] = [
     keys: ["pregnan", "expecting", "prenatal", "postnatal", "postpartum", "after birth", "gave birth", "baby", "בהריון", "הריון", "הרה", "לידה", "אחרי לידה", "תינוק"],
     reply: (he) => ({
       text: he
-        ? `אפשר להתאמן בהריון${isTodo(siteConfig.policies.pregnancyUpTo) ? " עד שלב מסוים" : ` עד ${siteConfig.policies.pregnancyUpTo}`}, עם אישור רופא, ולעדכן את המדריכה לפני כל שיעור. אחרי לידה חוזרים רק באישור רופא. Orit תשמח לדבר איתך על מה שמתאים לך.`
-        : `Yes, you can train during pregnancy${isTodo(siteConfig.policies.pregnancyUpTo) ? " up to a certain stage" : ` up to ${siteConfig.policies.pregnancyUpTo}`}, with your doctor's approval, and by telling your instructor before each class. After birth, please return only with your doctor's OK. Orit is happy to talk through what's right for you.`,
+        ? `אפשר להתאמן בהריון${isTodo(siteConfig.policies.pregnancyUpTo) ? " עד שלב מסוים" : ` עד ${siteConfig.policies.pregnancyUpTo}`}, עם אישור רופא, ולעדכן את המדריכה לפני כל שיעור. אחרי לידה חוזרים רק באישור רופא. המדריכות ישמחו לדבר איתך על מה שמתאים לך.`
+        : `Yes, you can train during pregnancy${isTodo(siteConfig.policies.pregnancyUpTo) ? " up to a certain stage" : ` up to ${siteConfig.policies.pregnancyUpTo}`}, with your doctor's approval, and by telling your instructor before each class. After birth, please return only with your doctor's OK. Our instructors are happy to talk through what's right for you.`,
       handoff: true,
     }),
   },
@@ -243,8 +243,8 @@ export const intents: Intent[] = [
     keys: ["injur", "pain", "back", "knee", "neck", "shoulder", "hip", "surgery", "condition", "doctor", "medical", "health", "osteo", "disc", "scoliosis", "arthritis", "rehab", "פציעה", "כאב", "גב", "ברך", "צוואר", "כתף", "ירך", "ניתוח", "רופא", "רפואי", "בריאות", "פריצת דיסק", "דיסק", "עקמת", "שיקום", "מחלה"],
     reply: (he) => ({
       text: he
-        ? "פילאטיס מתאים להרבה גופים, והשיעורים מותאמים לכל אחת. עם פציעה, כאב או מצב רפואי: קודם מתייעצים עם רופא, ומעדכנים את המדריכה לפני השיעור. לפעמים אימון פרטי הוא ההתחלה הנכונה. אני לא יכולה לתת ייעוץ רפואי, אבל אורית תשמח לשמוע ולהכווין."
-        : "Pilates suits many bodies, and every class is adapted. With an injury, pain or a medical condition, please check with your doctor first and tell your instructor before class. Sometimes a private session is the right place to start. I can't give medical advice, but Orit is happy to hear more and guide you.",
+        ? "פילאטיס מתאים להרבה גופים, והשיעורים מותאמים לכל אחת. עם פציעה, כאב או מצב רפואי: קודם מתייעצים עם רופא, ומעדכנים את המדריכה לפני השיעור. לפעמים אימון פרטי הוא ההתחלה הנכונה. אנחנו לא נותנות ייעוץ רפואי, אבל המדריכות ישמחו לשמוע ולהכווין."
+        : "Pilates suits many bodies, and every class is adapted. With an injury, pain or a medical condition, please check with your doctor first and tell your instructor before class. Sometimes a private session is the right place to start. We can't give medical advice, but our instructors are happy to hear more and guide you.",
       actions: [{ label: he ? "אימון פרטי" : "Private session", to: "contact?interest=private" }],
       handoff: true,
     }),
@@ -282,8 +282,12 @@ export const intents: Intent[] = [
     keys: ["orit", "founder", "owner", "instructor", "teacher", "who teaches", "אורית", "מייסדת", "בעלים", "מדריכה", "מדריכות", "מי מלמדת"],
     reply: (he) => ({
       text: he
-        ? `${founder.nameHe} הקימה את re:set. ${founder.bioHe.split(".")[0]}. לצידה מלמדות ${instructors.map((i) => i.nameHe).join(", ")}.`
-        : `${founder.nameEn} founded re:set. ${founder.bioEn.split(".")[0]}. Teaching alongside her: ${instructors.map((i) => i.nameEn).join(", ")}.`,
+        ? `צוות המדריכות של re:set מלמד בקבוצות של עד חמש. ${founder.nameHe} הקימה את הסטודיו: ${founder.bioHe.split(".")[0]}.${
+            instructors.length ? ` לצידה מלמדות ${instructors.map((i) => i.nameHe).join(", ")}.` : " הצוות המלא יוצג לקראת הפתיחה."
+          }`
+        : `re:set's team of instructors teaches in groups of up to five. ${founder.nameEn} founded the studio: ${founder.bioEn.split(".")[0]}.${
+            instructors.length ? ` Teaching alongside her: ${instructors.map((i) => i.nameEn).join(", ")}.` : " The full team is announced before opening."
+          }`,
       actions: [{ label: he ? "על הסטודיו" : "About the studio", to: "about" }],
     }),
   },
@@ -292,8 +296,8 @@ export const intents: Intent[] = [
     keys: ["contact", "phone", "call", "whatsapp", "email", "mail", "gmail", "מייל", "דואר", "talk to", "human", "person", "צור קשר", "טלפון", "להתקשר", "וואטסאפ", "ווטסאפ", "מייל", "לדבר עם", "נציג"],
     reply: (he) => ({
       text: he
-        ? `הכי מהיר בוואטסאפ, ישירות לאורית: ${c.phone}. במייל: ${c.email}. אפשר גם להשאיר פרטים ונחזור אלייך.`
-        : `WhatsApp is fastest, straight to Orit: ${c.phone}. By email: ${c.email}. You can also leave your details and we'll call you back.`,
+        ? `הכי מהיר בוואטסאפ, ישירות לסטודיו: ${c.phone}. במייל: ${c.email}. אפשר גם להשאיר פרטים ונחזור אלייך.`
+        : `WhatsApp is fastest, straight to the studio: ${c.phone}. By email: ${c.email}. You can also leave your details and we'll call you back.`,
       actions: [
         { label: he ? "חיוג" : "Call", href: `tel:+${c.whatsapp}` },
         { label: he ? "שליחת מייל" : "Send an email", href: `mailto:${c.email}` },
@@ -342,8 +346,8 @@ export function answer(input: string, lang: Lang): ChatReply {
   if (best) return { ...best.reply(he), intent: best.id };
   return {
     text: he
-      ? "שאלה טובה. אין לי עליה תשובה מדויקת, אבל אורית תשמח לענות. שלחי לה הודעה בוואטסאפ או השאירי פרטים."
-      : "Good question. I don't have an exact answer, but Orit will be happy to help. Message her on WhatsApp or leave your details.",
+      ? "שאלה טובה. אין לנו עליה תשובה מוכנה כאן, אבל הצוות ישמח לענות. שלחי לנו הודעה בוואטסאפ או השאירי פרטים."
+      : "Good question. There's no ready answer for that here, but the team will be happy to help. Message us on WhatsApp or leave your details.",
     actions: [{ label: he ? "צרי קשר" : "Contact", to: "contact" }],
     handoff: true,
   };
