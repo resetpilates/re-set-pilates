@@ -15,6 +15,7 @@ import {
   type ReviewTask,
   type Session,
   type TrainerNote,
+  withMediaConsent,
 } from "./trainer";
 
 // Progress-profile state. Demo only: it lives in this browser (localStorage), like bookings.
@@ -50,6 +51,7 @@ interface Trainer extends Persisted {
   setGoal: (target: number) => void;
   setPaidSuggestions: (on: boolean) => void;
   setPromo: (channel: string, on: boolean) => void;
+  setMedia: (on: boolean) => void;
   ackReview: (id: string) => void;
   resolveReview: (id: string, resolution: string) => void;
   markSeen: (ids: string[]) => void;
@@ -115,7 +117,8 @@ export function TrainerProvider({ children }: { children: ReactNode }) {
         const now = iso();
         const flags = onboardingRedFlags(a);
         const target = Number(a.S1) || 2;
-        const consents: ConsentRecord[] = [...p.consents];
+        // Photo / video consent follows the checkbox, also for a returning client who unticks it
+        const consents: ConsentRecord[] = withMediaConsent(p.consents, a.S9 === true, cfg.consentVersions.media, now);
         if (!consents.some((c) => c.scope === "health" && c.textVersion === cfg.consentVersions.health && !c.revokedAt))
           consents.push({ scope: "health", textVersion: cfg.consentVersions.health, grantedAt: now });
         for (const ch of Array.isArray(a.S8) ? a.S8 : [])
@@ -166,6 +169,15 @@ export function TrainerProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const setMedia = useCallback(
+    (on: boolean) =>
+      setS((p) => {
+        const consents = withMediaConsent(p.consents, on, cfg.consentVersions.media, iso());
+        return { ...p, consents, answers: { ...p.answers, S9: on } };
+      }),
+    [],
+  );
+
   const setPaidSuggestions = useCallback((on: boolean) => setS((p) => ({ ...p, answers: { ...p.answers, S7: on } })), []);
 
   const setPromo = useCallback(
@@ -212,13 +224,14 @@ export function TrainerProvider({ children }: { children: ReactNode }) {
       setGoal,
       setPaidSuggestions,
       setPromo,
+      setMedia,
       ackReview,
       resolveReview,
       markSeen,
       loadSample,
       reset,
     }),
-    [s, past, saveAnswers, finishOnboarding, setBaselineMode, addAssessment, addCheckin, setGoal, setPaidSuggestions, setPromo, ackReview, resolveReview, markSeen, loadSample, reset],
+    [s, past, saveAnswers, finishOnboarding, setBaselineMode, addAssessment, addCheckin, setGoal, setPaidSuggestions, setPromo, setMedia, ackReview, resolveReview, markSeen, loadSample, reset],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
