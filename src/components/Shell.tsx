@@ -84,7 +84,7 @@ function Header({ section }: { section: string }) {
           )}
         </div>
         <Link to={href()} className="hdr__brand">
-          <Wordmark />
+          <img className="hdr__logo" src={siteConfig.studioMedia.wordmark} alt="re:set pilates" />
         </Link>
         <div className="hdr__end">
           <LangToggle />
