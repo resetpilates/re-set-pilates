@@ -11,6 +11,13 @@ import { ChatWidget } from "./ChatWidget";
 
 const ROOTS = ["", "schedule", "services", "my", "profile"];
 
+/** The RE:SET logo as an image (vector). `cream` for dark cards; `mark` for the letters alone. */
+export function Logo({ tone = "ink", mark = false, className = "" }: { tone?: "ink" | "cream"; mark?: boolean; className?: string }) {
+  const m = siteConfig.studioMedia;
+  const src = mark ? m.markSvg : tone === "cream" ? m.wordmarkCream : m.wordmark;
+  return <img className={`logo ${className}`} src={src} alt="re:set pilates" />;
+}
+
 export function Wordmark() {
   return (
     <span className="wordmark" aria-label="re:set pilates">
@@ -284,7 +291,7 @@ function Footer() {
       <div className="wrap">
         <div className="footer__grid">
           <div className="stack gap-12">
-            <Wordmark />
+            <Logo className="footer__logo" />
             <p className="display d-sm hi">
               {t.footer.tagline}
             </p>

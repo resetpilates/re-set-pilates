@@ -103,6 +103,7 @@ export const siteConfig = {
     // Vector versions (traced from the logo): the letters alone, and the letters with PILATES under them. Header and hero.
     markSvg: "/assets/reset-mark.svg",
     wordmark: "/assets/reset-wordmark.svg",
+    wordmarkCream: "/assets/reset-wordmark-cream.svg", // same lockup in cream, for the dark (ink) membership card
     music: "", // optional user-uploaded track; never autoplays
   },
 };

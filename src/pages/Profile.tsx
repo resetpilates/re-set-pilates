@@ -4,7 +4,7 @@ import { planName } from "../components/blocks";
 import { ShowAsPicker } from "./ClassDetail";
 import { ContactFields, readContact, termsAccepted, TermsField } from "../components/forms";
 import { fmtValid, healthValid } from "../lib/health";
-import { LangToggle, Wordmark } from "../components/Shell";
+import { LangToggle, Logo } from "../components/Shell";
 import { Sheet, Switch } from "../components/ui";
 import { planById } from "../config/pricing";
 import { addressLine, siteConfig } from "../config/site";
@@ -60,7 +60,7 @@ export default function Profile() {
       <div className="wrap wrap--app stack gap-24 screen">
         <div className="row gap-16 profile-hello">
           <span className="avatar avatar--brand" aria-hidden>
-            <Wordmark />
+            <Logo />
           </span>
           <span className="stack gap-4">
             <h1 className="display d-md">{known ? `${t.profile.hello} ${known}` : store.isMember ? t.profile.name : t.profile.guest}</h1>
@@ -100,7 +100,7 @@ export default function Profile() {
             <span className="eyebrow">{t.profile.membership}</span>
             <div className={`mcard mcard--member mcard--${plan.tone}`}>
               <div className="row between gap-12">
-                <Wordmark />
+                <Logo tone={plan.tone === "ink" ? "cream" : "ink"} />
                 <span className="mcard__renew">
                   {renews ? t.profile.renews : monthly ? t.profile.ends : t.profile.validUntil}{" "}
                   <b dir="ltr">
@@ -308,7 +308,7 @@ function ProgressCard({ done }: { done: number }) {
     <Link to={href("progress")} className="nextstep nextstep--progress pgcard" aria-label={`${t.nav.progress}. ${line}`}>
       <span className="pgcard__head">
         <span className="pgcard__logo" aria-hidden>
-          <Wordmark />
+          <Logo mark />
         </span>
         <b className="nextstep__title">{t.nav.progress}</b>
         <span className="chev" aria-hidden />

@@ -1,6 +1,6 @@
 // Offline shell. Hashed build files are cached for good; everything else is network-first so replaced
 // photos, the hero video and API answers never go stale on an installed app.
-const CACHE = "reset-v3";
+const CACHE = "reset-v4";
 const HASHED = /\/assets\/index-[A-Za-z0-9_-]+\.(js|css)$/;
 
 self.addEventListener("install", (e) => {
