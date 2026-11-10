@@ -48,6 +48,13 @@ export const fromISO = (s: string) => {
   const [y, m, d] = s.split("-").map(Number);
   return new Date(y, m - 1, d);
 };
+const TZ = "Asia/Jerusalem";
+/** The studio's wall clock as a local Date: a visitor abroad sees the same "still ahead" classes as someone in Hod Hasharon. */
+export const israelNow = () => {
+  const p: Record<string, string> = {};
+  for (const x of new Intl.DateTimeFormat("en-US", { timeZone: TZ, hourCycle: "h23", year: "numeric", month: "numeric", day: "numeric", hour: "numeric", minute: "numeric", second: "numeric" }).formatToParts(new Date())) p[x.type] = x.value;
+  return new Date(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute, +p.second);
+};
 export const slotStart = (slot: Pick<ClassSlot, "date" | "time">) => {
   const d = fromISO(slot.date);
   const [h, m] = slot.time.split(":").map(Number);
@@ -77,7 +84,7 @@ const mockProvider: BookingProvider = {
   async getSchedule(service, date) {
     const day = fromISO(date);
     if (day.getDay() === 6) return []; // closed Saturdays
-    const now = new Date();
+    const now = israelNow();
     return TEMPLATE[service]
       .map(([time, ins]) => build(service, date, time, ins))
       .filter((s) => slotStart(s) > now);
@@ -96,7 +103,7 @@ export const bookingProvider: BookingProvider = mockProvider;
 
 export const upcomingDays = (count = 10) =>
   Array.from({ length: count }, (_, i) => {
-    const d = new Date();
+    const d = israelNow();
     d.setHours(0, 0, 0, 0);
     d.setDate(d.getDate() + i);
     return d;

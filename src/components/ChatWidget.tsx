@@ -2,8 +2,7 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useLocation } from "react-router-dom";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
-import { waLink } from "../config/site";
-import { founder } from "../config/team";
+import { siteConfig, waLink } from "../config/site";
 import { answer, quickTopics, type ChatReply } from "../content/chat";
 import { track } from "../lib/analytics";
 import { relay } from "../lib/relay";
@@ -12,14 +11,14 @@ import { WaIcon, useWaLink, waReady as hasWa } from "../lib/whatsapp";
 
 interface Msg extends ChatReply {
   id: number;
-  from: "me" | "orit";
+  from: "me" | "studio";
 }
 
-const AVATAR = "/assets/orit-face.webp";
+const AVATAR = siteConfig.studioMedia.logoDisc;
 export const OPEN_CHAT = "reset:open-chat";
 export const openChat = () => window.dispatchEvent(new CustomEvent(OPEN_CHAT));
 
-/** "Ask Orit" chat: floating avatar bottom-right, scripted answers from the studio's own info. */
+/** "Ask the studio" chat: floating avatar bottom-right, scripted answers from the studio's own info. */
 export function ChatWidget() {
   const { t, lang, isHe, href } = useI18n();
   const reduce = useReducedMotion();
@@ -30,10 +29,9 @@ export function ChatWidget() {
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const nextId = useRef(1);
-  const name = isHe ? founder.nameHe.split(" ")[0] : founder.nameEn.split(" ")[0];
   const waReady = hasWa();
   const waPage = useWaLink();
-  // Booking and checkout are focused flows (the booking sheet has its own "Ask Orit" button); keep the bubble off their controls.
+  // Booking and checkout are focused flows (the booking sheet has its own "Ask the team" button); keep the bubble off their controls.
   const { pathname } = useLocation();
   const section = pathname.split("/")[2] ?? "";
   // On Home the bubble stays out of the way until the hero's Book button has scrolled off screen.
@@ -62,7 +60,7 @@ export function ChatWidget() {
 
   // Greeting resets when the language changes
   useEffect(() => {
-    setMsgs([{ id: 0, from: "orit", text: t.chat.greeting }]);
+    setMsgs([{ id: 0, from: "studio", text: t.chat.greeting }]);
   }, [t.chat.greeting]);
 
   useEffect(() => {
@@ -93,7 +91,7 @@ export function ChatWidget() {
     setTimeout(
       () => {
         setTyping(false);
-        setMsgs((m) => [...m, { id: nextId.current++, from: "orit", ...reply }]);
+        setMsgs((m) => [...m, { id: nextId.current++, from: "studio", ...reply }]);
       },
       reduce ? 0 : 550,
     );
@@ -124,7 +122,7 @@ export function ChatWidget() {
             <header className="chat__head">
               <img src={AVATAR} alt="" className="chat__ava" />
               <span className="stack" style={{ flex: 1, minWidth: 0 }}>
-                <b>{t.chat.title.replace("{name}", name)}</b>
+                <b>{t.chat.title}</b>
                 <span className="chat__status">{t.chat.status}</span>
               </span>
               <button className="chat__x" onClick={() => setOpen(false)} aria-label={t.common.close}>
@@ -188,7 +186,7 @@ export function ChatWidget() {
                 </div>
               ))}
               {typing && (
-                <div className="bubble bubble--orit bubble--typing" aria-label={t.chat.typing}>
+                <div className="bubble bubble--studio bubble--typing" aria-label={t.chat.typing}>
                   <i />
                   <i />
                   <i />
@@ -233,7 +231,7 @@ export function ChatWidget() {
           if (!open) track("chat_open");
           setOpen(!open);
         }}
-        aria-label={open ? t.common.close : t.chat.open.replace("{name}", name)}
+        aria-label={open ? t.common.close : t.chat.open}
         aria-expanded={open}
       >
         <img src={AVATAR} alt="" />

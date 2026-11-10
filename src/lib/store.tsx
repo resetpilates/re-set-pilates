@@ -1,7 +1,7 @@
 import type { ShowAs } from "./relayTypes";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { planById, type ClassKind } from "../config/pricing";
-import { fromISO, slotStart, type ClassSlot } from "./booking";
+import { fromISO, israelNow, slotStart, type ClassSlot } from "./booking";
 import { planUsage } from "./plan";
 import type { ReceiptData } from "./receipt";
 import { RELAY_REPLY, relay, type RelayReplyDetail } from "./relay";
@@ -126,6 +126,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const book = useCallback<Store["book"]>((slot, bed, remind) => {
     // Never book past the plan's allowance; a booking for the same slot is being replaced, so it doesn't count
     const allowed = (p: Persisted) => {
+      // A late cancel keeps the session used: the same class can't be taken again
+      if (p.bookings.some((x) => x.slotId === slot.id && x.cancelledLate)) return false;
       const plan = p.planId ? planById(p.planId) : undefined;
       const others = p.bookings.filter((x) => x.slotId !== slot.id);
       return !plan || planUsage(plan, others, fromISO(slot.date), p.planStart, p.carry ?? 0).left > 0;
@@ -224,7 +226,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo<Store>(() => {
-    const now = new Date();
+    const now = israelNow();
     const sorted = s.bookings.filter((b) => !b.cancelledLate).sort((a, b) => slotStart(a).getTime() - slotStart(b).getTime());
     return {
       ...s,

@@ -1,7 +1,7 @@
 import { motion } from "motion/react";
 import { useEffect, useState, type CSSProperties, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { classPrices, generalPlans, intro, perClass, planClasses, priceFor, pricing, teensPlan, type ClassKind, type PricingItem } from "../config/pricing";
+import { classPrices, generalPlans, perClass, planClasses, priceFor, pricing, teensPlan, type ClassKind, type PricingItem } from "../config/pricing";
 import { packages } from "../config/packages";
 import { services, type ServiceConfig, type ServiceId } from "../config/services";
 import { isTodo, mapsEmbedSrc, siteConfig } from "../config/site";
@@ -134,11 +134,9 @@ export function SlotRow({ slot, index = 0, roster }: { slot: ClassSlot; index?: 
       <span className="small muted">
         {t.home.withInstructor} {instructorName(slot.instructorId, isHe)}
       </span>
-      {intro.active && (
-        <span className="slot2__price">
-          <b>₪{classPrices("adult", undefined, slot.service).single}</b> {t.schedule.introSingle} <i aria-hidden>·</i> {t.schedule.introFrom}<b>₪{classPrices("adult", undefined, slot.service).plan}</b> {t.schedule.introPlan}
-        </span>
-      )}
+      <span className="slot2__price">
+        <b>₪{classPrices("adult", undefined, slot.service).single}</b> {t.schedule.introSingle} <i aria-hidden>·</i> {t.schedule.introFrom}<b>₪{classPrices("adult", undefined, slot.service).plan}</b> {t.schedule.introPlan}
+      </span>
       {beds && <BedsRow beds={beds} />}
       <span className="row between gap-12" style={{ marginTop: 6 }}>
         <span className="small muted">
@@ -324,13 +322,11 @@ export function TeensPlan({ plan, next, brief }: { plan: PricingItem; next?: str
         <span className="stack gap-4" style={{ flex: 1 }}>
           <span className="row gap-8 key">{planName(plan, t)}</span>
           <span className="tiny">{t.pricing.teensNote}</span>
-          {intro.active && (
-            <span className="tiny">
-              {classPrices("teen").single <= classPrices("teen").plan
-                ? t.pricing.concession
-                : `${t.pricing.singlePrice.replace("{price}", String(classPrices("teen").single))} · ${t.pricing.singlePlan.replace("{price}", String(classPrices("teen").plan))}`}
-            </span>
-          )}
+          <span className="tiny">
+            {classPrices("teen").single <= classPrices("teen").plan
+              ? t.pricing.concession
+              : `${t.pricing.singlePrice.replace("{price}", String(classPrices("teen").single))} · ${t.pricing.singlePlan.replace("{price}", String(classPrices("teen").plan))}`}
+          </span>
         </span>
         <span className="stack" style={{ alignItems: "flex-end", gap: 2 }}>
           <Price amount={effectivePrice(plan)} />
@@ -624,7 +620,7 @@ export function ScheduleBoard() {
           );
         })}
       </div>
-      {intro.active && <IntroPrices />}
+      <IntroPrices />
       <div className="stack list-in" key={`${service}-${date}`} aria-live="polite">
         {slots?.length === 0 && (
           <div className="card card--dashed stack gap-12 center">

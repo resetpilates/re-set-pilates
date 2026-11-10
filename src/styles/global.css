@@ -1057,7 +1057,7 @@ html[lang="he"] .tabbar a { letter-spacing: 0; font-weight: 700; }
 .founder-photo { max-width: 340px; width: 100%; }
 .person .media { max-width: 300px; }
 
-/* ───────── Chat with Orit ───────── */
+/* ───────── Chat with the studio ───────── */
 .chat-fab {
   position: fixed; z-index: 70; right: 16px; bottom: calc(16px + var(--safe-b));
   width: 60px; height: 60px; border-radius: 50%; padding: 3px;
@@ -1097,7 +1097,7 @@ html[lang="he"] .tabbar a { letter-spacing: 0; font-weight: 700; }
 .chat__list { flex: 1; overflow-y: auto; padding: 16px 14px 8px; display: flex; flex-direction: column; gap: 10px; overscroll-behavior: contain; }
 .bubble { max-width: 86%; padding: 10px 14px; border-radius: 18px; font-size: 14.5px; line-height: 1.5; animation: screen-in 220ms var(--ease-out) both; }
 .bubble p { white-space: pre-line; }
-.bubble--orit { align-self: flex-start; background: #f3eee8; border-end-start-radius: 6px; }
+.bubble--studio { align-self: flex-start; background: #f3eee8; border-end-start-radius: 6px; }
 .bubble--me { align-self: flex-end; background: var(--ink, #1f1612); color: #fffdfa; border-end-end-radius: 6px; }
 .bubble__acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
 .bubble--typing { display: inline-flex; gap: 4px; padding: 14px 16px; }
@@ -2511,7 +2511,15 @@ html[lang="he"] .pgcard__ai { letter-spacing: 0.04em; font-size: 11.5px; }
 @media (max-width: 360px) { .hdr .wrap { padding-inline: 16px 6px; } }
 @media (min-width: 1000px) { .hdr .wrap { padding-inline: 24px 18px; } }
 
-/* ───────── v4.4 · studio terms (תקנון): the terms page, the sheet behind the checkout box, the profile row ───────── */
+/* ───────── v4.4 · photo / video consent card in onboarding: a real checkbox, cream card, clay accent ───────── */
+.consent--media { border: 1px solid rgba(31, 22, 18, 0.08); }
+.tick--consent { align-items: flex-start; gap: 12px; padding: 12px 14px; border-radius: 14px; background: #fff; border: 1.5px solid rgba(31, 22, 18, 0.16); font-weight: 600; transition: border-color var(--t-ui) ease, box-shadow var(--t-ui) ease; }
+.tick--consent input { width: 22px; height: 22px; margin-top: 0; border-radius: 6px; accent-color: var(--clay); }
+.tick--consent:has(input:checked) { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+.tick--consent:has(input:focus-visible) { outline: 2px solid var(--clay); outline-offset: 2px; }
+.consent__note { color: var(--fg-3); padding-top: 4px; border-top: 1px dashed rgba(31, 22, 18, 0.14); }
+
+/* ───────── v4.5 · studio terms (תקנון): the terms page, the sheet behind the checkout box, the profile row ───────── */
 .terms { display: grid; gap: 28px; }
 .terms__sec h3 { font-size: 22px; }
 .terms__sec ul { display: grid; gap: 8px; padding-inline-start: 18px; margin: 0; font-size: 15px; line-height: 1.55; list-style: disc; }

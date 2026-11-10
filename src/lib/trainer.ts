@@ -79,6 +79,7 @@ export const STEPS: { id: string; questions: Question[] }[] = [
       { id: "S6", type: "longtext" },
       { id: "S7", type: "bool" },
       { id: "S8", type: "multi", opts: ["whatsapp", "email"] }, // promotional consent, per channel
+      { id: "S9", type: "bool" }, // photo / video consent for the studio's own channels (opt-in, never required)
     ],
   },
 ];
@@ -189,11 +190,23 @@ export interface Pause {
 }
 
 export interface ConsentRecord {
-  scope: "health" | "promo";
+  scope: "health" | "promo" | "media";
   channel?: string;
   textVersion: string;
   grantedAt: string;
   revokedAt?: string | null;
+}
+
+/** Is there a consent of this scope that has not been withdrawn? */
+export const hasConsent = (consents: ConsentRecord[], scope: ConsentRecord["scope"]) => consents.some((c) => c.scope === scope && !c.revokedAt);
+
+/**
+ * Photo / video consent follows the checkbox: ticked grants one active "media" record (never a
+ * duplicate), unticked withdraws any active one. Returns the same array when nothing changes.
+ */
+export function withMediaConsent(consents: ConsentRecord[], on: boolean, textVersion: string, now: string): ConsentRecord[] {
+  if (on) return hasConsent(consents, "media") ? consents : [...consents, { scope: "media", textVersion, grantedAt: now }];
+  return hasConsent(consents, "media") ? consents.map((c) => (c.scope === "media" && !c.revokedAt ? { ...c, revokedAt: now } : c)) : consents;
 }
 
 /* ---------- Weeks and consistency (Graph 1) ---------- */
