@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { PageHead, effectivePrice, planName, pricesVisible } from "../components/blocks";
-import { Wordmark } from "../components/Shell";
+import { Logo } from "../components/Shell";
 import { Check } from "../components/ui";
 import { pricing } from "../config/pricing";
 import { siteConfig } from "../config/site";
@@ -96,7 +96,7 @@ export default function Gift() {
           <div className="stack gap-12 gift-preview">
             <div className="gift-card" aria-label={t.gift.preview}>
               <div className="gift-card__top">
-                <Wordmark />
+                <Logo />
                 <span className="gift-card__amount">
                   <small>₪</small>
                   {value || 0}

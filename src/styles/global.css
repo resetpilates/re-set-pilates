@@ -2575,3 +2575,36 @@ html[lang="he"] .pgcard__ai { letter-spacing: 0.04em; font-size: 11.5px; }
 .health fieldset.card legend { padding-inline: 4px; }
 .health-next { display: flex; align-items: center; gap: 12px; text-align: start; }
 .health .tick--consent.q--err { border-color: #b3263a; }
+
+/* ───────── v4.8 · 11 Nov: the vector logo on gift and membership cards; home first screen centred and evenly spaced ───────── */
+.logo { display: block; height: auto; width: auto; }
+.gift-card .logo { height: clamp(34px, 12cqw, 48px); }
+.mcard .logo { height: clamp(30px, 11cqw, 44px); }
+.avatar--brand .logo { height: 40px; }
+.profile-hello .avatar--brand .logo { height: 44px; }
+/* Home: logo, welcome (+ name), headline, buttons — one centred column, even gaps, the same on phone and desktop */
+.hero--logo .hero__body, html[lang="he"] .hero--logo .hero__body { justify-content: flex-start; gap: 0; padding-top: 28px; padding-bottom: calc(28px + var(--safe-b)); }
+.hero--logo .hero__mark, html[lang="he"] .hero--logo .hero__mark { margin: 0 0 32px; }
+.hero--logo .hero__greet, html[lang="he"] .hero--logo .hero__greet {
+  flex-direction: column; align-items: center; gap: 8px; margin: 0 0 28px;
+  font-size: 15px; font-weight: 800; letter-spacing: 0.2em; color: var(--ink);
+}
+html[lang="he"] .hero--logo .hero__greet { font-size: 20px; font-weight: 800; letter-spacing: 0; }
+.hero--logo .hero__greet b, html[lang="he"] .hero--logo .hero__greet b { font-size: 34px; font-weight: 700; letter-spacing: 0; line-height: 1.05; color: var(--ink); }
+.hero--logo .hero__bottom { width: 100%; max-width: 520px; margin: auto auto 0; display: flex; flex-direction: column; align-items: center; gap: 24px; }
+.hero--logo .hero__title, html[lang="he"] .hero--logo .hero__title { margin: 0; padding: 0; text-align: center; font-weight: 700; }
+.hero--logo .hero__title .line, .hero--logo .hero__title .line span { font-weight: 700; }
+.hero--logo .hero__offer, .hero--logo .hero__body .hero__offer { width: 100%; max-width: 420px; margin: 0 auto; }
+@media (min-width: 1000px) {
+  .hero--logo .hero__body, html[lang="he"] .hero--logo .hero__body { padding-top: 40px; }
+  .hero--logo .hero__mark { margin-bottom: 40px; }
+  .hero--logo .hero__greet { font-size: 16px; margin-bottom: 32px; }
+  .hero--logo .hero__greet b { font-size: 40px; }
+}
+.pgcard__logo .logo { height: 22px; }
+/* The first screen is one centred stack: logo, welcome (+ name), headline, buttons, with even gaps */
+.hero--logo .hero__body, html[lang="he"] .hero--logo .hero__body { justify-content: center; }
+.hero--logo .hero__bottom { margin: 0; }
+.hero--logo .hero__mark, html[lang="he"] .hero--logo .hero__mark { margin-bottom: 28px; }
+.hero--logo .hero__greet, html[lang="he"] .hero--logo .hero__greet { margin-bottom: 28px; }
+@media (min-width: 1000px) { .hero--logo .hero__offer .btn { width: 100%; } }

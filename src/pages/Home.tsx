@@ -2,7 +2,7 @@ import type { CSSProperties } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { GoogleReviews, MapEmbed, PersonCard, ScheduleBoard, effectivePrice, planName, pricesVisible } from "../components/blocks";
 import { openChat } from "../components/ChatWidget";
-import { Wordmark } from "../components/Shell";
+import { Logo } from "../components/Shell";
 import { Accordion, Reveal, Verified } from "../components/ui";
 import { ReformerLineArt, ReformerTopArt } from "../components/art";
 import { pricing } from "../config/pricing";
@@ -211,7 +211,7 @@ export default function Home() {
             {plans.map((p, i) => (
               <Reveal key={p.id} delay={i * 90} className="plan">
                 <div className={`mcard mcard--${p.tone}`} aria-hidden>
-                  <Wordmark />
+                  <Logo tone={p.tone === "ink" ? "cream" : "ink"} />
                   <div className="stack">
                     <span className="mcard__name">{planName(p, t)}</span>
                     <span className="mcard__sub">PILATES · {(isHe ? "HOD HASHARON" : city).toUpperCase()}</span>
