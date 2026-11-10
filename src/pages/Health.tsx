@@ -1,8 +1,8 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { PageHead, useTurnstile } from "../components/blocks";
 import { ContactFields, readContact } from "../components/forms";
-import { Check } from "../components/ui";
+import { Check, YesNo } from "../components/ui";
 import { siteConfig, waLink } from "../config/site";
 import { track } from "../lib/analytics";
 import {
@@ -19,6 +19,7 @@ import {
 } from "../lib/health";
 import { useI18n } from "../lib/i18n";
 import { relay } from "../lib/relay";
+import { normalizePhone } from "../lib/relayTypes";
 import { useSeo } from "../lib/seo";
 import { useStore } from "../lib/store";
 
@@ -42,7 +43,10 @@ export default function Health() {
   const turnstile = useTurnstile(true);
   const [bot, setBot] = useState(false);
   const prev = store.profile.health;
-  const [a, setA] = useState<Draft>(() => ({ ...prev?.answers }));
+  // Editing a current declaration starts from its answers; a renewal (expired or new wording) starts blank, so every question is read again.
+  const [a, setA] = useState<Draft>(() => (healthValid(prev) ? { ...prev?.answers } : {}));
+  const [attempt, setAttempt] = useState(0);
+  const [queued, setQueued] = useState(false);
   const [tried, setTried] = useState(false);
   const [sending, setSending] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -57,7 +61,8 @@ export default function Health() {
     if (k === "injuryNote") return a.injury === true && !a.injuryNote?.trim();
     return typeof a[k] !== "boolean";
   };
-  const guardianBad = () => a.adult === false && (guardianMissing(a as HealthAnswers) || !guardianOk);
+  const guardianPhoneBad = a.adult === false && !!a.guardianPhone?.trim() && !normalizePhone(a.guardianPhone);
+  const guardianBad = () => a.adult === false && (guardianMissing(a as HealthAnswers) || guardianPhoneBad || !guardianOk);
   const complete = () => [...YES_NO, "pregnancy" as const, "injuryNote" as const].every((k) => !missing(k)) && !guardianBad() && confirmed;
 
   const submit = async (e: FormEvent) => {
@@ -67,7 +72,7 @@ export default function Health() {
     if (!complete() || (needsDetails && !form.checkValidity())) {
       if (needsDetails) form.reportValidity();
       setTried(true);
-      document.querySelector(".q--err")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      setAttempt((n) => n + 1); // scrolls once the error marks have rendered (see the effect below)
       return;
     }
     const f = new FormData(e.currentTarget as HTMLFormElement);
@@ -81,7 +86,8 @@ export default function Health() {
     setSending(true);
     setFailed(false);
     setBot(false);
-    const r = await relay("health-declaration", { lang, contact: c, version: HEALTH_VERSION, answers, turnstile: turnstile.token });
+    const ref = typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const r = await relay("health-declaration", { lang, contact: c, version: HEALTH_VERSION, answers, turnstile: turnstile.token, declarationId: ref }, { ref });
     setSending(false);
     if (!r.ok && !r.queued) {
       if (r.error === "turnstile") setBot(true);
@@ -91,14 +97,34 @@ export default function Health() {
     const now = new Date();
     store.saveProfile({
       ...(needsDetails ? { firstName: c.firstName, lastName: c.lastName, phone: c.phone, ...(c.email ? { email: c.email } : {}) } : {}),
-      health: { at: now.toISOString(), version: HEALTH_VERSION, validUntil: validUntil(now), clearance: needsClearance(answers), answers },
+      // Offline: kept on the phone but not counted until the outbox delivers it
+      health: { at: now.toISOString(), version: HEALTH_VERSION, validUntil: validUntil(now), clearance: needsClearance(answers), answers, ref, ...(r.queued ? { queued: true } : {}) },
     });
+    setQueued(!!r.queued);
     track("health_declared", { clearance: needsClearance(answers) });
     setDone(true);
     scrollTo({ top: 0 });
   };
 
+  useEffect(() => {
+    if (attempt) document.querySelector(".q--err")?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [attempt]);
+
   const h = store.profile.health;
+  if (done && h && queued)
+    return (
+      <div className="page page--app tone-dark has-tabbar">
+        <div className="wrap wrap--app pbody screen">
+          <div className="stack gap-16 center" style={{ paddingTop: 40 }}>
+            <h1 className="display d-md">{t.health.queuedTitle}</h1>
+            <p className="muted">{t.health.queuedSub}</p>
+            <Link to={href("schedule")} className="btn btn--secondary btn--block">
+              {t.nav.schedule}
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
   if (done && h)
     return (
       <div className="page page--app tone-dark has-tabbar">
@@ -130,13 +156,7 @@ export default function Health() {
       <span id={`hq-${k}`} className="q__label">
         {label}
       </span>
-      <div className="opts" role="radiogroup" aria-labelledby={`hq-${k}`}>
-        {[true, false].map((b) => (
-          <button key={String(b)} type="button" className="opt" role="radio" aria-checked={a[k] === b} onClick={() => set(k, b)}>
-            {b ? t.health.yes : t.health.no}
-          </button>
-        ))}
-      </div>
+      <YesNo value={a[k]} onChange={(b) => set(k, b)} labelledBy={`hq-${k}`} yes={t.health.yes} no={t.health.no} />
     </div>
   );
 
@@ -193,7 +213,8 @@ export default function Health() {
               </div>
               <div className="field">
                 <label htmlFor="hq-gphone">{t.health.guardianPhone}</label>
-                <input id="hq-gphone" className="input" type="tel" inputMode="tel" dir="ltr" maxLength={16} value={a.guardianPhone ?? ""} onChange={(e) => set("guardianPhone", e.target.value)} />
+                <input id="hq-gphone" className="input" type="tel" inputMode="tel" dir="ltr" maxLength={16} autoComplete="off" value={a.guardianPhone ?? ""} onChange={(e) => set("guardianPhone", e.target.value)} aria-invalid={guardianPhoneBad} />
+                {guardianPhoneBad && tried && <span className="tiny hi">{t.health.guardianPhoneBad}</span>}
               </div>
               <label className="tick">
                 <input type="checkbox" checked={guardianOk} onChange={(e) => setGuardianOk(e.currentTarget.checked)} />

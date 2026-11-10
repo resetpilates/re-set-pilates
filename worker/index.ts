@@ -572,16 +572,25 @@ const handlers: Record<RelayEvent, Handler> = {
       guardianPhone: text(raw.guardianPhone, 20),
     };
     if (guardianMissing(a)) throw new BadRequest("guardian required");
+    const guardianPhone = a.adult ? "" : normalizePhone(a.guardianPhone ?? "");
+    if (!a.adult && !guardianPhone) throw new BadRequest("bad guardian phone");
+    // The same declaration sent twice (outbox resend after a lost reply) is saved once
+    const ref = /^[A-Za-z0-9-]{8,40}$/.test(String(m.declarationId ?? "")) ? String(m.declarationId) : "";
+    const H = F.health;
+    if (ref) {
+      const [again] = await at.find(T.health, `FIND(${q(`Ref: ${ref}`)},{${H.conditions}})`);
+      if (again) return { ok: true, id: again.id, duplicate: true };
+    }
     const member = await upsertMember(at, c, { lang: lang(m.lang) });
     const today = todayIL();
     const reasons = clearanceReasons(a);
     const lines = [
       reasons.length ? `⚠ Doctor's approval needed: ${reasons.map((r) => HEALTH_LABEL[r] ?? r).join(", ")}` : "No doctor's approval needed",
       a.injury ? `Injury / pain / recent surgery: ${a.injuryNote || "yes"}` : "",
-      a.adult ? "" : `Under 18 · parent or guardian: ${a.guardianName} · ${a.guardianPhone}`,
+      a.adult ? "" : `Under 18 · parent or guardian: ${a.guardianName} · ${phonePretty(guardianPhone!)}`,
       `Wording: ${text(m.version, 40) || "unknown"}`,
+      ref ? `Ref: ${ref}` : "",
     ].filter(Boolean);
-    const H = F.health;
     const rec = await at.create(T.health, {
       [H.name]: `${fullName(c)} · Health declaration · ${today}`,
       [H.signed]: true,

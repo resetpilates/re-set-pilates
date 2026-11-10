@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { planName } from "../components/blocks";
 import { ShowAsPicker } from "./ClassDetail";
 import { ContactFields, readContact, termsAccepted, TermsField } from "../components/forms";
-import { fmtValid, healthValid } from "../lib/health";
+import { fmtValid, healthStatus } from "../lib/health";
 import { LangToggle, Logo } from "../components/Shell";
 import { Sheet, Switch } from "../components/ui";
 import { planById } from "../config/pricing";
@@ -39,6 +39,7 @@ export default function Profile() {
     setSignIn(false);
   };
   const plan = store.planId ? planById(store.planId) : undefined;
+  const health = healthStatus(store.profile.health);
   const receipts = store.receipts ?? [];
   const unread = (store.notices ?? []).filter((n) => !n.read).length;
 
@@ -224,12 +225,15 @@ export default function Profile() {
           <Link to={href("health")} className="row-sub">
             <span className="stack gap-4">
               {t.nav.health}
-              <span className={`tiny ${healthValid(store.profile.health) ? "hi" : "muted"}`}>
-                {healthValid(store.profile.health)
-                  ? t.health.validUntil.replace("{date}", fmtValid(store.profile.health!.validUntil))
-                  : store.profile.health
-                    ? t.health.expired
-                    : t.health.needed}
+              <span className={`tiny ${health === "valid" ? "hi" : "muted"}`}>
+                {
+                  {
+                    valid: t.health.validUntil.replace("{date}", fmtValid(store.profile.health?.validUntil ?? "")),
+                    sending: t.health.sendingStatus,
+                    renew: t.health.expired,
+                    missing: t.health.needed,
+                  }[health]
+                }
               </span>
             </span>
             <span className="chev" aria-hidden />

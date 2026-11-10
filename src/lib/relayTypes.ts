@@ -121,6 +121,7 @@ export interface HealthMsg extends Base {
   version: string;
   answers: import("./health").HealthAnswers;
   turnstile?: string; // Cloudflare Turnstile token (the form shows the widget)
+  declarationId?: string; // made on the phone per declaration: a resend of the same one is saved once
 }
 
 /** Is there a current declaration on the studio's records? Needs the phone and the last name; answers only a date. */

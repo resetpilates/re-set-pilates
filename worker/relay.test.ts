@@ -171,6 +171,25 @@ test("health declaration: missing answers, or under 18 without a guardian, is re
   expect(db[T.health]).toBeUndefined();
 });
 
+test("health declaration: the same declaration resent (outbox after a lost reply) is saved once", async () => {
+  const body = { lang: "he", contact: maya, version: "health-decl-v0-draft", answers: healthy, declarationId: "0f8c2a1e-3b4d-4e5f-9a6b-7c8d9e0f1a2b" };
+  const first = (await (await call("health-declaration", body)).json()) as { id: string };
+  const again = (await (await call("health-declaration", body)).json()) as { id: string; duplicate?: boolean };
+  expect(again.duplicate).toBe(true);
+  expect(again.id).toBe(first.id);
+  expect(db[T.health].length).toBe(1);
+  // A new declaration (new id) is a new row
+  await call("health-declaration", { ...body, declarationId: "1a2b3c4d-0000-4000-8000-000000000001" });
+  expect(db[T.health].length).toBe(2);
+});
+
+test("health declaration: an under-18's guardian needs an Israeli phone number", async () => {
+  const minor = { ...healthy, adult: false, guardianName: "Dana Test" };
+  expect((await call("health-declaration", { lang: "en", contact: maya, version: "v", answers: { ...minor, guardianPhone: "mom" } })).status).toBe(400);
+  expect((await call("health-declaration", { lang: "en", contact: maya, version: "v", answers: { ...minor, guardianPhone: "+972 50-765-4321" } })).status).toBe(200);
+  expect(db[T.health][0].fields[F.health.conditions]).toContain("050-765-4321");
+});
+
 test("health declaration with Turnstile on: needs a good token (or a retry pass), like the lead form", async () => {
   const body = { lang: "he", contact: maya, version: "health-decl-v0-draft", answers: healthy };
   expect((await call("health-declaration", body, undefined, guarded)).status).toBe(403);
