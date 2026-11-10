@@ -131,7 +131,7 @@ function Field({ q, a, set, c, showError }: { q: Question; a: Answers; set: (id:
   const label = c.ob.q[q.id];
   const hint = c.ob.hint[q.id];
   const labels = c.ob.opts[q.id] ?? {};
-  const optional = !q.req && q.id !== "H9";
+  const optional = !q.req && q.id !== "H9" && q.id !== "S9";
   const arr = Array.isArray(v) ? v : [];
 
   const head = (
@@ -209,6 +209,18 @@ function Field({ q, a, set, c, showError }: { q: Question; a: Answers; set: (id:
           {v === true ? "✓ " : ""}
           {c.ob.yes}
         </button>
+      </div>
+    );
+  } else if (q.type === "bool" && q.id === "S9") {
+    control = (
+      <div className="consent consent--media stack gap-12">
+        <p className="small">{c.ob.mediaText}</p>
+        <label className="tick tick--consent">
+          <input id={id} type="checkbox" checked={v === true} onChange={(e) => set("S9", e.target.checked)} />
+          <span>{c.ob.mediaTick}</span>
+        </label>
+        <p className="tiny consent__note">{c.ob.mediaCamera}</p>
+        <span className="tiny">{c.ob.consentDraft} · {trainerConfig.consentVersions.media}</span>
       </div>
     );
   } else if (q.type === "bool") {

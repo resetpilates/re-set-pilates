@@ -79,6 +79,7 @@ export const STEPS: { id: string; questions: Question[] }[] = [
       { id: "S6", type: "longtext" },
       { id: "S7", type: "bool" },
       { id: "S8", type: "multi", opts: ["whatsapp", "email"] }, // promotional consent, per channel
+      { id: "S9", type: "bool" }, // photo / video consent for the studio's own channels (opt-in, never required)
     ],
   },
 ];
@@ -189,7 +190,7 @@ export interface Pause {
 }
 
 export interface ConsentRecord {
-  scope: "health" | "promo";
+  scope: "health" | "promo" | "media";
   channel?: string;
   textVersion: string;
   grantedAt: string;

@@ -50,6 +50,7 @@ interface Trainer extends Persisted {
   setGoal: (target: number) => void;
   setPaidSuggestions: (on: boolean) => void;
   setPromo: (channel: string, on: boolean) => void;
+  setMedia: (on: boolean) => void;
   ackReview: (id: string) => void;
   resolveReview: (id: string, resolution: string) => void;
   markSeen: (ids: string[]) => void;
@@ -115,12 +116,15 @@ export function TrainerProvider({ children }: { children: ReactNode }) {
         const now = iso();
         const flags = onboardingRedFlags(a);
         const target = Number(a.S1) || 2;
-        const consents: ConsentRecord[] = [...p.consents];
+        // Photo / video consent: withdrawn when a returning client unticks it (granted below when ticked)
+        const consents: ConsentRecord[] = p.consents.map((c) => (c.scope === "media" && !c.revokedAt && a.S9 !== true ? { ...c, revokedAt: now } : c));
         if (!consents.some((c) => c.scope === "health" && c.textVersion === cfg.consentVersions.health && !c.revokedAt))
           consents.push({ scope: "health", textVersion: cfg.consentVersions.health, grantedAt: now });
         for (const ch of Array.isArray(a.S8) ? a.S8 : [])
           if (!consents.some((c) => c.scope === "promo" && c.channel === ch && !c.revokedAt))
             consents.push({ scope: "promo", channel: ch, textVersion: cfg.consentVersions.promo, grantedAt: now });
+        if (a.S9 === true && !consents.some((c) => c.scope === "media" && !c.revokedAt))
+          consents.push({ scope: "media", textVersion: cfg.consentVersions.media, grantedAt: now });
         const reviews = flags.length && !p.reviews.some((r) => r.type === "onboarding" && r.status !== "resolved")
           ? [...p.reviews, { id: `rv${Date.now()}`, type: "onboarding" as const, evidence: ["H1", "H3", "H6"], reasons: flags, status: "open" as const, createdAt: now }]
           : p.reviews;
@@ -162,6 +166,18 @@ export function TrainerProvider({ children }: { children: ReactNode }) {
       setS((p) => {
         const from = toISO(weekStart(new Date()));
         return { ...p, goals: [...p.goals.filter((g) => g.from !== from), { target, from }], answers: { ...p.answers, S1: String(target) } };
+      }),
+    [],
+  );
+
+  const setMedia = useCallback(
+    (on: boolean) =>
+      setS((p) => {
+        const now = iso();
+        const consents = on
+          ? [...p.consents, { scope: "media" as const, textVersion: cfg.consentVersions.media, grantedAt: now }]
+          : p.consents.map((c) => (c.scope === "media" && !c.revokedAt ? { ...c, revokedAt: now } : c));
+        return { ...p, consents, answers: { ...p.answers, S9: on } };
       }),
     [],
   );
@@ -212,13 +228,14 @@ export function TrainerProvider({ children }: { children: ReactNode }) {
       setGoal,
       setPaidSuggestions,
       setPromo,
+      setMedia,
       ackReview,
       resolveReview,
       markSeen,
       loadSample,
       reset,
     }),
-    [s, past, saveAnswers, finishOnboarding, setBaselineMode, addAssessment, addCheckin, setGoal, setPaidSuggestions, setPromo, ackReview, resolveReview, markSeen, loadSample, reset],
+    [s, past, saveAnswers, finishOnboarding, setBaselineMode, addAssessment, addCheckin, setGoal, setPaidSuggestions, setPromo, setMedia, ackReview, resolveReview, markSeen, loadSample, reset],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

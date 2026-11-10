@@ -64,6 +64,7 @@ const en = {
       S6: "Anything else Orit should know?",
       S7: "Show me course and package suggestions that fit my goals",
       S8: "Optional: send me news and offers",
+      S9: "Photos and video in the studio",
     } as Record<string, string>,
     hint: {
       A4: "Optional. Never shown on share cards.",
@@ -94,6 +95,10 @@ const en = {
     consentText:
       "I agree that re:set may store the health information I share here so my instructor can adapt my classes. It is seen only by me and my assigned instructor. This is not medical clearance: if I have a medical condition I will check with my doctor before training. I can withdraw this consent and ask to delete my data at any time.",
     consentDraft: "Draft wording, to be approved by the studio",
+    mediaText:
+      "From time to time we photograph or film classes and events for re:set's Instagram, website and other studio channels. Tick the box only if you are happy to appear. Nothing you are recognisable in is posted without checking with you first, and you can change your mind at any time: from then on no new photos or video of you are used.",
+    mediaTick: "Yes, re:set may photograph and film me in the studio and share it on the studio's own channels",
+    mediaCamera: "Separately, the studio has security cameras for everyone's safety. That footage is used for safety and security only and is never published or shared.",
     flagNote: "Thank you for telling us. Orit will look at your answers before suggesting exercises or loads for you. You can still book classes as usual.",
     baselineTitle: "Your starting point",
     baselineSub: "Five short tests (about 5 minutes) give you a starting point to compare against in 4–6 weeks.",
@@ -266,6 +271,8 @@ const en = {
     deleteYes: "Yes, delete",
     consents: "Consents",
     consentHealth: "Health information",
+    consentMedia: "Photos and video",
+    media: "Photos and video on re:set's channels",
     granted: "Given",
     revoked: "Withdrawn",
     staff: "Studio view (demo)",
@@ -362,6 +369,7 @@ const he: TrainerCopy = {
       S6: "עוד משהו שאורית צריכה לדעת?",
       S7: "להציג לי הצעות לקורסים וכרטיסיות שמתאימים למטרות שלי",
       S8: "לא חובה: לשלוח לי עדכונים והטבות",
+      S9: "צילום ווידאו בסטודיו",
     },
     hint: {
       A4: "לא חובה. לעולם לא מופיע בכרטיס שיתוף.",
@@ -392,6 +400,10 @@ const he: TrainerCopy = {
     consentText:
       "אני מסכימה ש-re:set ישמרו את המידע הבריאותי שאני משתפת כאן, כדי שהמדריכה תוכל להתאים לי את השיעורים. רק אני והמדריכה שלי רואות אותו. זה לא אישור רפואי: אם יש לי מצב רפואי, אבדוק עם הרופא/ה לפני שאתאמן. אני יכולה לבטל את ההסכמה ולבקש למחוק את המידע בכל עת.",
     consentDraft: "נוסח טיוטה, ממתין לאישור הסטודיו",
+    mediaText:
+      "מדי פעם אנחנו מצלמות שיעורים ואירועים לאינסטגרם, לאתר ולערוצים האחרים של re:set. סמני רק אם נעים לך להופיע. שום דבר שבו את מזוהה לא מתפרסם בלי לבדוק איתך קודם, ואפשר להתחרט בכל עת: מאותו רגע לא נשתמש בתמונות או בסרטונים חדשים שלך.",
+    mediaTick: "כן, אפשר לצלם אותי בסטודיו (תמונות ווידאו) ולשתף בערוצים של re:set",
+    mediaCamera: "בנפרד מזה, בסטודיו יש מצלמות אבטחה למען הבטיחות של כולן. הצילומים האלה משמשים לבטיחות ואבטחה בלבד ולעולם לא מתפרסמים או מועברים.",
     flagNote: "תודה ששיתפת. אורית תעבור על התשובות שלך לפני שנציע לך תרגילים או עומסים. אפשר להמשיך להזמין שיעורים כרגיל.",
     baselineTitle: "נקודת הפתיחה שלך",
     baselineSub: "חמש בדיקות קצרות (כ-5 דקות) נותנות לך נקודת פתיחה להשוואה בעוד 4–6 שבועות.",
@@ -564,6 +576,8 @@ const he: TrainerCopy = {
     deleteYes: "כן, למחוק",
     consents: "הסכמות",
     consentHealth: "מידע בריאותי",
+    consentMedia: "צילום ווידאו",
+    media: "צילום ווידאו בערוצים של re:set",
     granted: "ניתנה",
     revoked: "בוטלה",
     staff: "תצוגת סטודיו (דמו)",
