@@ -291,7 +291,7 @@ function Footer() {
       <div className="wrap">
         <div className="footer__grid">
           <div className="stack gap-12">
-            <Wordmark />
+            <Logo className="footer__logo" />
             <p className="display d-sm hi">
               {t.footer.tagline}
             </p>

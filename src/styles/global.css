@@ -2608,3 +2608,6 @@ html[lang="he"] .hero--logo .hero__greet { font-size: 20px; font-weight: 800; le
 .hero--logo .hero__mark, html[lang="he"] .hero--logo .hero__mark { margin-bottom: 28px; }
 .hero--logo .hero__greet, html[lang="he"] .hero--logo .hero__greet { margin-bottom: 28px; }
 @media (min-width: 1000px) { .hero--logo .hero__offer .btn { width: 100%; } }
+/* Footer and profile header show the full logo (letters + PILATES) */
+.footer__logo { height: 64px; margin: 0 auto; }
+.profile-hello .avatar--brand .logo { height: 56px; }

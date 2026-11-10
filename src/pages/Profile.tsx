@@ -60,7 +60,7 @@ export default function Profile() {
       <div className="wrap wrap--app stack gap-24 screen">
         <div className="row gap-16 profile-hello">
           <span className="avatar avatar--brand" aria-hidden>
-            <Logo mark />
+            <Logo />
           </span>
           <span className="stack gap-4">
             <h1 className="display d-md">{known ? `${t.profile.hello} ${known}` : store.isMember ? t.profile.name : t.profile.guest}</h1>
