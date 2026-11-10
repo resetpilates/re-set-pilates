@@ -30,7 +30,7 @@ import {
   type Assessment,
   type Milestone,
   type NextAction,
-  type Session,
+  type Session, hasConsent,
 } from "../lib/trainer";
 import { useTrainer } from "../lib/trainerStore";
 import { Scale } from "./Onboarding";
@@ -603,6 +603,10 @@ function Details({ sessions, risk }: { sessions: Session[]; risk: boolean }) {
               <Switch checked={promo.includes(ch)} onChange={(on) => tr.setPromo(ch, on)} label={`${d.promo} ${ch}`} />
             </div>
           ))}
+          <div>
+            <span className="small">{d.media}</span>
+            <Switch checked={hasConsent(tr.consents, "media")} onChange={tr.setMedia} label={d.media} />
+          </div>
           <Link to={href("progress/start")}>
             <span className="small">{d.editAnswers}</span>
             <span className="chev" aria-hidden />
@@ -615,7 +619,7 @@ function Details({ sessions, risk }: { sessions: Session[]; risk: boolean }) {
         <div className="rows">
           {tr.consents.map((k, i) => (
             <div key={i}>
-              <span className="small">{k.scope === "health" ? d.consentHealth : `${d.promo} · ${c.ob.opts.S8[k.channel ?? ""] ?? k.channel}`}</span>
+              <span className="small">{k.scope === "health" ? d.consentHealth : k.scope === "media" ? d.consentMedia : `${d.promo} · ${c.ob.opts.S8[k.channel ?? ""] ?? k.channel}`}</span>
               <span className="tiny" dir="ltr">
                 {k.revokedAt ? d.revoked : d.granted} {fmtShort((k.revokedAt ?? k.grantedAt).slice(0, 10))} · {k.textVersion}
               </span>

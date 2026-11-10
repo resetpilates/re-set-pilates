@@ -2510,3 +2510,11 @@ html[lang="he"] .pgcard__ai { letter-spacing: 0.04em; font-size: 11.5px; }
 .hdr .wrap { padding-inline: 20px 8px; }
 @media (max-width: 360px) { .hdr .wrap { padding-inline: 16px 6px; } }
 @media (min-width: 1000px) { .hdr .wrap { padding-inline: 24px 18px; } }
+
+/* ───────── v4.4 · photo / video consent card in onboarding: a real checkbox, cream card, clay accent ───────── */
+.consent--media { border: 1px solid rgba(31, 22, 18, 0.08); }
+.tick--consent { align-items: flex-start; gap: 12px; padding: 12px 14px; border-radius: 14px; background: #fff; border: 1.5px solid rgba(31, 22, 18, 0.16); font-weight: 600; transition: border-color var(--t-ui) ease, box-shadow var(--t-ui) ease; }
+.tick--consent input { width: 22px; height: 22px; margin-top: 0; border-radius: 6px; accent-color: var(--clay); }
+.tick--consent:has(input:checked) { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+.tick--consent:has(input:focus-visible) { outline: 2px solid var(--clay); outline-offset: 2px; }
+.consent__note { color: var(--fg-3); padding-top: 4px; border-top: 1px dashed rgba(31, 22, 18, 0.14); }
