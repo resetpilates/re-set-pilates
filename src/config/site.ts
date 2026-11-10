@@ -98,6 +98,11 @@ export const siteConfig = {
     logoDisc: "/assets/logo-gold-ring.webp",
     // Chat launcher and chat header avatar: the wordmark on white, sized to sit inside a circle.
     chatAvatar: "/icons/icon-chat-512.png",
+    // The RE:SET mark alone (no "pilates", no tagline) on a white square: welcome screen, hero, chat button.
+    mark: "/assets/reset-mark.png",
+    // Vector versions (traced from the logo): the letters alone, and the letters with PILATES under them. Header and hero.
+    markSvg: "/assets/reset-mark.svg",
+    wordmark: "/assets/reset-wordmark.svg",
     music: "", // optional user-uploaded track; never autoplays
   },
 };

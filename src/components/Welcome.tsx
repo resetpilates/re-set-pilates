@@ -25,8 +25,8 @@ export function Welcome() {
           <img src="/assets/studio-entry.webp" alt="" />
           <LangToggle className="welcome__lang" />
           <div className="welcome__body">
-            <div className="logo-disc fade-up" style={d(150)}>
-              <img src={siteConfig.studioMedia.logoDisc} alt="re:set pilates" />
+            <div className="logo-disc logo-disc--mark fade-up" style={d(150)}>
+              <img src={siteConfig.studioMedia.mark} alt="re:set pilates" />
             </div>
             <p className="display fade-up" style={{ ...d(300), fontSize: 44, fontWeight: 600, letterSpacing: ".04em", direction: "ltr" }}>
               re:set pilates
