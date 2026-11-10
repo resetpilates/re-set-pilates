@@ -96,6 +96,8 @@ export const siteConfig = {
     ogImage: "/assets/og-logo.jpg",
     ogStudio: "/assets/og-studio.jpg",
     logoDisc: "/assets/logo-gold-ring.webp",
+    // Chat launcher and chat header avatar: the wordmark on white, sized to sit inside a circle.
+    chatAvatar: "/icons/icon-chat-512.png",
     music: "", // optional user-uploaded track; never autoplays
   },
 };
