@@ -1,6 +1,6 @@
 // Shared form fields: name, phone, email, "How did you hear about us?", marketing opt-in and a spam trap.
 // Values are read back with readContact()/readExtras() so every form sends the same shape to the relay.
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { siteConfig } from "../config/site";
 import { useI18n } from "../lib/i18n";
@@ -116,6 +116,10 @@ export function TermsField({ profile }: { profile: Profile }) {
   const { t, href, fmtDate } = useI18n();
   const [open, setOpen] = useState(false);
   const [ticked, setTicked] = useState(false);
+  const box = useRef<HTMLInputElement>(null);
+  // The "please accept" message follows the box's state, however it was ticked (by hand or by "I accept" in the sheet).
+  // Set from an event instead, it stayed on after the sheet ticked the box and payment was blocked.
+  useEffect(() => box.current?.setCustomValidity(ticked ? "" : t.form.termsNeeded), [ticked, t.form.termsNeeded]);
   if (termsAccepted(profile))
     return (
       <p className="tiny muted terms-ok">
@@ -129,12 +133,9 @@ export function TermsField({ profile }: { profile: Profile }) {
           type="checkbox"
           name="terms"
           required
+          ref={box}
           checked={ticked}
-          onInvalid={(e) => e.currentTarget.setCustomValidity(t.form.termsNeeded)}
-          onChange={(e) => {
-            e.currentTarget.setCustomValidity("");
-            setTicked(e.currentTarget.checked);
-          }}
+          onChange={(e) => setTicked(e.currentTarget.checked)}
         />
         <span>
           {t.form.terms}{" "}
