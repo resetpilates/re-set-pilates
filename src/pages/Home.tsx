@@ -3,9 +3,8 @@ import { Link, useLocation } from "react-router-dom";
 import { GoogleReviews, MapEmbed, PersonCard, ScheduleBoard, effectivePrice, planName, pricesVisible } from "../components/blocks";
 import { openChat } from "../components/ChatWidget";
 import { Wordmark } from "../components/Shell";
-import { Accordion, Reveal, useParallax, Verified } from "../components/ui";
+import { Accordion, Reveal, Verified } from "../components/ui";
 import { ReformerLineArt, ReformerTopArt } from "../components/art";
-import { useReducedMotion } from "motion/react";
 import { pricing } from "../config/pricing";
 import { services } from "../config/services";
 import { addressLine, isTodo, mapsLink, siteConfig } from "../config/site";
@@ -25,16 +24,7 @@ export default function Home() {
   const wa = useWaLink();
   const { upcoming, isMember, profile } = useStore();
   useSeo(t.meta.home, localBusinessLd(isHe ? "he" : "en"));
-  const heroRef = useParallax<HTMLDivElement>(-0.9);
   const next = upcoming[0];
-  const media = siteConfig.studioMedia;
-  // Reduce Motion or Data Saver: show the still poster instead of streaming the hero video.
-  const reduceMotion = useReducedMotion();
-  const saveData = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData === true;
-  const showVideo = !!media.heroVideo && !reduceMotion && !saveData;
-  // Phones get the 720p file (about half the bytes); the hero frame there is at most ~400px wide anyway.
-  const phone = typeof window !== "undefined" && window.matchMedia("(max-width: 999px)").matches;
-  const heroSrc = phone && media.heroVideoPhone ? media.heroVideoPhone : media.heroVideo;
   const c = siteConfig.contact;
   const maps = mapsLink();
   const launch = siteConfig.flags.launchPricing;
@@ -47,19 +37,11 @@ export default function Home() {
   return (
     <div className="page page--bleed tone-dark">
       {/* Hero */}
-      {/* Editorial first screen: full-bleed studio film, the brass ring, a serif headline (design system: HeroEditorial) */}
-      <section className="hero hero--ed hero--sport hero--v4">
-        <div className="hero__media" ref={heroRef}>
-          {showVideo ? (
-            <video src={heroSrc} poster={media.heroPoster} autoPlay muted loop playsInline preload="metadata" />
-          ) : (
-            <img src={media.heroPoster} alt="" />
-          )}
-        </div>
-        <div className="hero__scrim" aria-hidden />
+      {/* First screen: the RE:SET wordmark on white, no film (owner, 11 Nov 2026), then the welcome line, headline and buttons */}
+      <section className="hero hero--ed hero--sport hero--v4 hero--logo">
         <div className="wrap hero__body">
           {/* Top: the welcome, with the member's name when we know her. Middle: the photo breathes. */}
-          <img className="hero__mark fade-up" style={d(60)} src={siteConfig.studioMedia.mark} alt="re:set" width={108} height={108} />
+          <img className="hero__mark fade-up" style={d(60)} src={siteConfig.studioMedia.wordmark} alt="re:set pilates" />
           <p className="hero__greet fade-up" style={d(100)}>
             {t.home.greetingGuest}
             {profile.firstName && <b>{profile.firstName}</b>}

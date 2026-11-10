@@ -2544,3 +2544,26 @@ html[lang="he"] .pgcard__ai { letter-spacing: 0.04em; font-size: 11.5px; }
 .logo-disc--mark { box-shadow: 0 0 60px rgba(241, 211, 173, 0.28), 0 0 0 1px rgba(31, 22, 18, 0.08); background: #fff; }
 .logo-disc--mark img { transform: none; }
 .chat-fab__badge { background: #b5884e; }
+
+/* ───────── v4.7 · 11 Nov: hero is the RE:SET wordmark on white, no film; header shows the logo instead of the typed wordmark ───────── */
+.hero--logo, html[lang="he"] .hero--logo { background: #fff; color: var(--ink); height: auto; min-height: calc(100svh - var(--hdr) - var(--safe-t)); max-height: none; }
+.hero--logo .hero__media, .hero--logo .hero__scrim { display: none; }
+.hero--logo .hero__body, html[lang="he"] .hero--logo .hero__body { align-items: center; text-align: center; padding-top: 36px; }
+.hero--logo .hero__mark, html[lang="he"] .hero--logo .hero__mark { width: min(72vw, 360px); height: auto; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; margin: 10px 0 0; }
+.hero--logo .hero__greet, html[lang="he"] .hero--logo .hero__greet { align-self: center; color: var(--fg-2); text-shadow: none; }
+.hero--logo .hero__greet b { color: var(--ink); }
+.hero--logo .hero__bottom { width: 100%; }
+.hero--logo .hero__title, html[lang="he"] .hero--logo .hero__title { text-align: center; }
+.hero--logo .hero__title .line, .hero--logo .hero__title .line span { color: var(--ink); }
+.hero--logo .hero__title .line:last-child, .hero--logo .hero__title .line:last-child span { color: var(--sand-deep); }
+.hero--logo .hero__title::before { background: var(--sand); }
+.hero--logo .btn--outline { border-color: var(--ink); color: var(--ink); background: none; }
+@media (min-width: 1000px) { .hero--logo .hero__mark { width: 440px; } }
+.hdr__logo { display: block; height: 44px; width: auto; }
+@media (min-width: 1000px) { .hdr__logo { height: 52px; } }
+.hero--logo, html[lang="he"] .hero--logo { justify-content: flex-start; min-height: calc(100svh - var(--hdr) - var(--safe-t) - 60px); }
+@media (min-width: 1000px) { .hero--logo, html[lang="he"] .hero--logo { min-height: calc(100svh - var(--hdr) - var(--safe-t)); } }
+.hero--logo .hero__body, html[lang="he"] .hero--logo .hero__body { flex: 1 1 auto; height: auto; gap: 22px; }
+.hero--logo .hero__greet, html[lang="he"] .hero--logo .hero__greet { margin-top: 6px; }
+.hero--logo .hero__title .line span, .hero--logo .hero__greet, .hero--logo .hero__greet b { text-shadow: none; }
+.hero--v4.hero--logo .hero__offer .btn--outline, html[lang="he"] .hero--v4.hero--logo .hero__offer .btn--outline { background: transparent; color: var(--ink); border: 1.5px solid var(--ink); backdrop-filter: none; -webkit-backdrop-filter: none; box-shadow: none; }
