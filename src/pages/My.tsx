@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { PageHead, instructorName } from "../components/blocks";
 import { Sheet } from "../components/ui";
 import { mapsLink, siteConfig } from "../config/site";
+import { HealthNextStep } from "../components/forms";
 import { fromISO, hasClasses, slotStart } from "../lib/booking";
 import { useI18n } from "../lib/i18n";
 import { useSeo } from "../lib/seo";
@@ -83,6 +84,7 @@ export default function My() {
           </div>
         )}
 
+        {store.upcoming.length > 0 && <HealthNextStep profile={store.profile} />}
         <p className="tiny">
           {t.my.policy}: {t.my.policyText.replace("{hours}", String(siteConfig.policies.cancelHours))}
         </p>

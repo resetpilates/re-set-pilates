@@ -2537,3 +2537,11 @@ html[lang="he"] .pgcard__ai { letter-spacing: 0.04em; font-size: 11.5px; }
 .key-terms { padding: 10px 12px; border-radius: 12px; background: var(--fill, rgba(31, 22, 18, 0.04)); color: var(--fg-2); line-height: 1.45; }
 .renew-row > div { min-height: 68px; }
 .renew-row .tiny { font-weight: 500; }
+
+/* ───────── v4.7 · health declaration: question list, the "next step" card on confirmations, My classes and the class sheet ───────── */
+.health .q { padding-bottom: 18px; border-bottom: 1px solid var(--line); }
+.health .q--err .q__label { color: #b3263a; }
+.health textarea.input { min-height: 88px; padding-block: 12px; resize: vertical; }
+.health fieldset.card legend { padding-inline: 4px; }
+.health-next { display: flex; align-items: center; gap: 12px; text-align: start; }
+.health .tick--consent.q--err { border-color: #b3263a; }

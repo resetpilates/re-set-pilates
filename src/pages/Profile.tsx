@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { planName } from "../components/blocks";
 import { ShowAsPicker } from "./ClassDetail";
 import { ContactFields, readContact, termsAccepted, TermsField } from "../components/forms";
+import { fmtValid, healthValid } from "../lib/health";
 import { LangToggle, Wordmark } from "../components/Shell";
 import { Sheet, Switch } from "../components/ui";
 import { planById } from "../config/pricing";
@@ -216,6 +217,19 @@ export default function Profile() {
               {t.nav.terms}
               <span className={`tiny ${termsAccepted(store.profile) ? "hi" : "muted"}`}>
                 {termsAccepted(store.profile) ? t.terms.acceptedOn.replace("{date}", fmtDate(new Date(store.profile.termsAcceptedAt!))) : t.terms.notAccepted}
+              </span>
+            </span>
+            <span className="chev" aria-hidden />
+          </Link>
+          <Link to={href("health")} className="row-sub">
+            <span className="stack gap-4">
+              {t.nav.health}
+              <span className={`tiny ${healthValid(store.profile.health) ? "hi" : "muted"}`}>
+                {healthValid(store.profile.health)
+                  ? t.health.validUntil.replace("{date}", fmtValid(store.profile.health!.validUntil))
+                  : store.profile.health
+                    ? t.health.expired
+                    : t.health.needed}
               </span>
             </span>
             <span className="chev" aria-hidden />

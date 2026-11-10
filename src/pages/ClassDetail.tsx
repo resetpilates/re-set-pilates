@@ -18,6 +18,7 @@ import { SHOW_AS, scheduleName, type Contact, type ShowAs, type SlotRef } from "
 import { useStore } from "../lib/store";
 import { ContactFields, readContact, TermsField } from "../components/forms";
 import { siteConfig } from "../config/site";
+import { healthValid } from "../lib/health";
 
 export default function ClassDetail() {
   const { id = "" } = useParams();
@@ -291,7 +292,17 @@ export default function ClassDetail() {
                 {isReformer && (
                   <ShowAsPicker value={showAs} onChange={setShowAs} name={needsDetails ? undefined : store.profile} />
                 )}
-                <button className="btn btn--sand btn--block">{t.confirm.confirmBtn}</button>
+                {healthValid(store.profile.health) ? (
+                  <button className="btn btn--sand btn--block">{t.confirm.confirmBtn}</button>
+                ) : (
+                  <div className="notice stack gap-8" role="status">
+                    <b>{t.health.gateTitle}</b>
+                    <span className="small">{t.health.gateSub}</span>
+                    <Link to={href(`health?next=${encodeURIComponent(`class/${slot.id}`)}`)} className="btn btn--sand btn--block">
+                      {t.health.gateCta}
+                    </Link>
+                  </div>
+                )}
               </form>
             ) : (
               <>

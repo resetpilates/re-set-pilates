@@ -32,9 +32,10 @@ const PAGE: Record<string, keyof typeof en.meta> = {
   profile: "profile",
   progress: "profile",
   terms: "terms",
+  health: "health",
 };
 // Personal pages: fine to open, pointless to index.
-const PRIVATE = new Set(["my", "profile", "progress", "checkout", "class", "receipt"]);
+const PRIVATE = new Set(["my", "profile", "progress", "checkout", "class", "receipt", "health"]);
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
