@@ -120,6 +120,13 @@ export interface HealthMsg extends Base {
   contact: Contact;
   version: string;
   answers: import("./health").HealthAnswers;
+  turnstile?: string; // Cloudflare Turnstile token (the form shows the widget)
+}
+
+/** Is there a current declaration on the studio's records? Needs the phone and the last name; answers only a date. */
+export interface HealthStatusMsg extends Base {
+  phone: string;
+  lastName: string;
 }
 
 /** Auto-renew switched on or off from the profile. */
@@ -183,6 +190,7 @@ export interface RelayMap {
   cancel: CancelMsg;
   renewal: RenewalMsg;
   "health-declaration": HealthMsg; // not "health": /api/health is the Worker's status check
+  "health-status": HealthStatusMsg;
   waitlist: WaitlistMsg;
   "launch-waitlist": LaunchWaitlistMsg;
   gift: GiftMsg;
@@ -203,6 +211,7 @@ export interface RelayReply {
   until?: string; // 409 "already active": the date the running membership ends (YYYY-MM-DD)
   duplicate?: boolean; // this order was already saved; nothing new was created
   retry?: string; // on a 5xx after the bot check passed: pass for resending the same message later
+  validUntil?: string; // health-status: the latest current declaration's last day (YYYY-MM-DD)
   airtable?: boolean; // /api/health only
   turnstile?: boolean;
 }

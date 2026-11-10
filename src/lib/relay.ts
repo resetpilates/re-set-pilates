@@ -75,6 +75,18 @@ export async function relay<E extends RelayEvent>(
   }
 }
 
+/** A question to the relay that is not worth queueing (e.g. a status lookup). Resolves to null when it could not be asked. */
+export async function ask<E extends RelayEvent>(event: E, body: Omit<RelayMap[E], "attribution" | "page">): Promise<RelayReply | null> {
+  try {
+    return await post(event, { ...body, page: location.pathname });
+  } catch {
+    return null;
+  }
+}
+
+/** Events behind the Turnstile bot check: a queued one without a retry pass needs a fresh token when resent. */
+const BOT_CHECKED: RelayEvent[] = ["lead", "health-declaration"];
+
 /** Remove a message that has not been sent yet (e.g. a booking cancelled while still offline). */
 export function dropQueued(ref: string): boolean {
   const items = readOutbox();
@@ -102,9 +114,9 @@ async function flush() {
       handled.add(keyOf(i));
       continue;
     }
-    // A lead without a retry pass (saved while offline) needs a fresh bot-check token.
+    // A bot-checked message without a retry pass (saved while offline) needs a fresh bot-check token.
     let body = i.body;
-    if (i.event === "lead" && !body.retry && !body.turnstile) {
+    if (BOT_CHECKED.includes(i.event) && !body.retry && !body.turnstile) {
       const turnstile = await freshTurnstileToken(String(body.lang ?? "he"));
       if (!turnstile) continue; // could not complete the check now; keep it for the next visit
       body = { ...body, turnstile };

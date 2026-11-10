@@ -929,6 +929,7 @@ export const he: Content = {
     clearanceWa: "שליחה בוואטסאפ",
     waText: "היי, מצרפת אישור רפואי לפילאטיס.",
     back: "חזרה לשיעור",
+    backCheckout: "המשך לתשלום",
     validUntil: "בתוקף עד {date}",
     needed: "נדרשת לפני האימון הראשון",
     expired: "יש לחדש את הצהרת הבריאות",

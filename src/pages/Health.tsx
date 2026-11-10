@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { PageHead } from "../components/blocks";
+import { PageHead, useTurnstile } from "../components/blocks";
 import { ContactFields, readContact } from "../components/forms";
 import { Check } from "../components/ui";
 import { siteConfig, waLink } from "../config/site";
@@ -36,9 +36,13 @@ export default function Health() {
   const store = useStore();
   const [params] = useSearchParams();
   const next = params.get("next");
-  const back = next && /^[a-z0-9/_-]+$/i.test(next) ? href(next) : null;
+  // Back to the class or the checkout that sent the member here (an app path, never another site)
+  const back = next && /^[a-z0-9_-][a-z0-9/_?=&.-]*$/i.test(next) ? href(next) : null;
+  const toCheckout = !!next?.startsWith("checkout/");
+  const turnstile = useTurnstile(true);
+  const [bot, setBot] = useState(false);
   const prev = store.profile.health;
-  const [a, setA] = useState<Draft>(() => (prev ? { ...prev.answers } : {}));
+  const [a, setA] = useState<Draft>(() => ({ ...prev?.answers }));
   const [tried, setTried] = useState(false);
   const [sending, setSending] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -76,10 +80,12 @@ export default function Health() {
     };
     setSending(true);
     setFailed(false);
-    const r = await relay("health-declaration", { lang, contact: c, version: HEALTH_VERSION, answers });
+    setBot(false);
+    const r = await relay("health-declaration", { lang, contact: c, version: HEALTH_VERSION, answers, turnstile: turnstile.token });
     setSending(false);
     if (!r.ok && !r.queued) {
-      setFailed(true);
+      if (r.error === "turnstile") setBot(true);
+      else setFailed(true);
       return;
     }
     const now = new Date();
@@ -112,7 +118,7 @@ export default function Health() {
               </div>
             )}
             <Link to={back ?? href("schedule")} className="btn btn--sand btn--block">
-              {back ? t.health.back : t.checkout.doneCta}
+              {back ? (toCheckout ? t.health.backCheckout : t.health.back) : t.checkout.doneCta}
             </Link>
           </div>
         </div>
@@ -205,12 +211,13 @@ export default function Health() {
               {t.health.answerAll}
             </p>
           )}
+          <div ref={turnstile.ref} />
           <button className="btn btn--sand btn--block" disabled={sending}>
             {sending ? t.form.sending : t.health.submit}
           </button>
-          {failed && (
+          {(failed || bot) && (
             <p className="small center" role="alert">
-              {t.form.failed}
+              {bot ? t.contact.errBot : t.form.failed}
             </p>
           )}
           <p className="tiny center muted">

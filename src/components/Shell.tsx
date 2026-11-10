@@ -6,6 +6,7 @@ import { addressLine, isTodo, siteConfig, telLink } from "../config/site";
 import { track } from "../lib/analytics";
 import { useI18n } from "../lib/i18n";
 import { useStore } from "../lib/store";
+import { useHealthSync } from "../lib/healthSync";
 import { WaIcon, useWaLink, waReady } from "../lib/whatsapp";
 import { ChatWidget } from "./ChatWidget";
 
@@ -343,6 +344,7 @@ function Footer() {
 
 export function Shell() {
   const { t } = useI18n();
+  useHealthSync();
   const loc = useLocation();
   const section = loc.pathname.split("/")[2] ?? "";
 

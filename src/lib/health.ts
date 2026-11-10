@@ -29,7 +29,7 @@ export interface HealthRecord {
   version: string;
   validUntil: string; // YYYY-MM-DD
   clearance: boolean; // a doctor's approval is needed before the first class
-  answers: HealthAnswers;
+  answers?: HealthAnswers; // missing when the declaration was confirmed from the studio's records (another device, paper form)
 }
 
 /** The questions that need a doctor's approval, by id (empty = none). Pregnancy and the months after birth count. */
@@ -44,9 +44,12 @@ export const needsClearance = (a: HealthAnswers) => clearanceReasons(a).length >
 /** Under 18 needs the parent's or guardian's name and phone. */
 export const guardianMissing = (a: HealthAnswers) => !a.adult && (!a.guardianName?.trim() || !a.guardianPhone?.trim());
 
+/** The studio's calendar day (Israel), YYYY-MM-DD, whatever time zone the phone or server is in. Same day as the Worker's todayIL. */
+export const studioDate = (d = new Date()) => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jerusalem" }).format(d);
+
 export function validUntil(from: Date, months = HEALTH_VALID_MONTHS): string {
-  const d = new Date(Date.UTC(from.getFullYear(), from.getMonth() + months, from.getDate()));
-  return d.toISOString().slice(0, 10);
+  const [y, m, d] = studioDate(from).split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1 + months, d)).toISOString().slice(0, 10);
 }
 
 /** "11.11.2027": the year matters for a declaration that lasts a year. */
@@ -55,5 +58,5 @@ export const fmtValid = (iso: string) => iso.split("-").reverse().map(Number).jo
 /** A declaration on this device that is current: the same wording version and not past its date. */
 export function healthValid(h: HealthRecord | undefined, now = new Date()): boolean {
   if (!h || h.version !== HEALTH_VERSION) return false;
-  return h.validUntil >= now.toISOString().slice(0, 10);
+  return h.validUntil >= studioDate(now);
 }
