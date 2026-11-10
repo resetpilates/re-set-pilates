@@ -364,7 +364,7 @@ test("receipts are sent after the reply, through every configured channel", asyn
   const mail = sent[0] as { to: { email: string }; subject: string; html: string; bcc: string };
   expect(mail.to.email).toBe("maya@example.com");
   expect(mail.subject).toContain("RS-261019-GIFT");
-  expect(mail.html).toContain("/assets/logo-wordmark.png"); // the site logo
+  expect(mail.html).toContain("/assets/reset-wordmark.png"); // the site logo
   expect(mail.html).not.toContain("@resetpilates_"); // no social handles
   expect(mail.html).toContain("resetpilates11@gmail.com"); // studio contact
   expect(mail.bcc).toBe("resetpilates11@gmail.com");

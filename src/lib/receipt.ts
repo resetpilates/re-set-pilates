@@ -111,8 +111,8 @@ export function studioContact() {
   };
 }
 
-/** The site's logo (the "re:set / pilates" wordmark, top left of every page) as a PNG, absolute so it loads inside emails. */
-export const RECEIPT_LOGO = "/assets/logo-wordmark.png";
+/** The RE:SET PILATES logo as a transparent PNG (email clients do not show SVG), absolute so it loads inside emails. */
+export const RECEIPT_LOGO = "/assets/reset-wordmark.png";
 export const receiptLogo = () => `${siteConfig.siteUrl}${RECEIPT_LOGO}`;
 
 /** A complete, self-contained HTML document (inline styles only, so it renders the same in the app, a browser tab and an email). */
@@ -153,7 +153,7 @@ export function renderReceiptHtml(r: ReceiptData, type: DocType, opts: { logo?: 
 <body style="margin:0;background:#f6f1ea;font-family:${he ? "Heebo," : ""}Inter,-apple-system,'Segoe UI',Arial,sans-serif;color:${ink};font-size:15px;line-height:1.5">
 <div class="sheet" style="max-width:560px;margin:24px auto;background:#fffdf9;border-radius:16px;box-shadow:0 1px 3px rgba(0,0,0,.06);padding:32px 28px">
   <table role="presentation" style="width:100%;border-collapse:collapse"><tr>
-    <td style="vertical-align:middle"><img src="${esc(opts.logo ?? receiptLogo())}" width="113" height="60" alt="${esc(s.name)}" style="display:block;height:60px;width:auto"></td>
+    <td style="vertical-align:middle"><img src="${esc(opts.logo ?? receiptLogo())}" width="124" height="60" alt="${esc(s.name)}" style="display:block;height:60px;width:auto"></td>
     <td style="vertical-align:middle;text-align:${he ? "left" : "right"}">
       <div style="font-size:22px;font-weight:600;letter-spacing:.02em">${esc(title)}</div>
       <div style="color:${muted};font-size:13px;direction:ltr;display:inline-block">${esc(t.no)} ${esc(r.no)}</div>
