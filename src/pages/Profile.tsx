@@ -2,7 +2,7 @@ import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { planName } from "../components/blocks";
 import { ShowAsPicker } from "./ClassDetail";
-import { ContactFields, readContact } from "../components/forms";
+import { ContactFields, readContact, termsAccepted, TermsField } from "../components/forms";
 import { LangToggle, Wordmark } from "../components/Shell";
 import { Sheet, Switch } from "../components/ui";
 import { planById } from "../config/pricing";
@@ -29,8 +29,11 @@ export default function Profile() {
   const signedIn = store.isMember || !!known;
   const submitSignIn = (e: FormEvent) => {
     e.preventDefault();
-    const c = readContact(new FormData(e.currentTarget as HTMLFormElement));
-    store.saveProfile({ firstName: c.firstName, lastName: c.lastName, phone: c.phone, email: c.email ?? "" });
+    const f = new FormData(e.currentTarget as HTMLFormElement);
+    const c = readContact(f);
+    // Registration: the studio terms must be accepted here (a checkbox, no signature)
+    const terms = f.get("terms") === "on" ? { termsAcceptedAt: new Date().toISOString(), termsVersion: siteConfig.policies.termsVersion } : {};
+    store.saveProfile({ firstName: c.firstName, lastName: c.lastName, phone: c.phone, email: c.email ?? "", ...terms });
     setSignIn(false);
   };
   const plan = store.planId ? planById(store.planId) : undefined;
@@ -187,6 +190,15 @@ export default function Profile() {
             {t.nav.faq}
             <span className="chev" aria-hidden />
           </Link>
+          <Link to={href("terms")} className="row-sub">
+            <span className="stack gap-4">
+              {t.nav.terms}
+              <span className={`tiny ${termsAccepted(store.profile) ? "hi" : "muted"}`}>
+                {termsAccepted(store.profile) ? t.terms.acceptedOn.replace("{date}", fmtDate(new Date(store.profile.termsAcceptedAt!))) : t.terms.notAccepted}
+              </span>
+            </span>
+            <span className="chev" aria-hidden />
+          </Link>
           <Link to={href("contact")}>
             {t.nav.contact}
             <span className="chev" aria-hidden />
@@ -223,6 +235,7 @@ export default function Profile() {
             <h2 className="display d-md">{t.profile.signInTitle}</h2>
             <p className="small muted">{t.profile.signInSub}</p>
             <ContactFields id="signin" profile={store.profile} />
+            <TermsField profile={store.profile} />
             <button className="btn btn--primary btn--block">{t.profile.signInCta}</button>
           </form>
         </Sheet>

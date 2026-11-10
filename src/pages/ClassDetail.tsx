@@ -16,7 +16,8 @@ import { useSeo } from "../lib/seo";
 import { relay } from "../lib/relay";
 import { SHOW_AS, scheduleName, type Contact, type ShowAs, type SlotRef } from "../lib/relayTypes";
 import { useStore } from "../lib/store";
-import { ContactFields, readContact } from "../components/forms";
+import { ContactFields, readContact, TermsField } from "../components/forms";
+import { siteConfig } from "../config/site";
 
 export default function ClassDetail() {
   const { id = "" } = useParams();
@@ -74,8 +75,10 @@ export default function ClassDetail() {
   const slotRef: SlotRef = { slotId: slot.id, service: slot.service, date: slot.date, time: slot.time, minutes: slot.minutes, capacity: slot.capacity };
   const whoFrom = (form: HTMLFormElement | null): Contact => {
     if (form && needsDetails) {
-      const c = readContact(new FormData(form));
-      store.saveProfile({ firstName: c.firstName, lastName: c.lastName, phone: c.phone });
+      const f = new FormData(form);
+      const c = readContact(f);
+      // First booking on this device doubles as registration: the studio terms box is required there
+      store.saveProfile({ firstName: c.firstName, lastName: c.lastName, phone: c.phone, ...(f.get("terms") === "on" ? { termsAcceptedAt: new Date().toISOString(), termsVersion: siteConfig.policies.termsVersion } : {}) });
       return c;
     }
     const p = store.profile;
@@ -279,6 +282,7 @@ export default function ClassDetail() {
                   <>
                     <p className="small muted">{t.form.detailsNote}</p>
                     <ContactFields id="bk" profile={store.profile} email="none" />
+                    <TermsField profile={store.profile} />
                   </>
                 )}
                 {isReformer && (
@@ -314,7 +318,7 @@ export default function ClassDetail() {
               {t.confirm.questions}
             </button>
             <p className="tiny center">
-              {t.confirm.policy}: {t.my.policyText}
+              {t.confirm.policy}: {t.my.policyText.replace("{hours}", String(siteConfig.policies.cancelHours))}
             </p>
           </div>
         ) : (

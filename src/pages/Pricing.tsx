@@ -14,7 +14,7 @@ import { useSeo } from "../lib/seo";
 import { relay } from "../lib/relay";
 import type { Contact, SlotRef } from "../lib/relayTypes";
 import { useStore } from "../lib/store";
-import { ConsentField, ContactFields, HeardField, profileFrom, readContact, readExtras } from "../components/forms";
+import { ConsentField, ContactFields, HeardField, profileFrom, readContact, readExtras, termsAccepted, TermsField } from "../components/forms";
 import { bookingProvider, fromISO, rememberBed, rememberedBed } from "../lib/booking";
 
 export function Pricing() {
@@ -110,6 +110,11 @@ export function Checkout() {
     const f = new FormData(e.currentTarget as HTMLFormElement);
     const contact = readContact(f);
     const x = readExtras(f);
+    // The studio terms box is required unless this device already accepted the current terms; the Worker refuses an order without it
+    if (!x.terms && !termsAccepted(store.profile)) {
+      payTab?.close();
+      return;
+    }
     setSending(true);
     setFailed(false);
     // Saved in Airtable as a Pending payment until Orit confirms it. A queued order (offline) counts as saved.
@@ -291,10 +296,7 @@ export function Checkout() {
               <span style={{ direction: "ltr" }}>₪{effectivePrice(plan, kind)}</span>
             </div>
             <div className="stack gap-12">
-              <label className="tick">
-                <input type="checkbox" name="terms" required />
-                <span>{t.form.terms}</span>
-              </label>
+              <TermsField profile={store.profile} />
               <ConsentField profile={store.profile} />
             </div>
             {!check.ok && check.reason === "repeat" ? (

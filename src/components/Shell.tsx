@@ -156,6 +156,7 @@ function SiteMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
     ["gift", t.nav.gift],
     ["shop", t.nav.shop],
     ["faq", t.nav.faq],
+    ["terms", t.nav.terms],
     ["contact", t.nav.contact],
   ];
 
@@ -305,6 +306,7 @@ function Footer() {
             <ul>
               <li><Link to={href("about")}>{t.nav.about}</Link></li>
               <li><Link to={href("faq")}>{t.nav.faq}</Link></li>
+              <li><Link to={href("terms")}>{t.nav.terms}</Link></li>
               <li><Link to={href("contact")}>{t.nav.contact}</Link></li>
               <li><a href={`mailto:${siteConfig.contact.email}`} dir="ltr">{siteConfig.contact.email}</a></li>
             </ul>

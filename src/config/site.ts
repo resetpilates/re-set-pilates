@@ -57,7 +57,10 @@ export const siteConfig = {
   },
   // Feature flags
   policies: {
-    cancelHours: 24, // cancel at least this many hours before class to get the session back
+    cancelHours: 12, // group classes: cancel at least this many hours before class to get the session back (studio terms §2, 7 Nov 2026)
+    privateCancelHours: 24, // private and duo sessions (studio terms §6)
+    // Date of the studio terms in force. Bump it when Orit changes the terms: everyone is asked to accept again.
+    termsVersion: "2026-11-07",
     pregnancyUpTo: TODO, // e.g. "week 30": Orit to confirm
   },
   flags: {

@@ -2510,3 +2510,17 @@ html[lang="he"] .pgcard__ai { letter-spacing: 0.04em; font-size: 11.5px; }
 .hdr .wrap { padding-inline: 20px 8px; }
 @media (max-width: 360px) { .hdr .wrap { padding-inline: 16px 6px; } }
 @media (min-width: 1000px) { .hdr .wrap { padding-inline: 24px 18px; } }
+
+/* ───────── v4.4 · studio terms (תקנון): the terms page, the sheet behind the checkout box, the profile row ───────── */
+.terms { display: grid; gap: 28px; }
+.terms__sec h3 { font-size: 22px; }
+.terms__sec ul { display: grid; gap: 8px; padding-inline-start: 18px; margin: 0; font-size: 15px; line-height: 1.55; list-style: disc; }
+.terms__sec li::marker { color: var(--clay); }
+.terms-sheet .terms { gap: 20px; }
+.terms-sheet .terms__sec h3 { font-size: 19px; }
+.terms-sheet .terms__sec ul { font-size: 14.5px; }
+.terms-accept { gap: 12px; }
+.linklike { background: none; border: 0; padding: 0; font: inherit; color: inherit; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.terms-ok a { text-decoration: underline; text-underline-offset: 3px; }
+.rows > .row-sub { min-height: 68px; }
+.rows > .row-sub .tiny { font-weight: 500; }

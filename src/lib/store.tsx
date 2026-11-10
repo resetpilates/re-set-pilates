@@ -29,6 +29,8 @@ export interface Profile {
   heard?: string; // "How did you hear about us?" — asked once
   showAs?: ShowAs; // how the name appears on the schedule beds (default "short": first initial + last name)
   consented?: boolean; // ticked "Send me news and offers" at least once
+  termsAcceptedAt?: string; // ISO: when the studio terms were accepted on this device
+  termsVersion?: string; // which version (siteConfig.policies.termsVersion) was accepted
 }
 
 /** In-app notification (the bell on the profile). Purchases add one that opens the receipt. */

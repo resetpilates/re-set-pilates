@@ -84,7 +84,7 @@ export default function My() {
         )}
 
         <p className="tiny">
-          {t.my.policy}: {t.my.policyText}
+          {t.my.policy}: {t.my.policyText.replace("{hours}", String(siteConfig.policies.cancelHours))}
         </p>
 
         {store.waitlist.length > 0 && (
