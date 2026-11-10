@@ -78,7 +78,7 @@ export const localBusinessLd = (lang: string) => {
       ? "סטודיו בוטיק לפילאטיס מכשירים (רפורמר) בהוד השרון. קבוצות של עד 5 מתאמנות, פילאטיס מזרן, אימונים אישיים ודואו."
       : "Boutique Reformer Pilates studio in Hod Hasharon. Groups of up to 5, plus Mat Pilates, private and duo sessions.",
     url: `${origin}/`,
-    logo: abs(siteConfig.studioMedia.logoDisc),
+    logo: abs(siteConfig.studioMedia.ogImage), // Google business logo: the new RE:SET logo on white
     image: [abs(siteConfig.studioMedia.heroPoster), abs(siteConfig.studioMedia.ogStudio), abs(siteConfig.studioMedia.ogImage)],
     ...(known(c.phone) && { telephone: `+${c.whatsapp}` }),
     ...(known(c.email) && { email: c.email }),

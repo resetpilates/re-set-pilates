@@ -95,7 +95,6 @@ export const siteConfig = {
     // reformers) stays for the schema.org photo list only; the owner asked that a shared link shows the logo, not the studio.
     ogImage: "/assets/og-logo-v2.jpg",
     ogStudio: "/assets/og-studio.jpg",
-    logoDisc: "/assets/logo-gold-ring.webp",
     // Chat launcher and chat header avatar: the same logo on white, sized to sit inside a circle.
     chatAvatar: "/icons/icon-chat-512.png",
     // The RE:SET logo with PILATES under it on a white square, sized to sit inside a circle: welcome screen.
