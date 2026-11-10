@@ -87,6 +87,7 @@ export interface CheckoutMsg extends Base {
   heard?: HeardFrom;
   consent: boolean;
   termsAccepted: true;
+  autoRenew?: boolean; // monthly memberships only: the buyer opted in to renew every month
   orderId?: string; // receipt number (RS-YYMMDD-XXXX): the same order sent twice is saved once
   itemLabel?: string; // the plan's name as the buyer saw it, for the receipt
   carryOver?: number; // unused classes moved over from the buyer's previous plan
@@ -112,6 +113,13 @@ export interface BookingMsg extends Base {
 export interface CancelMsg extends Base {
   bookingId: string; // Airtable record id returned when booking
   phone: string; // must match the booking's member
+}
+
+/** Auto-renew switched on or off from the profile. */
+export interface RenewalMsg extends Base {
+  membershipId: string; // Airtable record id returned by checkout
+  phone: string; // must match the membership's member
+  autoRenew: boolean;
 }
 
 export interface WaitlistMsg extends Base {
@@ -166,6 +174,7 @@ export interface RelayMap {
   checkout: CheckoutMsg;
   booking: BookingMsg;
   cancel: CancelMsg;
+  renewal: RenewalMsg;
   waitlist: WaitlistMsg;
   "launch-waitlist": LaunchWaitlistMsg;
   gift: GiftMsg;

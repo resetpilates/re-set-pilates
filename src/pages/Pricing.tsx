@@ -14,7 +14,7 @@ import { useSeo } from "../lib/seo";
 import { relay } from "../lib/relay";
 import type { Contact, SlotRef } from "../lib/relayTypes";
 import { useStore } from "../lib/store";
-import { ConsentField, ContactFields, HeardField, profileFrom, readContact, readExtras } from "../components/forms";
+import { ConsentField, ContactFields, HeardField, profileFrom, readContact, readExtras, termsAccepted, TermsField } from "../components/forms";
 import { bookingProvider, fromISO, rememberBed, rememberedBed } from "../lib/booking";
 
 export function Pricing() {
@@ -95,6 +95,9 @@ export function Checkout() {
   const passClasses = plan.billingType === "pass" ? (plan.sessions ?? 0) + (launch ? (plan.bonusSessions ?? 0) : 0) + carry : 0;
   const fmt = (d: Date) => `${d.getDate()}.${d.getMonth() + 1}.${d.getFullYear()}`;
   const payLabel = { bit: t.checkout.payBit, card: t.checkout.payCard };
+  const monthly = plan.billingType === "monthly";
+  const hours = String(siteConfig.policies.cancelHours);
+  const keyTerms = monthly ? t.checkout.keyMonthly.replace("{hours}", hours) : t.checkout.keyPass.replace("{months}", String(plan.validityMonths)).replace("{hours}", hours);
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     const id = ((e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null)?.value;
@@ -110,6 +113,11 @@ export function Checkout() {
     const f = new FormData(e.currentTarget as HTMLFormElement);
     const contact = readContact(f);
     const x = readExtras(f);
+    // The studio terms box is required unless this device already accepted the current terms; the Worker refuses an order without it
+    if (!x.terms && !termsAccepted(store.profile)) {
+      payTab?.close();
+      return;
+    }
     setSending(true);
     setFailed(false);
     // Saved in Airtable as a Pending payment until Orit confirms it. A queued order (offline) counts as saved.
@@ -117,7 +125,7 @@ export function Checkout() {
     const no = receiptNumber();
     const itemLabel = planName(plan, t, kind);
     const r = await relay("checkout", {
-      lang, contact, planId: plan.id, kind: kind ?? undefined, method: method.id, heard: x.heard, consent: x.consent, termsAccepted: true, website: x.website,
+      lang, contact, planId: plan.id, kind: kind ?? undefined, method: method.id, heard: x.heard, consent: x.consent, termsAccepted: true, autoRenew: monthly && x.autoRenew, website: x.website,
       orderId: no, itemLabel, carryOver: carry,
     });
     if (!r.ok && !r.queued) {
@@ -140,6 +148,7 @@ export function Checkout() {
     });
     store.addReceipt({ ...receipt, link: r.receiptUrl, sentVia: r.sentVia });
     store.setPlan(plan.id, kind, carry);
+    store.setRenewal(monthly && x.autoRenew, r.id);
     if (store.reminders) systemNotice(t.receipt.notice.replace("{no}", no), t.receipt.noticeSub, href(`receipt/${no}`));
     setReceiptNo(no);
     setSentVia(r.sentVia ?? []);
@@ -161,7 +170,7 @@ export function Checkout() {
       prefTime: teens ? "Teen evening" : "Adult morning",
       source: next ? "Booking" : "Pricing",
       planId: plan.id,
-      wanted: `${planName(plan, t, slotLabel ? null : kind)} · ₪${effectivePrice(plan, kind)} · ${payLabel[method]}`,
+      wanted: [`${planName(plan, t, slotLabel ? null : kind)} · ₪${effectivePrice(plan, kind)} · ${payLabel[method]}`, monthly && x.autoRenew ? t.checkout.autoRenewTag : ""].filter(Boolean).join(" · "),
       slot: slotLabel,
       consent: x.consent,
       website: x.website,
@@ -291,10 +300,17 @@ export function Checkout() {
               <span style={{ direction: "ltr" }}>₪{effectivePrice(plan, kind)}</span>
             </div>
             <div className="stack gap-12">
-              <label className="tick">
-                <input type="checkbox" name="terms" required />
-                <span>{t.form.terms}</span>
-              </label>
+              <p className="tiny key-terms">{keyTerms}</p>
+              {monthly && (
+                <label className="tick">
+                  <input type="checkbox" name="autoRenew" />
+                  <span className="stack gap-4">
+                    <span>{t.checkout.autoRenew}</span>
+                    <span className="tiny muted">{t.checkout.autoRenewSub}</span>
+                  </span>
+                </label>
+              )}
+              <TermsField profile={store.profile} />
               <ConsentField profile={store.profile} />
             </div>
             {!check.ok && check.reason === "repeat" ? (

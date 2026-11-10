@@ -31,6 +31,7 @@ const PAGE: Record<string, keyof typeof en.meta> = {
   my: "my",
   profile: "profile",
   progress: "profile",
+  terms: "terms",
 };
 // Personal pages: fine to open, pointless to index.
 const PRIVATE = new Set(["my", "profile", "progress", "checkout", "class", "receipt"]);
