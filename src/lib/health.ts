@@ -30,6 +30,8 @@ export interface HealthRecord {
   validUntil: string; // YYYY-MM-DD
   clearance: boolean; // a doctor's approval is needed before the first class
   answers?: HealthAnswers; // missing when the declaration was confirmed from the studio's records (another device, paper form)
+  queued?: boolean; // made offline: waiting in the outbox, does not count until the studio has it
+  ref?: string; // id sent with the declaration, so a resend is saved once
 }
 
 /** The questions that need a doctor's approval, by id (empty = none). Pregnancy and the months after birth count. */
@@ -57,6 +59,14 @@ export const fmtValid = (iso: string) => iso.split("-").reverse().map(Number).jo
 
 /** A declaration on this device that is current: the same wording version and not past its date. */
 export function healthValid(h: HealthRecord | undefined, now = new Date()): boolean {
-  if (!h || h.version !== HEALTH_VERSION) return false;
+  if (!h || h.queued || h.version !== HEALTH_VERSION) return false;
   return h.validUntil >= studioDate(now);
+}
+
+/** Where this device stands, for the profile row and the "next step" card. */
+export type HealthStatus = "valid" | "sending" | "renew" | "missing";
+export function healthStatus(h: HealthRecord | undefined, now = new Date()): HealthStatus {
+  if (healthValid(h, now)) return "valid";
+  if (h?.queued) return "sending";
+  return h ? "renew" : "missing";
 }

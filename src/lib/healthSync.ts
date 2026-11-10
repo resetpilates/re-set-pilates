@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { HEALTH_VERSION, healthValid } from "./health";
 import { useI18n } from "./i18n";
-import { ask } from "./relay";
+import { RELAY_REPLY, ask, type RelayReplyDetail } from "./relay";
 import { useStore } from "./store";
 
 const asked = new Set<string>();
@@ -13,6 +13,17 @@ export function useHealthSync() {
   const { profile, saveProfile } = useStore();
   const { phone, lastName, health } = profile;
   const current = healthValid(health);
+  // A declaration made offline counts once the outbox has delivered it (the reply carries its ref)
+  const queuedRef = health?.queued ? health.ref : undefined;
+  useEffect(() => {
+    if (!queuedRef) return;
+    const onReply = (e: Event) => {
+      const { event, ref, reply } = (e as CustomEvent<RelayReplyDetail>).detail;
+      if (event === "health-declaration" && ref === queuedRef && reply.ok && health) saveProfile({ health: { ...health, queued: undefined } });
+    };
+    addEventListener(RELAY_REPLY, onReply);
+    return () => removeEventListener(RELAY_REPLY, onReply);
+  }, [queuedRef, health, saveProfile]);
   useEffect(() => {
     if (current || !phone || !lastName.trim()) return;
     const key = `${phone}|${lastName.trim().toLowerCase()}`;

@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { HEALTH_VERSION, clearanceReasons, guardianMissing, healthValid, needsClearance, validUntil, type HealthAnswers } from "./health";
+import { HEALTH_VERSION, clearanceReasons, guardianMissing, healthStatus, healthValid, needsClearance, validUntil, type HealthAnswers } from "./health";
 
 const ok: HealthAnswers = { heart: false, chest: false, dizzy: false, asthma: false, family: false, supervised: false, chronic: false, pregnancy: "no", injury: false, adult: true };
 
@@ -29,4 +29,14 @@ test("a declaration lasts a year on the studio's calendar, in any time zone, and
   expect(validUntil(new Date("2026-11-10T22:30:00Z"))).toBe("2027-11-11"); // 00:30 on 11 Nov in Israel counts as the 11th
   expect(healthValid({ ...rec, version: "old" }, at)).toBe(false);
   expect(healthValid(undefined, at)).toBe(false);
+});
+
+test("a declaration saved offline does not count until it has been sent; status says where the device stands", () => {
+  const at = new Date("2026-11-11T10:00:00Z");
+  const rec = { at: at.toISOString(), version: HEALTH_VERSION, validUntil: validUntil(at), clearance: false, answers: ok };
+  expect(healthStatus(rec, at)).toBe("valid");
+  expect(healthValid({ ...rec, queued: true }, at)).toBe(false);
+  expect(healthStatus({ ...rec, queued: true }, at)).toBe("sending");
+  expect(healthStatus({ ...rec, version: "old" }, at)).toBe("renew");
+  expect(healthStatus(undefined, at)).toBe("missing");
 });

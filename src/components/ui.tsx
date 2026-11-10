@@ -307,3 +307,16 @@ export function Check() {
     </div>
   );
 }
+
+/** Yes / No as a radio group (the trainer onboarding and the health declaration). `labelledBy` = the question's id. */
+export function YesNo({ value, onChange, labelledBy, yes, no }: { value: boolean | undefined; onChange: (v: boolean) => void; labelledBy: string; yes: string; no: string }) {
+  return (
+    <div className="opts" role="radiogroup" aria-labelledby={labelledBy}>
+      {[true, false].map((b) => (
+        <button key={String(b)} type="button" className="opt" role="radio" aria-checked={value === b} onClick={() => onChange(b)}>
+          {b ? yes : no}
+        </button>
+      ))}
+    </div>
+  );
+}

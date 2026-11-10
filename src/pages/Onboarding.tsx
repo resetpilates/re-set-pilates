@@ -1,7 +1,7 @@
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Check } from "../components/ui";
+import { Check, YesNo } from "../components/ui";
 import { trainerConfig } from "../config/trainer";
 import { useTrainerCopy, type TrainerCopy } from "../content/trainer";
 import { track } from "../lib/analytics";
@@ -224,15 +224,7 @@ function Field({ q, a, set, c, showError }: { q: Question; a: Answers; set: (id:
       </div>
     );
   } else if (q.type === "bool") {
-    control = (
-      <div className="opts" role="radiogroup" aria-labelledby={`${id}-l`}>
-        {[true, false].map((b) => (
-          <button key={String(b)} type="button" className="opt" role="radio" aria-checked={v === b} onClick={() => set(q.id, b)}>
-            {b ? c.ob.yes : c.ob.no}
-          </button>
-        ))}
-      </div>
-    );
+    control = <YesNo value={typeof v === "boolean" ? v : undefined} onChange={(b) => set(q.id, b)} labelledBy={`${id}-l`} yes={c.ob.yes} no={c.ob.no} />;
   }
 
   return (
