@@ -109,7 +109,6 @@ const bestPerClass = (plans: PricingItem[], launch: boolean, kind?: ClassKind | 
  * Reformer: single ₪60, with a plan from ₪50 (15-pass). Mat: ₪55 / from ₪45. Teens and soldiers: ₪50 either way.
  * The "with a plan" figure is derived from the price list above so it can never drift from it.
  */
-export const intro = { active: true };
 export const classPrices = (who: "adult" | "teen", launch = siteConfig.flags.launchPricing, kind: ClassKind | null = "reformer") =>
   who === "teen"
     ? { single: teenSingleClass.price, plan: (teensPlan && perClass(teensPlan, launch)) || CONCESSION_MAX }

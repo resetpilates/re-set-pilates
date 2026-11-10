@@ -301,6 +301,7 @@ export const en = {
     payNote: "Paid with your membership or pass. No extra charge.",
     payNoteVisitor: "Single class or a membership: you choose at the next step.",
     alreadyBooked: "You are booked for this class",
+    lateCancelled: "You cancelled this class inside the cancellation window, so the session counts as used and can't be booked again.",
     notFound: "This class is no longer available.",
   },
   confirm: {
@@ -355,7 +356,6 @@ export const en = {
     single: "Single class",
     singlePrice: "Single class: ₪{price}",
     singlePlan: "With a plan: from ₪{price} per class",
-    singleSave: "or save with a membership",
     concession: "Teens and active-duty soldiers never pay more than ₪50 a class, single or with a plan.",
     bonus: "+1 class free · launch month",
     validity: "Monthly plans are valid one month from purchase. Passes are valid two months. Mat Pilates is ₪5 a class less than Reformer. A Reformer class is never under ₪50.",

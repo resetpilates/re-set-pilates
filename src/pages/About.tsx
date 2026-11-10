@@ -4,6 +4,7 @@ import { Accordion, MaskImg, Reveal } from "../components/ui";
 import { siteConfig } from "../config/site";
 import { founder, instructors, pressMentions } from "../config/team";
 import { track } from "../lib/analytics";
+import { CLASS_MINUTES } from "../lib/booking";
 import { useI18n } from "../lib/i18n";
 import { faqLd, useSeo } from "../lib/seo";
 
@@ -36,7 +37,7 @@ export function About() {
                 <span>{t.about.statBeds}</span>
               </div>
               <div className="stat">
-                <b>50</b>
+                <b>{CLASS_MINUTES}</b>
                 <span>{t.about.statMin}</span>
               </div>
               <div className="stat">

@@ -47,7 +47,7 @@ export function planUsage(plan: PricingItem, bookings: Booking[], forDate: Date,
   const mine = bookings.filter((b) => bookedAt(b) >= start);
   const expired = forDate >= planEnd(plan, planStart);
   if (plan.billingType === "monthly") {
-    const used = countInWeek(bookings, forDate);
+    const used = countInWeek(mine, forDate);
     if (plan.perWeek === "unlimited") return { used, cap: null, left: Infinity, expired: false, extra: 0 };
     const cap = plan.perWeek as number;
     // Carried classes cover bookings above the weekly cap, in any week of the plan

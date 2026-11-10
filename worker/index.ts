@@ -3,7 +3,7 @@
 //   GET  /api/health   which secrets are set
 //   /go/<slug>         short links for flyers and QR codes
 //   pages              link-preview and search tags per language and page (see run_worker_first in wrangler.jsonc)
-import { planById } from "../src/config/pricing";
+import { planById, priceFor } from "../src/config/pricing";
 import { isTodo, mapsLink, siteConfig } from "../src/config/site";
 import { withPreview } from "./preview";
 import type {
@@ -121,6 +121,9 @@ function slot(v: unknown): SlotRef {
   const date = text(s.date, 10, true);
   const time = text(s.time, 5, true);
   if (!service || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}$/.test(time)) throw new BadRequest("bad slot");
+  const start = Date.parse(studioInstant(date, time));
+  if (Number.isNaN(start) || new Date(`${date}T00:00:00Z`).toISOString().slice(0, 10) !== date) throw new BadRequest("bad slot"); // e.g. 31 Feb
+  if (start < Date.now()) throw new BadRequest("past slot"); // the class has already started (studio time)
   return {
     slotId: `${service}_${date}_${time.replace(":", "")}`, // rebuilt here, never trusted from the client
     service,
@@ -400,7 +403,11 @@ const handlers: Record<RelayEvent, Handler> = {
     if (!method) throw new BadRequest("bad method");
     const orderId = isReceiptNumber(m.orderId) ? m.orderId : undefined;
     const p = await planByWebsiteId(at, text(m.planId, 12, true));
-    const kind = oneOf(m.kind, ["reformer", "mat"] as const); // Reformer and Mat plans share one price list
+    const kind = oneOf(m.kind, ["reformer", "mat"] as const);
+    // Airtable lists the Reformer price. Mat is ₪5 a class less, taken from the site's own price list so the two never drift.
+    const local = planById(p.websiteId);
+    const matOff = kind === "mat" && local ? priceFor(local, "reformer") - priceFor(local, "mat") : 0;
+    const price = Math.max(0, p.price - matOff);
     const kindLabel = kind ? { reformer: "Reformer", mat: "Mat" }[kind] : "";
     const carry = Math.min(Math.max(Math.round(Number(m.carryOver) || 0), 0), 60);
     const today = todayIL();
@@ -429,7 +436,7 @@ const handlers: Record<RelayEvent, Handler> = {
       [S.start]: today,
       [S.renews]: addMonths(today, p.validityMonths || 1),
       ...(p.type === "Pass" && p.bonus ? { [S.bonus]: p.bonus } : {}),
-      [S.pricePaid]: p.price,
+      [S.pricePaid]: price,
       [S.launchApplied]: p.launchApplied,
       [S.soldBy]: "Website",
     });
@@ -437,7 +444,7 @@ const handlers: Record<RelayEvent, Handler> = {
     await at.create(T.payments, {
       [P.name]: [orderId, fullName(c), p.name].filter(Boolean).join(" · "),
       [P.for]: p.type === "Pass" ? "Pass" : "Membership",
-      [P.amount]: p.price,
+      [P.amount]: price,
       [P.method]: { bit: "Bit", card: "Credit card" }[method],
       [P.status]: "Pending",
       [P.member]: [member.id],
@@ -446,15 +453,14 @@ const handlers: Record<RelayEvent, Handler> = {
     if (!orderId) return { ok: true, id: membership.id };
     const lg = lang(m.lang);
     const label = text(m.itemLabel, 80) || `${p.name}${kindLabel ? ` · ${kindLabel}` : ""}`;
-    const local = planById(p.websiteId);
     const classes = local?.billingType === "pass" ? (local.sessions ?? 0) + (siteConfig.flags.launchPricing ? (local.bonusSessions ?? 0) : 0) + carry : 0;
     const sent = await issueReceipt(ctx, {
       no: orderId,
       issuedAt: new Date().toISOString(),
       lang: lg,
       customer: { name: fullName(c), phone: phonePretty(c.phone), email: c.email },
-      lines: [{ label, ...(carry ? { detail: lg === "he" ? `כולל ${carry} שיעורים שנותרו מהמנוי הקודם` : `Includes ${carry} classes left on your previous plan` } : {}), amount: p.price }],
-      total: p.price,
+      lines: [{ label, ...(carry ? { detail: lg === "he" ? `כולל ${carry} שיעורים שנותרו מהמנוי הקודם` : `Includes ${carry} classes left on your previous plan` } : {}), amount: price }],
+      total: price,
       method,
       paid: false, // Orit confirms the payment in Airtable
       ...(classes ? { classesTotal: classes } : {}),
@@ -744,7 +750,12 @@ function go(slug: string, url: URL) {
 function sameOrigin(req: Request): boolean {
   const origin = req.headers.get("Origin");
   if (!origin) return false;
-  const o = new URL(origin);
+  let o: URL;
+  try {
+    o = new URL(origin); // "null" (sandboxed iframes) and other junk are simply not us
+  } catch {
+    return false;
+  }
   const u = new URL(req.url);
   if (o.host === u.host) return true;
   // Local origins are only trusted when the Worker itself is running locally (wrangler dev / vite proxy).

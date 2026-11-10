@@ -4,7 +4,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { instructorName } from "../components/blocks";
 import { openChat } from "../components/ChatWidget";
 import { Check, Sheet, Switch } from "../components/ui";
-import { classPrices, intro, planById, priceFor, singleClass } from "../config/pricing";
+import { classPrices, planById, priceFor, singleClass } from "../config/pricing";
 import { serviceById } from "../config/services";
 import { track } from "../lib/analytics";
 import { bookingProvider, fromISO, rememberBed, slotStart, type ClassSlot } from "../lib/booking";
@@ -58,6 +58,7 @@ export default function ClassDetail() {
   const copy = t.services.items[slot.service];
   const day = fromISO(slot.date);
   const existing = store.upcoming.find((b) => b.slotId === slot.id);
+  const lateCancelled = !existing && store.bookings.some((b) => b.slotId === slot.id && b.cancelledLate);
   const waitlisted = store.waitlist.includes(slot.id);
   const isReformer = slot.capacity !== null;
   const bedLabel = !isReformer ? copy.short : bed === null ? t.klass.anyBed : `${t.klass.bed} ${bed + 1}`;
@@ -135,7 +136,7 @@ export default function ClassDetail() {
         <p className="single-price">
           <b>{t.pricing.singlePrice.replace("{price}", String(priceFor(singleClass, slot.service)))}</b>
           <Link to={href(`pricing?kind=${slot.service}&next=${slot.id}`)} className="link small">
-            {intro.active ? t.pricing.singlePlan.replace("{price}", String(classPrices("adult", undefined, slot.service).plan)) : t.pricing.singleSave}
+            {t.pricing.singlePlan.replace("{price}", String(classPrices("adult", undefined, slot.service).plan))}
           </Link>
         </p>
 
@@ -143,7 +144,7 @@ export default function ClassDetail() {
           {copy.desc}
         </p>
 
-        {isReformer && !existing && !slot.full && (
+        {isReformer && !existing && !lateCancelled && !slot.full && (
           <div className="card stack gap-16">
             <div className="row between">
               <h2 className="key">{t.klass.chooseBed}</h2>
@@ -192,6 +193,8 @@ export default function ClassDetail() {
               {t.confirm.viewBookings}
             </Link>
           </div>
+        ) : lateCancelled ? (
+          <div className="notice">{t.klass.lateCancelled}</div>
         ) : slot.full ? (
           <div className="stack gap-12">
             <form className="stack gap-12" onSubmit={joinWaitlist}>
