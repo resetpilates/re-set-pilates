@@ -57,7 +57,7 @@ export const siteConfig = {
   },
   // Feature flags
   policies: {
-    cancelHours: 24, // one rule for everything (group, private, duo, closed groups, events): cancel at least 24 hours before to avoid a charge
+    cancelHours: 24, // group classes, private, duo and closed groups: cancel at least 24 hours before to avoid a charge (private events: 5 days, studio terms §8)
     // Date of the studio terms in force. Bump it when Orit changes the terms: everyone is asked to accept again.
     termsVersion: "2026-11-10",
     pregnancyUpTo: TODO, // e.g. "week 30": Orit to confirm

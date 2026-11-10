@@ -802,7 +802,7 @@ export const en = {
       { h: "8. Private events", items: [
         "A private event lasts 90 minutes, for a group of up to 5 participants.",
         "Booking and payment are made in advance.",
-        "An event can be cancelled up to 24 hours before it starts with no cancellation fee.",
+        "An event can be cancelled up to 5 days before its date with no cancellation fee.",
         "A later cancellation is charged the full booking amount, except where the law grants a right to cancel or a refund.",
         "If the studio cancels the event, you receive a full refund.",
       ] },
