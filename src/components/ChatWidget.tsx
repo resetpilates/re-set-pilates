@@ -14,7 +14,7 @@ interface Msg extends ChatReply {
   from: "me" | "studio";
 }
 
-const AVATAR = siteConfig.studioMedia.logoDisc;
+const AVATAR = siteConfig.studioMedia.chatAvatar;
 export const OPEN_CHAT = "reset:open-chat";
 export const openChat = () => window.dispatchEvent(new CustomEvent(OPEN_CHAT));
 
