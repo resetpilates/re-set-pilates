@@ -220,7 +220,7 @@ function Field({ q, a, set, c, showError }: { q: Question; a: Answers; set: (id:
           <span>{c.ob.mediaTick}</span>
         </label>
         <p className="tiny consent__note">{c.ob.mediaCamera}</p>
-        <span className="tiny">{c.ob.consentDraft} · {trainerConfig.consentVersions.media}</span>
+        <span className="tiny">{trainerConfig.consentVersions.media}</span>
       </div>
     );
   } else if (q.type === "bool") {

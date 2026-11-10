@@ -47,7 +47,7 @@ export const trainerConfig = {
   paidCards: { enabled: false, cooldownDays: 14, dismissDays: 30 },
 
   /** Consent texts are versioned; bump the version whenever the wording changes. */
-  consentVersions: { health: "health-v0-draft", promo: "promo-v0-draft", media: "media-v0-draft" },
+  consentVersions: { health: "health-v0-draft", promo: "promo-v0-draft", media: "media-v1" }, // media wording approved by Orit, 10 Nov 2026
 };
 
 /**

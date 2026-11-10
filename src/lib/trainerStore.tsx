@@ -15,6 +15,7 @@ import {
   type ReviewTask,
   type Session,
   type TrainerNote,
+  withMediaConsent,
 } from "./trainer";
 
 // Progress-profile state. Demo only: it lives in this browser (localStorage), like bookings.
@@ -116,15 +117,13 @@ export function TrainerProvider({ children }: { children: ReactNode }) {
         const now = iso();
         const flags = onboardingRedFlags(a);
         const target = Number(a.S1) || 2;
-        // Photo / video consent: withdrawn when a returning client unticks it (granted below when ticked)
-        const consents: ConsentRecord[] = p.consents.map((c) => (c.scope === "media" && !c.revokedAt && a.S9 !== true ? { ...c, revokedAt: now } : c));
+        // Photo / video consent follows the checkbox, also for a returning client who unticks it
+        const consents: ConsentRecord[] = withMediaConsent(p.consents, a.S9 === true, cfg.consentVersions.media, now);
         if (!consents.some((c) => c.scope === "health" && c.textVersion === cfg.consentVersions.health && !c.revokedAt))
           consents.push({ scope: "health", textVersion: cfg.consentVersions.health, grantedAt: now });
         for (const ch of Array.isArray(a.S8) ? a.S8 : [])
           if (!consents.some((c) => c.scope === "promo" && c.channel === ch && !c.revokedAt))
             consents.push({ scope: "promo", channel: ch, textVersion: cfg.consentVersions.promo, grantedAt: now });
-        if (a.S9 === true && !consents.some((c) => c.scope === "media" && !c.revokedAt))
-          consents.push({ scope: "media", textVersion: cfg.consentVersions.media, grantedAt: now });
         const reviews = flags.length && !p.reviews.some((r) => r.type === "onboarding" && r.status !== "resolved")
           ? [...p.reviews, { id: `rv${Date.now()}`, type: "onboarding" as const, evidence: ["H1", "H3", "H6"], reasons: flags, status: "open" as const, createdAt: now }]
           : p.reviews;
@@ -173,10 +172,7 @@ export function TrainerProvider({ children }: { children: ReactNode }) {
   const setMedia = useCallback(
     (on: boolean) =>
       setS((p) => {
-        const now = iso();
-        const consents = on
-          ? [...p.consents, { scope: "media" as const, textVersion: cfg.consentVersions.media, grantedAt: now }]
-          : p.consents.map((c) => (c.scope === "media" && !c.revokedAt ? { ...c, revokedAt: now } : c));
+        const consents = withMediaConsent(p.consents, on, cfg.consentVersions.media, iso());
         return { ...p, consents, answers: { ...p.answers, S9: on } };
       }),
     [],

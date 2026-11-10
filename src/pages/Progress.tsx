@@ -30,7 +30,7 @@ import {
   type Assessment,
   type Milestone,
   type NextAction,
-  type Session,
+  type Session, hasConsent,
 } from "../lib/trainer";
 import { useTrainer } from "../lib/trainerStore";
 import { Scale } from "./Onboarding";
@@ -605,7 +605,7 @@ function Details({ sessions, risk }: { sessions: Session[]; risk: boolean }) {
           ))}
           <div>
             <span className="small">{d.media}</span>
-            <Switch checked={tr.answers.S9 === true} onChange={tr.setMedia} label={d.media} />
+            <Switch checked={hasConsent(tr.consents, "media")} onChange={tr.setMedia} label={d.media} />
           </div>
           <Link to={href("progress/start")}>
             <span className="small">{d.editAnswers}</span>

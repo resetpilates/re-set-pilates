@@ -197,6 +197,18 @@ export interface ConsentRecord {
   revokedAt?: string | null;
 }
 
+/** Is there a consent of this scope that has not been withdrawn? */
+export const hasConsent = (consents: ConsentRecord[], scope: ConsentRecord["scope"]) => consents.some((c) => c.scope === scope && !c.revokedAt);
+
+/**
+ * Photo / video consent follows the checkbox: ticked grants one active "media" record (never a
+ * duplicate), unticked withdraws any active one. Returns the same array when nothing changes.
+ */
+export function withMediaConsent(consents: ConsentRecord[], on: boolean, textVersion: string, now: string): ConsentRecord[] {
+  if (on) return hasConsent(consents, "media") ? consents : [...consents, { scope: "media", textVersion, grantedAt: now }];
+  return hasConsent(consents, "media") ? consents.map((c) => (c.scope === "media" && !c.revokedAt ? { ...c, revokedAt: now } : c)) : consents;
+}
+
 /* ---------- Weeks and consistency (Graph 1) ---------- */
 
 export function weekStart(d: Date) {
