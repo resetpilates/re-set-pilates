@@ -91,9 +91,9 @@ export const siteConfig = {
     heroVideo: "/media/hero.mp4", // Seedance 1.5 Pro: empty studio at dawn, dolly in to the gold-ring sign (12s, 1080p, silent); replace with real footage after the shoot
     heroVideoPhone: "/media/hero-720.mp4", // lighter 720p encode served below 1000px (made by the compress-hero workflow)
     heroPoster: "/assets/hero-poster.webp", // first frame of the hero video (studio + sign); studio-wide.jpg is the plain studio photo
-    // Link preview (WhatsApp, Instagram, Facebook, Google): the re:set wordmark on cream, 1200×630. og-studio.jpg (the five
+    // Link preview (WhatsApp, Instagram, Facebook, Google): the RE:SET logo on white, 1200×630 (new file name so WhatsApp drops its cached preview). og-studio.jpg (the five
     // reformers) stays for the schema.org photo list only; the owner asked that a shared link shows the logo, not the studio.
-    ogImage: "/assets/og-logo.jpg",
+    ogImage: "/assets/og-logo-v2.jpg",
     ogStudio: "/assets/og-studio.jpg",
     logoDisc: "/assets/logo-gold-ring.webp",
     // Chat launcher and chat header avatar: the wordmark on white, sized to sit inside a circle.
