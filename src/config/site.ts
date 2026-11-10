@@ -57,10 +57,9 @@ export const siteConfig = {
   },
   // Feature flags
   policies: {
-    cancelHours: 12, // group classes: cancel at least this many hours before class to get the session back (studio terms §2, 7 Nov 2026)
-    privateCancelHours: 24, // private and duo sessions (studio terms §6)
+    cancelHours: 24, // one rule for everything (group, private, duo, closed groups, events): cancel at least 24 hours before to avoid a charge
     // Date of the studio terms in force. Bump it when Orit changes the terms: everyone is asked to accept again.
-    termsVersion: "2026-11-07",
+    termsVersion: "2026-11-10",
     pregnancyUpTo: TODO, // e.g. "week 30": Orit to confirm
   },
   flags: {
