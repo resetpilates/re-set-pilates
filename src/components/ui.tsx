@@ -203,6 +203,20 @@ export function Segmented<T extends string>({
 export function Sheet({ open, onClose, label, children }: { open: boolean; onClose: () => void; label: string; children: ReactNode }) {
   const reduce = useReducedMotion();
   const desktop = typeof window !== "undefined" && window.matchMedia("(min-width: 1000px)").matches;
+  const panel = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    // Keyboard and screen-reader users land inside the sheet, the page behind it is inert, and focus returns to the opener on close
+    const opener = document.activeElement as HTMLElement | null;
+    const page = document.getElementById("root");
+    page?.setAttribute("inert", "");
+    const raf = requestAnimationFrame(() => panel.current?.focus());
+    return () => {
+      cancelAnimationFrame(raf);
+      page?.removeAttribute("inert");
+      opener?.focus?.();
+    };
+  }, [open]);
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -239,6 +253,8 @@ export function Sheet({ open, onClose, label, children }: { open: boolean; onClo
             role="dialog"
             aria-modal="true"
             aria-label={label}
+            ref={panel}
+            tabIndex={-1}
             initial={hidden}
             animate={shown}
             exit={hidden}

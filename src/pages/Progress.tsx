@@ -225,7 +225,7 @@ function Dashboard() {
 
         {notes[0] && (
           <figure className="note">
-            <figcaption className="eyebrow">{c.dash.fromOrit}</figcaption>
+            <figcaption className="eyebrow">{c.dash.fromInstructor}</figcaption>
             <blockquote>{isHe ? notes[0].text.he : notes[0].text.en}</blockquote>
             <span className="tiny">
               {notes[0].author} · {fmtShort(notes[0].at.slice(0, 10))}

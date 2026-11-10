@@ -155,7 +155,7 @@ export default function Home() {
                 {t.home.notSure}
               </Link>
               <button className="btn btn--ghost" onClick={openChat}>
-                {t.home.askOrit}
+                {t.home.askTeam}
               </button>
             </div>
           </div>
@@ -277,6 +277,7 @@ export default function Home() {
               </Reveal>
             ))}
           </div>
+          <p className="tiny">{t.home.teamNote}</p>
           {siteConfig.flags.showReviews && reviews.some((r) => r.approved) && (
             <div className="grid-3">
               {reviews

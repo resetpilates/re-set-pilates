@@ -65,7 +65,9 @@ const guarded = { ...env, TURNSTILE_SECRET: "turnstile-secret" } as Env;
 const call = (event: string, body: unknown, origin = "https://reset.example", e: Env = env) =>
   worker.fetch(new Request(`https://reset.example/api/${event}`, { method: "POST", headers: { Origin: origin, "Content-Type": "application/json" }, body: JSON.stringify(body) }) as never, e, {} as never) as Promise<Response>;
 const maya = { firstName: "Maya", lastName: "Test", phone: "+972 50-123-4567", email: "maya@example.com" };
-const slot = { service: "reformer", date: "2026-10-20", time: "18:00", minutes: 50 };
+// Class dates sit a year ahead: the Worker refuses slots that have already started.
+const Y = new Date().getFullYear() + 1;
+const slot = { service: "reformer", date: `${Y}-10-20`, time: "18:00", minutes: 50 };
 
 test("lead creates a member and a lead linked to the campaign", async () => {
   const r = await call("lead", { lang: "he", contact: maya, interest: "reformer", prefTime: "Evening", heard: "Instagram", consent: true, attribution: { utmCampaign: "launch-month" } });
@@ -97,6 +99,24 @@ test("checkout prices from Airtable, saves Pending payment and terms date", asyn
   expect(db[T.members][0].fields[F.members.termsOn]).toMatch(/^\d{4}-\d{2}-\d{2}$/);
 });
 
+test("a Mat plan is charged ₪5 a class less than the Reformer price Airtable lists", async () => {
+  const r = await call("checkout", { lang: "en", contact: maya, planId: "m3x", kind: "mat", method: "card", consent: false, termsAccepted: true });
+  expect(r.status).toBe(200);
+  expect(db[T.payments][0].fields[F.payments.amount]).toBe(590 - 12 * 5); // 3×/week = 12 classes a month
+  expect(db[T.memberships][0].fields[F.memberships.pricePaid]).toBe(590 - 12 * 5);
+});
+
+test("a class that already started, or an impossible date, can't be booked", async () => {
+  expect((await call("booking", { lang: "he", contact: maya, slot: { ...slot, date: "2020-01-01" }, bed: null })).status).toBe(400);
+  expect((await call("booking", { lang: "he", contact: maya, slot: { ...slot, date: `${Y}-02-31` }, bed: null })).status).toBe(400);
+  expect(db[T.classes] ?? []).toEqual([]);
+});
+
+test("an Origin of \"null\" is refused like any other foreign origin, not a crash", async () => {
+  const r = await call("chat", { lang: "en", question: "hi" }, "null");
+  expect(r.status).toBe(403);
+});
+
 test("checkout without accepted terms is refused", async () => {
   const r = await call("checkout", { lang: "en", contact: maya, planId: "m3x", method: "card", consent: false });
   expect(r.status).toBe(400);
@@ -107,7 +127,7 @@ test("booking creates the class once and maps bed 0 → 1", async () => {
   await call("booking", { lang: "he", contact: maya, slot, bed: 0 });
   await call("booking", { lang: "he", contact: maya, slot: { ...slot }, bed: null });
   expect(db[T.classes].length).toBe(1);
-  expect(db[T.classes][0].fields[F.classes.when]).toBe("2026-10-20T15:00:00.000Z"); // 18:00 Israel summer time
+  expect(db[T.classes][0].fields[F.classes.when]).toBe(`${Y}-10-20T15:00:00.000Z`); // 18:00 Israel summer time
   expect(db[T.bookings][0].fields[F.bookings.bed]).toBe("1");
   expect(db[T.bookings][1].fields[F.bookings.bed]).toBe("Any");
 });
@@ -298,12 +318,12 @@ test("roster: names only as each person chose, by bed, for that day only", async
   await call("booking", { lang: "he", contact: maya, slot, bed: 0 }); // default: first initial + last name
   await call("booking", { lang: "he", contact: noa, slot, bed: 2, showAs: "full" });
   await call("booking", { lang: "he", contact: dana, slot, bed: 4, showAs: "anon" });
-  await call("booking", { lang: "he", contact: noa, slot: { ...slot, date: "2026-10-21" }, bed: 1 });
-  const res = await worker.fetch(new Request("https://reset.example/api/roster?date=2026-10-20") as never, env, { waitUntil() {} } as never);
+  await call("booking", { lang: "he", contact: noa, slot: { ...slot, date: `${Y}-10-21` }, bed: 1 });
+  const res = await worker.fetch(new Request(`https://reset.example/api/roster?date=${Y}-10-20`) as never, env, { waitUntil() {} } as never);
   const body = (await res.json()) as { ok: boolean; slots: Record<string, { bed: number | null; name: string }[]> };
   expect(body.ok).toBe(true);
-  expect(Object.keys(body.slots)).toEqual(["reformer_2026-10-20_1800"]);
-  expect(body.slots["reformer_2026-10-20_1800"]).toEqual([
+  expect(Object.keys(body.slots)).toEqual([`reformer_${Y}-10-20_1800`]);
+  expect(body.slots[`reformer_${Y}-10-20_1800`]).toEqual([
     { bed: 0, name: "M. Test" },
     { bed: 2, name: "Noa Cohen" },
     { bed: 4, name: "" },
@@ -313,7 +333,7 @@ test("roster: names only as each person chose, by bed, for that day only", async
 });
 
 test("checkout before payments open holds the bed; a full class refuses; a held bed shows on the roster", async () => {
-  const s2 = { ...slot, date: "2026-11-02", time: "08:00", capacity: 5 };
+  const s2 = { ...slot, date: `${Y}-11-02`, time: "08:00", capacity: 5 };
   const people = ["0521000001", "0521000002", "0521000003", "0521000004", "0521000005", "0521000006"].map((phone, i) => ({ firstName: `P${i}`, lastName: `Last${i}`, phone }));
   const first = await call("booking", { lang: "he", contact: people[0], slot: s2, bed: 2, held: true });
   expect(first.status).toBe(200);
@@ -326,8 +346,8 @@ test("checkout before payments open holds the bed; a full class refuses; a held 
   for (const p of people.slice(2, 5)) await call("booking", { lang: "he", contact: p, slot: s2, bed: null, held: true });
   // Five beds taken: the sixth is refused
   expect((await call("booking", { lang: "he", contact: people[5], slot: s2, bed: null, held: true })).status).toBe(409);
-  const res = await worker.fetch(new Request("https://reset.example/api/roster?date=2026-11-02") as never, env, { waitUntil() {} } as never);
+  const res = await worker.fetch(new Request(`https://reset.example/api/roster?date=${Y}-11-02`) as never, env, { waitUntil() {} } as never);
   const body = (await res.json()) as { slots: Record<string, { bed: number | null; name: string }[]> };
-  expect(body.slots["reformer_2026-11-02_0800"].length).toBe(5);
-  expect(body.slots["reformer_2026-11-02_0800"][0]).toEqual({ bed: 2, name: "P. Last0" });
+  expect(body.slots[`reformer_${Y}-11-02_0800`].length).toBe(5);
+  expect(body.slots[`reformer_${Y}-11-02_0800`][0]).toEqual({ bed: 2, name: "P. Last0" });
 });

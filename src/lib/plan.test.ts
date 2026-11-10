@@ -26,6 +26,14 @@ test("2 classes left on a pass + a new 5-class pass = 7", () => {
   expect(planUsage(p5, used, now, iso(now), 2).left).toBe(7);
 });
 
+test("a monthly plan bought mid-week ignores classes booked before it (on the old pass)", () => {
+  const old = [booking("2026-10-18", daysAgo(3)), booking("2026-10-20", daysAgo(2))]; // two classes this week, booked on the previous pass
+  const m1x = planById("m1x")!;
+  const u = planUsage(m1x, old, now, iso(now));
+  expect(u.used).toBe(0);
+  expect(u.left).toBe(1);
+});
+
 test("an expired pass carries nothing", () => {
   const start = daysAgo(70); // passes are valid 2 months
   expect(checkPurchase(p10, current(p5, [], start), now)).toEqual({ ok: true, carry: 0 });
