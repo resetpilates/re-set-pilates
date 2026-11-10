@@ -2518,3 +2518,10 @@ html[lang="he"] .pgcard__ai { letter-spacing: 0.04em; font-size: 11.5px; }
 .tick--consent:has(input:checked) { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
 .tick--consent:has(input:focus-visible) { outline: 2px solid var(--clay); outline-offset: 2px; }
 .consent__note { color: var(--fg-3); padding-top: 4px; border-top: 1px dashed rgba(31, 22, 18, 0.14); }
+
+/* ───────── v3.9 · 10 Nov: the RE:SET mark (letters only, white square) on the welcome screen and hero; chat badge in the logo gold ───────── */
+.hero--v4 .hero__mark, html[lang="he"] .hero--v4 .hero__mark { display: block; width: 108px; height: 108px; padding: 0; border: 0; background: #fff; object-fit: cover; border-radius: 22%; box-shadow: 0 10px 28px rgba(31, 22, 18, 0.28), 0 0 0 1px rgba(31, 22, 18, 0.06); margin-bottom: 14px; }
+@media (min-width: 1000px) { .hero--v4 .hero__mark { width: 132px; height: 132px; } }
+.logo-disc--mark { box-shadow: 0 0 60px rgba(241, 211, 173, 0.28), 0 0 0 1px rgba(31, 22, 18, 0.08); background: #fff; }
+.logo-disc--mark img { transform: none; }
+.chat-fab__badge { background: #b5884e; }

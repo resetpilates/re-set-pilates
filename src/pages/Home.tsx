@@ -59,6 +59,7 @@ export default function Home() {
         <div className="hero__scrim" aria-hidden />
         <div className="wrap hero__body">
           {/* Top: the welcome, with the member's name when we know her. Middle: the photo breathes. */}
+          <img className="hero__mark fade-up" style={d(60)} src={siteConfig.studioMedia.mark} alt="re:set" width={108} height={108} />
           <p className="hero__greet fade-up" style={d(100)}>
             {t.home.greetingGuest}
             {profile.firstName && <b>{profile.firstName}</b>}
