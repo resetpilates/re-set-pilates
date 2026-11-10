@@ -1,4 +1,5 @@
 import type { ShowAs } from "./relayTypes";
+import type { HealthRecord } from "./health";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { planById, type ClassKind } from "../config/pricing";
 import { fromISO, israelNow, slotStart, type ClassSlot } from "./booking";
@@ -31,6 +32,7 @@ export interface Profile {
   consented?: boolean; // ticked "Send me news and offers" at least once
   termsAcceptedAt?: string; // ISO: when the studio terms were accepted on this device
   termsVersion?: string; // which version (siteConfig.policies.termsVersion) was accepted
+  health?: HealthRecord; // the latest health declaration made on this device
 }
 
 /** In-app notification (the bell on the profile). Purchases add one that opens the receipt. */

@@ -115,6 +115,13 @@ export interface CancelMsg extends Base {
   phone: string; // must match the booking's member
 }
 
+/** Health declaration (answers in src/lib/health.ts). Written to the restricted "Health & Consent" table. */
+export interface HealthMsg extends Base {
+  contact: Contact;
+  version: string;
+  answers: import("./health").HealthAnswers;
+}
+
 /** Auto-renew switched on or off from the profile. */
 export interface RenewalMsg extends Base {
   membershipId: string; // Airtable record id returned by checkout
@@ -175,6 +182,7 @@ export interface RelayMap {
   booking: BookingMsg;
   cancel: CancelMsg;
   renewal: RenewalMsg;
+  "health-declaration": HealthMsg; // not "health": /api/health is the Worker's status check
   waitlist: WaitlistMsg;
   "launch-waitlist": LaunchWaitlistMsg;
   gift: GiftMsg;

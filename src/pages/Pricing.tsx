@@ -14,7 +14,7 @@ import { useSeo } from "../lib/seo";
 import { relay } from "../lib/relay";
 import type { Contact, SlotRef } from "../lib/relayTypes";
 import { useStore } from "../lib/store";
-import { ConsentField, ContactFields, HeardField, profileFrom, readContact, readExtras, termsAccepted, TermsField } from "../components/forms";
+import { ConsentField, ContactFields, HeardField, profileFrom, readContact, readExtras, termsAccepted, TermsField, HealthNextStep } from "../components/forms";
 import { bookingProvider, fromISO, rememberBed, rememberedBed } from "../lib/booking";
 
 export function Pricing() {
@@ -97,7 +97,11 @@ export function Checkout() {
   const payLabel = { bit: t.checkout.payBit, card: t.checkout.payCard };
   const monthly = plan.billingType === "monthly";
   const hours = String(siteConfig.policies.cancelHours);
-  const keyTerms = monthly ? t.checkout.keyMonthly.replace("{hours}", hours) : t.checkout.keyPass.replace("{months}", String(plan.validityMonths)).replace("{hours}", hours);
+  const keyTerms = monthly
+    ? t.checkout.keyMonthly.replace("{hours}", hours)
+    : plan.sessions === 1
+      ? t.checkout.keySingle.replace("{hours}", hours)
+      : t.checkout.keyPass.replace("{months}", String(plan.validityMonths)).replace("{hours}", hours);
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     const id = ((e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null)?.value;
@@ -220,6 +224,7 @@ export function Checkout() {
             <p className="muted">{t.launchWaitlist.atPay}</p>
             {hold === "held" && <p className="small hi">{t.launchWaitlist.bedHeld}</p>}
             {hold === "full" && <p className="small hi">{t.launchWaitlist.classFull}</p>}
+            <HealthNextStep profile={store.profile} next={next ? `class/${next}` : undefined} />
             <p className="small">
               <b>{t.launchWaitlist.youChose}:</b> {[`${planName(plan, t, slotLabel ? null : kind)} · ₪${effectivePrice(plan, kind)}`, slotLabel].filter(Boolean).join(" · ")}
             </p>
@@ -251,6 +256,7 @@ export function Checkout() {
             <Link to={href(`receipt/${receiptNo}`)} className="btn btn--secondary btn--block">
               {t.checkout.viewReceipt}
             </Link>
+            <HealthNextStep profile={store.profile} next={next ? `class/${next}` : undefined} />
             <ReceiptNotify receiptNo={receiptNo} />
           </div>
         ) : (

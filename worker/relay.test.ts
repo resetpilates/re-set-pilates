@@ -121,17 +121,53 @@ test("auto-renew: opted in at checkout, then switched off and on from the profil
   const r = await call("checkout", { lang: "en", contact: maya, planId: "m3x", method: "card", consent: false, termsAccepted: true, autoRenew: true });
   expect(r.status).toBe(200);
   const ms = db[T.memberships][0];
-  expect(ms.fields[F.memberships.name]).toMatch(/ · Auto-renew$/);
+  expect(ms.fields[F.memberships.autoRenew]).toBe(true);
   expect((await call("renewal", { lang: "en", membershipId: ms.id, phone: "0509999999", autoRenew: false })).status).toBe(400);
   expect((await call("renewal", { lang: "en", membershipId: ms.id, phone: "050-123-4567", autoRenew: false })).status).toBe(200);
-  expect(db[T.memberships][0].fields[F.memberships.name]).not.toMatch(/Auto-renew/);
+  expect(db[T.memberships][0].fields[F.memberships.autoRenew]).toBe(false);
   expect((await call("renewal", { lang: "en", membershipId: ms.id, phone: "050-123-4567", autoRenew: true })).status).toBe(200);
-  expect(db[T.memberships][0].fields[F.memberships.name]).toMatch(/· Auto-renew$/);
+  expect(db[T.memberships][0].fields[F.memberships.autoRenew]).toBe(true);
 });
 
-test("checkout without auto-renew leaves the membership name untagged", async () => {
+test("checkout without auto-renew leaves the Auto-renew box empty", async () => {
   await call("checkout", { lang: "en", contact: maya, planId: "m3x", method: "card", consent: false, termsAccepted: true });
-  expect(db[T.memberships][0].fields[F.memberships.name]).not.toMatch(/Auto-renew/);
+  expect(db[T.memberships][0].fields[F.memberships.autoRenew]).toBe(false);
+});
+
+const healthy = { heart: false, chest: false, dizzy: false, asthma: false, family: false, supervised: false, chronic: false, pregnancy: "no", injury: false, adult: true };
+
+test("health declaration: one row in Health & Consent, linked to the member, valid for a year", async () => {
+  const r = await call("health-declaration", { lang: "he", contact: maya, version: "health-decl-v0-draft", answers: healthy });
+  expect(r.status).toBe(200);
+  const h = db[T.health][0].fields;
+  expect(h[F.health.signed]).toBe(true);
+  expect(h[F.health.member]).toEqual([db[T.members][0].id]);
+  expect(h[F.health.pregnant]).toBe("No");
+  expect(h[F.health.via]).toBe("Profile (online)");
+  expect(h[F.health.conditions]).toMatch(/^No doctor's approval needed/);
+  expect(Number(String(h[F.health.validUntil]).slice(0, 4)) - Number(String(h[F.health.signedOn]).slice(0, 4))).toBe(1);
+});
+
+test("health declaration: a yes that needs a doctor's approval is flagged first, with the injury note and guardian", async () => {
+  const r = await call("health-declaration", {
+    lang: "en",
+    contact: maya,
+    version: "health-decl-v0-draft",
+    answers: { ...healthy, heart: true, pregnancy: "postnatal", injury: true, injuryNote: "Left knee", adult: false, guardianName: "Dana Test", guardianPhone: "050-765-4321" },
+  });
+  expect(r.status).toBe(200);
+  const h = db[T.health][0].fields;
+  expect(h[F.health.conditions]).toMatch(/^⚠ Doctor's approval needed: heart condition or high blood pressure, gave birth in the last 12 months/);
+  expect(h[F.health.conditions]).toContain("Left knee");
+  expect(h[F.health.conditions]).toContain("Dana Test");
+  expect(h[F.health.pregnant]).toBe("Postnatal");
+});
+
+test("health declaration: missing answers, or under 18 without a guardian, is refused", async () => {
+  const { chest: _, ...noChest } = healthy;
+  expect((await call("health-declaration", { lang: "en", contact: maya, version: "v", answers: noChest })).status).toBe(400);
+  expect((await call("health-declaration", { lang: "en", contact: maya, version: "v", answers: { ...healthy, adult: false } })).status).toBe(400);
+  expect(db[T.health]).toBeUndefined();
 });
 
 test("checkout without accepted terms is refused", async () => {

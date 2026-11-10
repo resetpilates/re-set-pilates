@@ -2567,3 +2567,11 @@ html[lang="he"] .pgcard__ai { letter-spacing: 0.04em; font-size: 11.5px; }
 .hero--logo .hero__greet, html[lang="he"] .hero--logo .hero__greet { margin-top: 6px; }
 .hero--logo .hero__title .line span, .hero--logo .hero__greet, .hero--logo .hero__greet b { text-shadow: none; }
 .hero--v4.hero--logo .hero__offer .btn--outline, html[lang="he"] .hero--v4.hero--logo .hero__offer .btn--outline { background: transparent; color: var(--ink); border: 1.5px solid var(--ink); backdrop-filter: none; -webkit-backdrop-filter: none; box-shadow: none; }
+
+/* ───────── v4.8 · health declaration: question list, the "next step" card on confirmations, My classes and the class sheet ───────── */
+.health .q { padding-bottom: 18px; border-bottom: 1px solid var(--line); }
+.health .q--err .q__label { color: #b3263a; }
+.health textarea.input { min-height: 88px; padding-block: 12px; resize: vertical; }
+.health fieldset.card legend { padding-inline: 4px; }
+.health-next { display: flex; align-items: center; gap: 12px; text-align: start; }
+.health .tick--consent.q--err { border-color: #b3263a; }

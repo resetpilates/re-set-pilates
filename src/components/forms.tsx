@@ -7,6 +7,7 @@ import { useI18n } from "../lib/i18n";
 import { HEARD_FROM, normalizePhone, type Contact, type HeardFrom } from "../lib/relayTypes";
 import type { Profile } from "../lib/store";
 import { TermsBody } from "./Terms";
+import { healthValid } from "../lib/health";
 import { Sheet } from "./ui";
 
 export function ContactFields({ id, profile, email = "optional" }: { id: string; profile: Profile; email?: "optional" | "none" }) {
@@ -88,6 +89,21 @@ export function ConsentField({ profile }: { profile: Profile }) {
   );
 }
 
+/** "Next step: health declaration" card, shown until this device has a current declaration. `next` = where to come back to. */
+export function HealthNextStep({ profile, next }: { profile: Profile; next?: string }) {
+  const { t, href } = useI18n();
+  if (healthValid(profile.health)) return null;
+  return (
+    <Link to={href(`health${next ? `?next=${encodeURIComponent(next)}` : ""}`)} className="nextstep health-next">
+      <span className="stack gap-4" style={{ flex: 1 }}>
+        <b className="nextstep__title">{profile.health ? t.health.expired : t.health.nextStep}</b>
+        <span className="tiny">{t.health.nextStepSub}</span>
+      </span>
+      <span className="chev" aria-hidden />
+    </Link>
+  );
+}
+
 /** True once this device accepted the studio terms now in force (an older version has to be accepted again). */
 export const termsAccepted = (p: Profile) => !!p.termsAcceptedAt && p.termsVersion === siteConfig.policies.termsVersion;
 
@@ -109,7 +125,17 @@ export function TermsField({ profile }: { profile: Profile }) {
   return (
     <>
       <label className="tick">
-        <input type="checkbox" name="terms" required checked={ticked} onChange={(e) => setTicked(e.currentTarget.checked)} />
+        <input
+          type="checkbox"
+          name="terms"
+          required
+          checked={ticked}
+          onInvalid={(e) => e.currentTarget.setCustomValidity(t.form.termsNeeded)}
+          onChange={(e) => {
+            e.currentTarget.setCustomValidity("");
+            setTicked(e.currentTarget.checked);
+          }}
+        />
         <span>
           {t.form.terms}{" "}
           <button type="button" className="linklike" onClick={() => setOpen(true)}>

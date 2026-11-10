@@ -21,6 +21,7 @@ import type {
   QuizMsg,
   RelayEvent,
   RenewalMsg,
+  HealthMsg,
   RelayReply,
   SlotRef,
   WaitlistMsg,
@@ -28,6 +29,7 @@ import type {
 import { HEARD_FROM, LAUNCH_TIMES, PREF_TIMES, SHOW_AS, normalizePhone, scheduleName, type RosterReply } from "../src/lib/relayTypes";
 import { Airtable, AirtableError, F, T, q, type AirRecord, type Fields } from "./airtable";
 import { isReceiptNumber, type ReceiptData } from "../src/lib/receipt";
+import { CLEARANCE_QUESTIONS, HEALTH_VALID_MONTHS, PREGNANCY, clearanceReasons, guardianMissing, type HealthAnswers } from "../src/lib/health";
 import { channelsFor, receiptLink, sendReceipt, serveReceipt } from "./notify";
 
 declare global {
@@ -38,7 +40,6 @@ declare global {
 
 const TZ = "Asia/Jerusalem";
 const CANCEL_HOURS = siteConfig.policies.cancelHours; // same policy the site shows
-const AUTO_RENEW = " · Auto-renew"; // tag on the membership name while the member has auto-renew on
 const MAX_BODY = 8 * 1024;
 
 class BadRequest extends Error {}
@@ -432,7 +433,8 @@ const handlers: Record<RelayEvent, Handler> = {
     const [y, mo] = today.split("-").map(Number);
     const membership = await at.create(T.memberships, {
       // Status stays empty until Orit confirms the payment and sets it to Active.
-      [S.name]: `${fullName(c)} · ${p.name}${kindLabel ? ` (${kindLabel})` : ""} · ${MONTHS[mo - 1]} ${y}${carry ? ` · +${carry} carried over` : ""}${p.type !== "Pass" && m.autoRenew === true ? AUTO_RENEW : ""}`,
+      [S.name]: `${fullName(c)} · ${p.name}${kindLabel ? ` (${kindLabel})` : ""} · ${MONTHS[mo - 1]} ${y}${carry ? ` · +${carry} carried over` : ""}`,
+      [S.autoRenew]: p.type !== "Pass" && m.autoRenew === true,
       [S.member]: [member.id],
       [S.plan]: [p.plan.id],
       [S.start]: today,
@@ -521,7 +523,7 @@ const handlers: Record<RelayEvent, Handler> = {
     return { ok: true, id };
   },
 
-  // Auto-renew switched on or off in the profile. Until Airtable has its own field, the membership name carries " · Auto-renew".
+  // Auto-renew switched on or off in the profile: the membership's Auto-renew checkbox follows.
   async renewal(at, b) {
     const m = b as unknown as RenewalMsg;
     const id = text(m.membershipId, 17, true);
@@ -533,9 +535,53 @@ const handlers: Record<RelayEvent, Handler> = {
     const member = await at.get(T.members, memberId);
     const onFile = String(member.fields[F.members.phone] ?? "").replace(/\D/g, "").replace(/^972/, "0");
     if (onFile !== phoneDigits(m.phone)) throw new BadRequest("not found");
-    const base = String(ms.fields[S.name] ?? "").replace(AUTO_RENEW, "");
-    await at.update(T.memberships, id, { [S.name]: m.autoRenew ? base + AUTO_RENEW : base });
+    await at.update(T.memberships, id, { [S.autoRenew]: m.autoRenew });
     return { ok: true, id };
+  },
+
+  // Health declaration: one new row in the restricted "Health & Consent" table per declaration (an audit trail).
+  // Only short labels go to Airtable; the free-text injury note is capped. A doctor's approval is flagged on the first line.
+  async "health-declaration"(at, b) {
+    const m = b as unknown as HealthMsg;
+    const c = contact(m.contact);
+    const raw = (m.answers ?? {}) as unknown as Record<string, unknown>;
+    const yes = (k: string) => {
+      if (typeof raw[k] !== "boolean") throw new BadRequest("missing answer");
+      return raw[k] as boolean;
+    };
+    const pregnancy = oneOf(raw.pregnancy, PREGNANCY);
+    if (!pregnancy) throw new BadRequest("missing answer");
+    const a: HealthAnswers = {
+      ...(Object.fromEntries(CLEARANCE_QUESTIONS.map((k) => [k, yes(k)])) as Record<(typeof CLEARANCE_QUESTIONS)[number], boolean>),
+      pregnancy,
+      injury: yes("injury"),
+      injuryNote: text(raw.injuryNote, 400),
+      adult: yes("adult"),
+      guardianName: text(raw.guardianName, 80),
+      guardianPhone: text(raw.guardianPhone, 20),
+    };
+    if (guardianMissing(a)) throw new BadRequest("guardian required");
+    const member = await upsertMember(at, c, { lang: lang(m.lang) });
+    const today = todayIL();
+    const reasons = clearanceReasons(a);
+    const lines = [
+      reasons.length ? `⚠ Doctor's approval needed: ${reasons.map((r) => HEALTH_LABEL[r] ?? r).join(", ")}` : "No doctor's approval needed",
+      a.injury ? `Injury / pain / recent surgery: ${a.injuryNote || "yes"}` : "",
+      a.adult ? "" : `Under 18 · parent or guardian: ${a.guardianName} · ${a.guardianPhone}`,
+      `Wording: ${text(m.version, 40) || "unknown"}`,
+    ].filter(Boolean);
+    const H = F.health;
+    const rec = await at.create(T.health, {
+      [H.name]: `${fullName(c)} · Health declaration · ${today}`,
+      [H.signed]: true,
+      [H.signedOn]: today,
+      [H.validUntil]: addMonths(today, HEALTH_VALID_MONTHS),
+      [H.conditions]: lines.join("\n"),
+      [H.pregnant]: { no: "No", pregnant: "Pregnant", postnatal: "Postnatal" }[pregnancy],
+      [H.via]: "Profile (online)",
+      [H.member]: [member.id],
+    });
+    return { ok: true, id: rec.id };
   },
 
   async waitlist(at, b) {
@@ -720,6 +766,19 @@ const handlers: Record<RelayEvent, Handler> = {
     });
     return { ok: true, id: r.id };
   },
+};
+
+/** Health declaration answers that need a doctor's approval, as Orit reads them in Airtable. */
+const HEALTH_LABEL: Record<string, string> = {
+  heart: "heart condition or high blood pressure",
+  chest: "chest pain",
+  dizzy: "dizziness or fainting in the past year",
+  asthma: "asthma attack treated in the past year",
+  family: "family history of early heart disease",
+  supervised: "doctor said exercise only under supervision",
+  chronic: "chronic condition",
+  pregnant: "pregnant",
+  postnatal: "gave birth in the last 12 months",
 };
 
 /** Scripted chat answers (src/content/chat.ts) grouped into the Airtable topics. */

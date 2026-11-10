@@ -15,6 +15,7 @@ export const T = {
   quiz: "tbl3drL2U1i2klUny",
   chat: "tblzgafUp7rIEzZBS",
   campaigns: "tblWOlnrR6b108QjW",
+  health: "tblgwZSISdpoPcOMP", // "Health & Consent": RESTRICTED, Orit only
 } as const;
 
 export const F = {
@@ -54,12 +55,23 @@ export const F = {
     status: "fldXz1gGWrIJQYBJT",
     start: "fld3htcw5ISFjCfS3",
     renews: "fldhdJFSfkejJIhGW",
+    autoRenew: "fldQ98dqGxicZf0gP",
     bonus: "fld1uhRBEb8BNyw0x",
     pricePaid: "fldgmUL3EuqhY7s7M",
     launchApplied: "fldt9JXlAgDcvSt5H",
     soldBy: "fldyOmySXfpnQflby",
     member: "flddJAGCC4G0zPu08",
     plan: "fldX6VsFYMTAn9CYD",
+  },
+  health: {
+    name: "fldg6zORqejmWZMe9",
+    signed: "fld47vmmbl6V6N2JW", // Health declaration signed
+    signedOn: "fldEvXV4DcuR3E7Lz",
+    validUntil: "flde0K8XTg5lfmaTv",
+    conditions: "fldKy0puieu8QtCYL", // Injuries / conditions (multiline)
+    pregnant: "fldIMeFUIKZP5tVSb", // No / Pregnant / Postnatal
+    via: "fld2y5X2IRVrDcjAm", // Signed via: Profile (online) / Studio QR code / Paper
+    member: "fldwDXwuQ7iAoaB2A",
   },
   payments: {
     name: "fldJEUXsnwVjpg4tW",

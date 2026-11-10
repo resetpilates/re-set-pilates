@@ -7,6 +7,7 @@ export type AnalyticsEvent =
   | "plan_kind_select" // Reformer / Mat switch on the price list
   | "package_request" // "Book your date" on a closed-group package
   | "terms_accepted" // studio terms (תקנון) ticked on the terms page
+  | "health_declared" // health declaration sent (with whether a doctor's approval is needed)
   | "service_view"
   | "schedule_view"
   | "contact_click"
