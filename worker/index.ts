@@ -584,10 +584,14 @@ const handlers: Record<RelayEvent, Handler> = {
     const member = await upsertMember(at, c, { lang: lang(m.lang) });
     const today = todayIL();
     const reasons = clearanceReasons(a);
+    const terms = m.termsAccepted === true;
+    const termsVersion = text(m.termsVersion, 40) || siteConfig.policies.termsVersion;
     const lines = [
       reasons.length ? `⚠ Doctor's approval needed: ${reasons.map((r) => HEALTH_LABEL[r] ?? r).join(", ")}` : "No doctor's approval needed",
       a.injury ? `Injury / pain / recent surgery: ${a.injuryNote || "yes"}` : "",
       a.adult ? "" : `Under 18 · parent or guardian: ${a.guardianName} · ${phonePretty(guardianPhone!)}`,
+      // The studio terms are accepted with the declaration and renewed with it every year
+      terms ? `Studio terms accepted (${termsVersion})` : "",
       `Wording: ${text(m.version, 40) || "unknown"}`,
       ref ? `Ref: ${ref}` : "",
     ].filter(Boolean);
@@ -600,7 +604,9 @@ const handlers: Record<RelayEvent, Handler> = {
       [H.pregnant]: { no: "No", pregnant: "Pregnant", postnatal: "Postnatal" }[pregnancy],
       [H.via]: "Profile (online)",
       [H.member]: [member.id],
+      ...(terms ? { [H.terms]: true, [H.termsOn]: today } : {}),
     });
+    if (terms) await at.update(T.members, member.id, { [F.members.termsOn]: today });
     return { ok: true, id: rec.id };
   },
 

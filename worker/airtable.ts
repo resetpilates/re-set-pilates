@@ -73,6 +73,8 @@ export const F = {
     pregnant: "fldIMeFUIKZP5tVSb", // No / Pregnant / Postnatal
     via: "fld2y5X2IRVrDcjAm", // Signed via: Profile (online) / Studio QR code / Paper
     member: "fldwDXwuQ7iAoaB2A",
+    terms: "fld1R6Tc0I6zBYyZZ", // Terms & cancellation policy accepted (ticked with the declaration)
+    termsOn: "fldIOxKXiFIavSEFa", // Terms accepted on
   },
   payments: {
     name: "fldJEUXsnwVjpg4tW",

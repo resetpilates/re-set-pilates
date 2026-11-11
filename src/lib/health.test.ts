@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { HEALTH_VERSION, clearanceReasons, guardianMissing, healthStatus, healthValid, needsClearance, validUntil, type HealthAnswers } from "./health";
+import { HEALTH_VERSION, clearanceReasons, daysUntil, renewSoon, guardianMissing, healthStatus, healthValid, needsClearance, validUntil, type HealthAnswers } from "./health";
 
 const ok: HealthAnswers = { heart: false, chest: false, dizzy: false, asthma: false, family: false, supervised: false, chronic: false, pregnancy: "no", injury: false, adult: true };
 
@@ -39,4 +39,15 @@ test("a declaration saved offline does not count until it has been sent; status 
   expect(healthStatus({ ...rec, queued: true }, at)).toBe("sending");
   expect(healthStatus({ ...rec, version: "old" }, at)).toBe("renew");
   expect(healthStatus(undefined, at)).toBe("missing");
+});
+
+test("a month before it runs out, a declaration asks to be renewed but still counts", () => {
+  const at = new Date("2026-11-11T10:00:00Z");
+  const rec = { at: at.toISOString(), version: HEALTH_VERSION, validUntil: validUntil(at), clearance: false, answers: ok };
+  expect(daysUntil("2027-11-11", new Date("2027-10-12T10:00:00Z"))).toBe(30);
+  expect(healthStatus(rec, new Date("2027-10-11T10:00:00Z"))).toBe("valid"); // 31 days left
+  expect(healthStatus(rec, new Date("2027-10-12T10:00:00Z"))).toBe("soon"); // 30 days left
+  expect(renewSoon(rec, new Date("2027-10-12T10:00:00Z"))).toBe(true);
+  expect(healthValid(rec, new Date("2027-11-11T10:00:00Z"))).toBe(true);
+  expect(healthStatus(rec, new Date("2027-11-12T10:00:00Z"))).toBe("renew");
 });

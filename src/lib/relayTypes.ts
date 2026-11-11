@@ -120,6 +120,8 @@ export interface HealthMsg extends Base {
   contact: Contact;
   version: string;
   answers: import("./health").HealthAnswers;
+  termsAccepted?: boolean; // the studio terms box, ticked with the declaration (renewed together every year)
+  termsVersion?: string;
   turnstile?: string; // Cloudflare Turnstile token (the form shows the widget)
   declarationId?: string; // made on the phone per declaration: a resend of the same one is saved once
 }

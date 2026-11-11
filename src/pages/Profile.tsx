@@ -2,8 +2,8 @@ import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { planName } from "../components/blocks";
 import { ShowAsPicker } from "./ClassDetail";
-import { ContactFields, readContact, termsAccepted, TermsField } from "../components/forms";
-import { fmtValid, healthStatus } from "../lib/health";
+import { ContactFields, readContact, termsAccepted, termsRenewBy, TermsField } from "../components/forms";
+import { daysUntil, fmtValid, healthStatus, RENEW_NOTICE_DAYS } from "../lib/health";
 import { LangToggle, Logo } from "../components/Shell";
 import { Sheet, Switch } from "../components/ui";
 import { planById } from "../config/pricing";
@@ -217,7 +217,11 @@ export default function Profile() {
             <span className="stack gap-4">
               {t.nav.terms}
               <span className={`tiny ${termsAccepted(store.profile) ? "hi" : "muted"}`}>
-                {termsAccepted(store.profile) ? t.terms.acceptedOn.replace("{date}", fmtDate(new Date(store.profile.termsAcceptedAt!))) : t.terms.notAccepted}
+                {termsAccepted(store.profile)
+                  ? daysUntil(termsRenewBy(store.profile)) <= RENEW_NOTICE_DAYS
+                    ? t.health.renewBy.replace("{date}", fmtValid(termsRenewBy(store.profile)))
+                    : t.terms.acceptedOn.replace("{date}", fmtDate(new Date(store.profile.termsAcceptedAt!)))
+                  : t.terms.notAccepted}
               </span>
             </span>
             <span className="chev" aria-hidden />
@@ -229,6 +233,7 @@ export default function Profile() {
                 {
                   {
                     valid: t.health.validUntil.replace("{date}", fmtValid(store.profile.health?.validUntil ?? "")),
+                    soon: t.health.renewBy.replace("{date}", fmtValid(store.profile.health?.validUntil ?? "")),
                     sending: t.health.sendingStatus,
                     renew: t.health.expired,
                     missing: t.health.needed,

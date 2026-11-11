@@ -15,7 +15,7 @@ import { relay } from "../lib/relay";
 import type { Contact, SlotRef } from "../lib/relayTypes";
 import { useStore } from "../lib/store";
 import { ConsentField, ContactFields, HeardField, profileFrom, readContact, readExtras, termsAccepted, TermsField, HealthNextStep } from "../components/forms";
-import { healthValid } from "../lib/health";
+import { fmtValid, healthValid } from "../lib/health";
 import { bookingProvider, fromISO, rememberBed, rememberedBed } from "../lib/booking";
 
 export function Pricing() {
@@ -97,6 +97,8 @@ export function Checkout() {
   const fmt = (d: Date) => `${d.getDate()}.${d.getMonth() + 1}.${d.getFullYear()}`;
   const payLabel = { bit: t.checkout.payBit, card: t.checkout.payCard };
   const monthly = plan.billingType === "monthly";
+  // Paying (or booking a class) needs a current health declaration, which carries the studio terms with it
+  const needsHealth = (live || !!next) && !healthValid(store.profile.health);
   const hours = String(siteConfig.policies.cancelHours);
   const keyTerms = monthly
     ? t.checkout.keyMonthly.replace("{hours}", hours)
@@ -293,8 +295,8 @@ export function Checkout() {
                 </Link>
               </div>
             )}
-            {!activeUntil && next && !healthValid(store.profile.health) && (
-              // Booking a class holds the bed, so the declaration comes first (studio terms §1, §10)
+            {!activeUntil && needsHealth && (
+              // Before a first payment (or a class booking, which holds the bed): health declaration and studio terms, in one step (studio terms §1, §10)
               <div className="notice stack gap-8" role="status">
                 <b>{t.health.gateTitle}</b>
                 <span className="small">{t.health.gateSub}</span>
@@ -303,7 +305,7 @@ export function Checkout() {
                 </Link>
               </div>
             )}
-            {!activeUntil && (!next || healthValid(store.profile.health)) && (
+            {!activeUntil && !needsHealth && (
             <>
             <fieldset className="stack gap-12" style={{ border: 0, padding: 0, margin: 0 }}>
               <legend className="eyebrow" style={{ marginBottom: 12 }}>
@@ -327,6 +329,7 @@ export function Checkout() {
                   </span>
                 </label>
               )}
+              {healthValid(store.profile.health) && <p className="tiny muted">{t.health.onFile.replace("{date}", fmtValid(store.profile.health!.validUntil))}</p>}
               <TermsField profile={store.profile} />
               <ConsentField profile={store.profile} />
             </div>

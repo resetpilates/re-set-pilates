@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { PageHead, useTurnstile } from "../components/blocks";
-import { ContactFields, readContact } from "../components/forms";
+import { ContactFields, readContact, TermsField } from "../components/forms";
 import { Check, YesNo } from "../components/ui";
 import { siteConfig, waLink } from "../config/site";
 import { track } from "../lib/analytics";
@@ -11,6 +11,7 @@ import {
   PREGNANCY,
   guardianMissing,
   healthValid,
+  renewSoon,
   needsClearance,
   validUntil,
   fmtValid,
@@ -44,7 +45,7 @@ export default function Health() {
   const [bot, setBot] = useState(false);
   const prev = store.profile.health;
   // Editing a current declaration starts from its answers; a renewal (expired or new wording) starts blank, so every question is read again.
-  const [a, setA] = useState<Draft>(() => (healthValid(prev) ? { ...prev?.answers } : {}));
+  const [a, setA] = useState<Draft>(() => (healthValid(prev) && !renewSoon(prev) ? { ...prev?.answers } : {}));
   const [attempt, setAttempt] = useState(0);
   const [queued, setQueued] = useState(false);
   const [tried, setTried] = useState(false);
@@ -53,6 +54,8 @@ export default function Health() {
   const [done, setDone] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
   const [guardianOk, setGuardianOk] = useState(false);
+  // The studio terms are accepted here too, every year with the declaration, so both are done before the first payment
+  const [terms, setTerms] = useState(false);
   const needsDetails = !store.profile.firstName || !store.profile.lastName || !store.profile.phone;
   const set = <K extends keyof HealthAnswers>(k: K, v: HealthAnswers[K]) => setA((p) => ({ ...p, [k]: v }));
 
@@ -63,7 +66,7 @@ export default function Health() {
   };
   const guardianPhoneBad = a.adult === false && !!a.guardianPhone?.trim() && !normalizePhone(a.guardianPhone);
   const guardianBad = () => a.adult === false && (guardianMissing(a as HealthAnswers) || guardianPhoneBad || !guardianOk);
-  const complete = () => [...YES_NO, "pregnancy" as const, "injuryNote" as const].every((k) => !missing(k)) && !guardianBad() && confirmed;
+  const complete = () => [...YES_NO, "pregnancy" as const, "injuryNote" as const].every((k) => !missing(k)) && !guardianBad() && confirmed && terms;
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -87,7 +90,7 @@ export default function Health() {
     setFailed(false);
     setBot(false);
     const ref = typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const r = await relay("health-declaration", { lang, contact: c, version: HEALTH_VERSION, answers, turnstile: turnstile.token, declarationId: ref }, { ref });
+    const r = await relay("health-declaration", { lang, contact: c, version: HEALTH_VERSION, answers, termsAccepted: true, termsVersion: siteConfig.policies.termsVersion, turnstile: turnstile.token, declarationId: ref }, { ref });
     setSending(false);
     if (!r.ok && !r.queued) {
       if (r.error === "turnstile") setBot(true);
@@ -97,6 +100,8 @@ export default function Health() {
     const now = new Date();
     store.saveProfile({
       ...(needsDetails ? { firstName: c.firstName, lastName: c.lastName, phone: c.phone, ...(c.email ? { email: c.email } : {}) } : {}),
+      termsAcceptedAt: now.toISOString(),
+      termsVersion: siteConfig.policies.termsVersion,
       // Offline: kept on the phone but not counted until the outbox delivers it
       health: { at: now.toISOString(), version: HEALTH_VERSION, validUntil: validUntil(now), clearance: needsClearance(answers), answers, ref, ...(r.queued ? { queued: true } : {}) },
     });
@@ -165,9 +170,9 @@ export default function Health() {
       <PageHead title={t.health.title} sub={t.health.sub} app />
       <div className="wrap wrap--app pbody screen">
         <form className="stack gap-24 health" onSubmit={submit} noValidate>
-          {prev && !healthValid(prev) && (
+          {prev && (!healthValid(prev) || renewSoon(prev)) && (
             <p className="notice" role="status">
-              {t.health.expired}
+              {healthValid(prev) ? t.health.renewBy.replace("{date}", fmtValid(prev.validUntil)) : t.health.expired}
             </p>
           )}
           {needsDetails && (
@@ -227,6 +232,9 @@ export default function Health() {
             <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.currentTarget.checked)} />
             <span>{t.health.confirm}</span>
           </label>
+          <div className={tried && !terms ? "q--err" : ""}>
+            <TermsField profile={store.profile} always onTicked={setTerms} />
+          </div>
           {tried && !complete() && (
             <p className="small hi" role="alert">
               {t.health.answerAll}
