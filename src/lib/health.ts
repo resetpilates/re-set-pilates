@@ -6,6 +6,8 @@
 export const HEALTH_VERSION = "health-decl-v0-draft";
 /** A declaration is valid for this many months, then the member is asked to renew it. TODO_VERIFY with Orit. */
 export const HEALTH_VALID_MONTHS = 12;
+/** From this many days before a declaration (and the terms accepted with it) runs out, the member is asked to renew. */
+export const RENEW_NOTICE_DAYS = 30;
 
 /** Yes/no questions. A "yes" to any of these needs a doctor's approval before training (studio terms §10). */
 export const CLEARANCE_QUESTIONS = ["heart", "chest", "dizzy", "asthma", "family", "supervised", "chronic"] as const;
@@ -63,9 +65,19 @@ export function healthValid(h: HealthRecord | undefined, now = new Date()): bool
   return h.validUntil >= studioDate(now);
 }
 
+/** Days from today (studio date) to an ISO date; negative once it has passed. */
+export function daysUntil(iso: string, now = new Date()): number {
+  const day = (s: string) => Date.UTC(+s.slice(0, 4), +s.slice(5, 7) - 1, +s.slice(8, 10));
+  return Math.round((day(iso) - day(studioDate(now))) / 86_400_000);
+}
+
+/** Still valid, but inside the last month: time to renew (the studio is told the same day). */
+export const renewSoon = (h: HealthRecord | undefined, now = new Date()) => healthValid(h, now) && daysUntil(h!.validUntil, now) <= RENEW_NOTICE_DAYS;
+
 /** Where this device stands, for the profile row and the "next step" card. */
-export type HealthStatus = "valid" | "sending" | "renew" | "missing";
+export type HealthStatus = "valid" | "soon" | "sending" | "renew" | "missing";
 export function healthStatus(h: HealthRecord | undefined, now = new Date()): HealthStatus {
+  if (renewSoon(h, now)) return "soon";
   if (healthValid(h, now)) return "valid";
   if (h?.queued) return "sending";
   return h ? "renew" : "missing";

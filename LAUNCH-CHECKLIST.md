@@ -57,6 +57,9 @@ Gift cards sell the three Reformer passes (₪300 / ₪550 / ₪750) or a custom
 - No receipt or confirmation message is sent.
 
 ## Health declaration (הצהרת בריאות)
+
+- **Health declaration + studio terms, one step, once a year (11 Nov 2026):** before a first payment (and before booking a class) the member fills the health declaration and ticks the studio terms on the same page. Both last 12 months. From 30 days before the end the app says "Please renew by …" (profile and next-step card); after it, the member is asked again before paying or booking. The terms tick is saved on the same Health & Consent row (*Terms & cancellation policy accepted* + *Terms accepted on*) and on Members > *Terms accepted on*.
+- [ ] **Turn on the Airtable automation "Health declaration + terms renew in 30 days → email Orit"** (Automations in the base; it was created switched off). It emails resetpilates11@gmail.com once per declaration when 30 days are left.
 - At `/he/health` · `/en/health`, linked from the profile, the checkout and waitlist confirmations, My classes, and the class booking sheet. A member can't confirm their first booking until it is filled in; the checkbox confirms it, no signature.
 - Each declaration adds a row to Airtable **Health & Consent** (restricted, Orit only), linked to the member: signed, signed on, valid until (12 months), pregnant / postnatal, signed via "Profile (online)". The first line of *Injuries / conditions* says whether a doctor's approval is needed and why; injury notes and an under-18's parent or guardian follow. Members > *Health declaration* shows the tick.
 - Buying a single class for a specific date asks for the declaration first, before paying or holding the bed. The form has the same Turnstile bot check as the contact form.

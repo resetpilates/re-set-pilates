@@ -7,7 +7,7 @@ import { useI18n } from "../lib/i18n";
 import { HEARD_FROM, normalizePhone, type Contact, type HeardFrom } from "../lib/relayTypes";
 import type { Profile } from "../lib/store";
 import { TermsBody } from "./Terms";
-import { healthStatus } from "../lib/health";
+import { fmtValid, healthStatus, studioDate, validUntil } from "../lib/health";
 import { Sheet } from "./ui";
 
 export function ContactFields({ id, profile, email = "optional" }: { id: string; profile: Profile; email?: "optional" | "none" }) {
@@ -94,10 +94,11 @@ export function HealthNextStep({ profile, next }: { profile: Profile; next?: str
   const { t, href } = useI18n();
   const status = healthStatus(profile.health);
   if (status === "valid") return null;
+  const renewBy = t.health.renewBy.replace("{date}", fmtValid(profile.health?.validUntil ?? ""));
   return (
     <Link to={href(`health${next ? `?next=${encodeURIComponent(next)}` : ""}`)} className="nextstep health-next">
       <span className="stack gap-4" style={{ flex: 1 }}>
-        <b className="nextstep__title">{status === "sending" ? t.health.sendingStatus : status === "renew" ? t.health.expired : t.health.nextStep}</b>
+        <b className="nextstep__title">{status === "sending" ? t.health.sendingStatus : status === "renew" ? t.health.expired : status === "soon" ? renewBy : t.health.nextStep}</b>
         <span className="tiny">{t.health.nextStepSub}</span>
       </span>
       <span className="chev" aria-hidden />
@@ -105,15 +106,19 @@ export function HealthNextStep({ profile, next }: { profile: Profile; next?: str
   );
 }
 
-/** True once this device accepted the studio terms now in force (an older version has to be accepted again). */
-export const termsAccepted = (p: Profile) => !!p.termsAcceptedAt && p.termsVersion === siteConfig.policies.termsVersion;
+/** The day the terms accepted on this device have to be accepted again: a year on, like the health declaration they are signed with. */
+export const termsRenewBy = (p: Profile) => (p.termsAcceptedAt ? validUntil(new Date(p.termsAcceptedAt)) : "");
+
+/** True once this device accepted the studio terms now in force, within the last year (an older version, or an older acceptance, is asked again). */
+export const termsAccepted = (p: Profile, now = new Date()) =>
+  !!p.termsAcceptedAt && p.termsVersion === siteConfig.policies.termsVersion && termsRenewBy(p) >= studioDate(now);
 
 /**
  * Required "I have read and accept the studio terms" box, asked before checkout and on first registration.
  * The link opens the full terms in a sheet (the form keeps its values); "I accept" there ticks the box.
  * Shown as a short "accepted on …" line once the current terms were accepted on this device.
  */
-export function TermsField({ profile }: { profile: Profile }) {
+export function TermsField({ profile, always, onTicked }: { profile: Profile; always?: boolean; onTicked?: (ticked: boolean) => void }) {
   const { t, href, fmtDate } = useI18n();
   const [open, setOpen] = useState(false);
   const [ticked, setTicked] = useState(false);
@@ -121,7 +126,9 @@ export function TermsField({ profile }: { profile: Profile }) {
   // The "please accept" message follows the box's state, however it was ticked (by hand or by "I accept" in the sheet).
   // Set from an event instead, it stayed on after the sheet ticked the box and payment was blocked.
   useEffect(() => box.current?.setCustomValidity(ticked ? "" : t.form.termsNeeded), [ticked, t.form.termsNeeded]);
-  if (termsAccepted(profile))
+  useEffect(() => onTicked?.(ticked), [ticked, onTicked]);
+  // `always`: asked again even when accepted (the yearly health declaration renews the terms with it)
+  if (!always && termsAccepted(profile))
     return (
       <p className="tiny muted terms-ok">
         {t.form.termsAccepted.replace("{date}", fmtDate(new Date(profile.termsAcceptedAt!)))} · <Link to={href("terms")}>{t.form.termsLink}</Link>

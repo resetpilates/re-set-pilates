@@ -149,6 +149,16 @@ test("health declaration: one row in Health & Consent, linked to the member, val
   expect(Number(String(h[F.health.validUntil]).slice(0, 4)) - Number(String(h[F.health.signedOn]).slice(0, 4))).toBe(1);
 });
 
+test("health declaration: the studio terms ticked with it are recorded on the row and on the member", async () => {
+  const r = await call("health-declaration", { lang: "he", contact: maya, version: "health-decl-v0-draft", answers: healthy, termsAccepted: true, termsVersion: "2026-11-10" });
+  expect(r.status).toBe(200);
+  const h = db[T.health][0].fields;
+  expect(h[F.health.terms]).toBe(true);
+  expect(h[F.health.termsOn]).toBe(h[F.health.signedOn]);
+  expect(h[F.health.conditions]).toContain("Studio terms accepted (2026-11-10)");
+  expect(db[T.members][0].fields[F.members.termsOn]).toBe(h[F.health.signedOn]);
+});
+
 test("health declaration: a yes that needs a doctor's approval is flagged first, with the injury note and guardian", async () => {
   const r = await call("health-declaration", {
     lang: "en",
