@@ -323,10 +323,10 @@ export function PricingList({ next, limit, initialKind }: { next?: string; limit
 
 /** A quiet photo strip above each pricing tab (full pricing page only; the Home excerpt stays plain). */
 const PLAN_PHOTOS: Record<PriceTab, { src: string; pos: string }> = {
-  monthly: { src: "/assets/ex-membership.webp", pos: "50% 40%" },
-  passes: { src: "/assets/ex-pass.webp", pos: "50% 30%" },
-  teens: { src: "/assets/ex-teens-after.webp", pos: "50% 50%" },
-  groups: { src: "/assets/ex-event.webp", pos: "50% 45%" },
+  monthly: { src: "/assets/class/membership.webp", pos: "50% 40%" },
+  passes: { src: "/assets/class/pass.webp", pos: "50% 30%" },
+  teens: { src: "/assets/class/teens-after.webp", pos: "50% 50%" },
+  groups: { src: "/assets/class/event.webp", pos: "50% 45%" },
 };
 function PlanPhoto({ tab }: { tab: PriceTab }) {
   const p = PLAN_PHOTOS[tab];

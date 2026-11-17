@@ -43,7 +43,7 @@ export const teenBundle = {
 
 export const shopMedia = {
   hero: { src: "/assets/real/flatlay.webp", pos: "50% 50%" }, // real product photo (owner, 17 Nov 2026)
-  moment: { src: "/assets/shop/moment.webp", pos: "50% 40%" },
+  moment: { src: "/assets/class/moment.webp", pos: "50% 40%" },
 };
 
 export const shopItem = (id: ShopItemId) => shopItems.find((i) => i.id === id);
