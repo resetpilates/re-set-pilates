@@ -37,30 +37,32 @@ export default function Home() {
   return (
     <div className="page page--bleed tone-dark">
       {/* Hero */}
-      {/* First screen: the studio photo, then the RE:SET logo (always the English mark), the welcome line, one headline and the two buttons.
-          Phones stack them; wide screens sit the same block in a cream card on the calm side of the photo.
+      {/* First screen: one big studio photo with a cream card on it: the RE:SET logo (always the English mark), the welcome line,
+          one headline and the two buttons. Phones get the tall photo, wide screens the wide one (same breakpoint as the CSS).
           (fetchpriority is spread in lowercase: React 18 does not know the camelCase prop.) */}
       <section className="home-hero">
-        <picture className="home-hero__photo">
-          <source media="(max-width: 700px)" srcSet={siteConfig.studioMedia.heroPhotoPhone} />
-          <img src={siteConfig.studioMedia.heroPhoto} alt={t.home.heroAlt} width={1920} height={1086} decoding="async" {...{ fetchpriority: "high" }} />
-        </picture>
-        <div className="home-hero__card">
-          <Logo className="home-hero__logo fade-up" />
-          <p className="home-hero__greet fade-up" style={d(100)}>
-            {t.home.greetingGuest}
-            {profile.firstName && <b>{profile.firstName}</b>}
-          </p>
-          <h1 className="home-hero__title fade-up" style={d(200)}>
-            {t.home.heroLine}
-          </h1>
-          <div className="home-hero__cta fade-up" style={d(320)}>
-            <a href="#schedule" className="btn home-hero__book" onClick={() => track("book_reformer_click", { source: "hero" })}>
-              {t.nav.bookTitle}
-            </a>
-            <Link to={href("profile")} className="btn home-hero__join" onClick={() => track("hero_join_click")}>
-              {t.home.heroJoin}
-            </Link>
+        <div className="home-hero__frame">
+          <picture className="home-hero__photo">
+            <source media="(min-width: 900px) and (min-aspect-ratio: 1/1)" srcSet={siteConfig.studioMedia.heroPhoto} />
+            <img src={siteConfig.studioMedia.heroPhotoTall} alt={t.home.heroAlt} decoding="async" {...{ fetchpriority: "high" }} />
+          </picture>
+          <div className="home-hero__card">
+            <Logo className="home-hero__logo fade-up" />
+            <p className="home-hero__greet fade-up" style={d(100)}>
+              {t.home.greetingGuest}
+              {profile.firstName && <b>{profile.firstName}</b>}
+            </p>
+            <h1 className="home-hero__title fade-up" style={d(200)}>
+              {t.home.heroLine}
+            </h1>
+            <div className="home-hero__cta fade-up" style={d(320)}>
+              <a href="#schedule" className="btn home-hero__book" onClick={() => track("book_reformer_click", { source: "hero" })}>
+                {t.nav.bookTitle}
+              </a>
+              <Link to={href("profile")} className="btn home-hero__join" onClick={() => track("hero_join_click")}>
+                {t.home.heroJoin}
+              </Link>
+            </div>
           </div>
         </div>
       </section>
