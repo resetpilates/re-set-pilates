@@ -36,6 +36,6 @@ bun run build        # tsc (app + worker) + vite build; run before every PR
 ## Conventions
 
 - Mobile first: most visitors are on phones. Check every change at 390px wide and in both languages (Hebrew is RTL: use logical properties, `inset-inline`, `margin-inline-start`).
-- Keep the aesthetic: Cormorant Garamond display, Inter / Heebo UI, cream background, clay accent, rounded cards. Reuse `.card`, `.btn`, `.pill`, `.eyebrow`, `.tiny`.
+- Keep the aesthetic: Cormorant Garamond display, Inter / Heebo UI, warm ivory background, blush accent with a touch of sage (the "Hygge Haven" palette, `--hy-*` tokens in the v5.0 section of `global.css`), rounded cards. Reuse `.card`, `.btn`, `.pill`, `.eyebrow`, `.tiny`.
 - Business facts marked `TODO_VERIFY` are unresolved, never guessed.
 - Branch per task (`claude/<topic>`), PR into `main`. Commit messages say what changed for the owner, not which files.
