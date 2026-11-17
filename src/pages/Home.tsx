@@ -37,32 +37,30 @@ export default function Home() {
   return (
     <div className="page page--bleed tone-dark">
       {/* Hero */}
-      {/* First screen: the RE:SET wordmark on white, no film (owner, 11 Nov 2026), then the welcome line, headline and buttons */}
-      <section className="hero hero--ed hero--sport hero--v4 hero--logo">
-        <div className="wrap hero__body">
-          {/* Top: the welcome, with the member's name when we know her. Middle: the photo breathes. */}
-          <img className="hero__mark fade-up" style={d(60)} src={siteConfig.studioMedia.wordmark} alt="re:set pilates" />
-          <p className="hero__greet fade-up" style={d(100)}>
+      {/* First screen: the studio photo, then the RE:SET logo (always the English mark), the welcome line, one headline and the two buttons.
+          Phones stack them; wide screens sit the same block in a cream card on the calm side of the photo.
+          (fetchpriority is spread in lowercase: React 18 does not know the camelCase prop.) */}
+      <section className="home-hero">
+        <picture className="home-hero__photo">
+          <source media="(max-width: 700px)" srcSet={siteConfig.studioMedia.heroPhotoPhone} />
+          <img src={siteConfig.studioMedia.heroPhoto} alt={t.home.heroAlt} width={1920} height={1086} decoding="async" {...{ fetchpriority: "high" }} />
+        </picture>
+        <div className="home-hero__card">
+          <Logo className="home-hero__logo fade-up" />
+          <p className="home-hero__greet fade-up" style={d(100)}>
             {t.home.greetingGuest}
             {profile.firstName && <b>{profile.firstName}</b>}
           </p>
-          {/* Bottom: the headline and the two buttons share one column and one left edge */}
-          <div className="hero__bottom">
-            <h1 className="hero__title">
-              {t.home.heroSport.map((line, i) => (
-                <span className="line" key={line}>
-                  <span style={d(200 + i * 130)}>{line}</span>
-                </span>
-              ))}
-            </h1>
-            <div className="hero__offer fade-up" style={d(500)}>
-              <a href="#schedule" className="btn btn--gold" onClick={() => track("book_reformer_click", { source: "hero" })}>
-                {t.nav.bookTitle}
-              </a>
-              <Link to={href("profile")} className="btn btn--outline" onClick={() => track("hero_join_click")}>
-                {t.home.heroJoin}
-              </Link>
-            </div>
+          <h1 className="home-hero__title fade-up" style={d(200)}>
+            {t.home.heroLine}
+          </h1>
+          <div className="home-hero__cta fade-up" style={d(320)}>
+            <a href="#schedule" className="btn home-hero__book" onClick={() => track("book_reformer_click", { source: "hero" })}>
+              {t.nav.bookTitle}
+            </a>
+            <Link to={href("profile")} className="btn home-hero__join" onClick={() => track("hero_join_click")}>
+              {t.home.heroJoin}
+            </Link>
           </div>
         </div>
       </section>

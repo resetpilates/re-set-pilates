@@ -2611,3 +2611,67 @@ html[lang="he"] .hero--logo .hero__greet { font-size: 20px; font-weight: 800; le
 /* Footer and profile header show the full logo (letters + PILATES) */
 .footer__logo { height: 64px; margin: 0 auto; }
 .profile-hello .avatar--brand .logo { height: 56px; }
+
+/* ───────── v4.9 · 17 Nov: home hero is a studio photo (a plank on the Reformer, in the room's own oak, sand and camel) ─────────
+   One block on every screen: logo (always the English mark), welcome, one headline, two buttons.
+   Phones and tablets: photo on top, the block centred under it. Wide screens: the photo fills the first screen and the
+   block sits in a cream card on its calm side. The photo carries no lettering, so Hebrew mirrors it and the card never covers her. */
+.home-hero { background: var(--paper); color: var(--ink); padding: 8px 12px calc(28px + var(--safe-b)); display: flex; flex-direction: column; align-items: center; }
+.home-hero__photo {
+  display: block; width: 100%; overflow: hidden; border-radius: 24px; background: var(--b-sun);
+  /* the picture takes the height the logo, headline and buttons leave over, so the first screen holds all of it */
+  height: clamp(150px, calc(100svh - var(--hdr) - var(--safe-t) - 464px), 360px);
+}
+.home-hero__photo img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 85% 35%; animation: hero-fade 900ms ease-out both; }
+.home-hero__card { width: 100%; max-width: 420px; display: flex; flex-direction: column; align-items: center; text-align: center; padding-top: 24px; }
+.home-hero__logo { width: min(50vw, 208px); height: auto; margin-bottom: 20px; }
+.home-hero__greet {
+  margin: 0 0 8px; display: flex; flex-wrap: wrap; justify-content: center; align-items: baseline; gap: 2px 8px;
+  font-family: "Inter", "Heebo", sans-serif; font-size: 12.5px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: var(--sand-deep);
+}
+html[lang="he"] .home-hero__greet { font-size: 16px; letter-spacing: 0; }
+.home-hero__greet b { font-family: "Cormorant Garamond", "Frank Ruhl Libre", Georgia, serif; font-size: 24px; font-weight: 700; letter-spacing: 0; text-transform: none; line-height: 1.05; color: var(--ink); }
+.home-hero__title {
+  margin: 0 0 22px; font-family: "Cormorant Garamond", "Frank Ruhl Libre", Georgia, serif; font-weight: 700;
+  font-size: clamp(46px, 13vw, 56px); line-height: 1; letter-spacing: -0.015em; color: var(--ink);
+}
+html[lang="he"] .home-hero__title { font-family: "Frank Ruhl Libre", "Cormorant Garamond", Georgia, serif; font-size: clamp(42px, 12vw, 52px); letter-spacing: 0; line-height: 1.08; }
+.home-hero__cta { width: 100%; display: flex; flex-direction: column; gap: 10px; }
+.home-hero__cta .btn, html[lang="he"] .home-hero__cta .btn { width: 100%; min-height: 56px; border-radius: 999px; padding-inline: 20px; font-family: "Inter", "Heebo", sans-serif; font-size: 16px; font-weight: 800; letter-spacing: 0.04em; }
+html[lang="he"] .home-hero__cta .btn { font-size: 17.5px; letter-spacing: 0; }
+.home-hero__book { background: var(--b-peach); color: var(--ink); border: 2px solid var(--b-peach); text-transform: uppercase; }
+.home-hero__join { background: transparent; color: var(--ink); border: 1.5px solid var(--ink); }
+@media (hover: hover) and (pointer: fine) {
+  .home-hero__book:hover { background: #e2d1b6; border-color: #e2d1b6; }
+  .home-hero__join:hover { background: rgba(31, 22, 18, 0.05); }
+}
+@media (min-width: 600px) {
+  .home-hero { padding-inline: var(--gutter); }
+  .home-hero__photo { height: auto; aspect-ratio: 16 / 9; max-height: 56svh; border-radius: 28px; }
+  .home-hero__photo img { object-position: 70% 40%; }
+  .home-hero__card { padding-top: 32px; }
+  .home-hero__logo { width: 240px; }
+}
+@media (min-width: 1200px) {
+  .home-hero { position: relative; display: block; max-width: 1696px; margin-inline: auto; padding: 12px var(--gutter) 0; }
+  .home-hero__photo { aspect-ratio: auto; height: calc(100svh - var(--hdr) - var(--safe-t) - 36px); min-height: 560px; max-height: 820px; border-radius: 32px; }
+  .home-hero__photo img { object-position: 60% 40%; }
+  [dir="rtl"] .home-hero__photo img { transform: scaleX(-1); }
+  .home-hero__card {
+    position: absolute; inset-inline-start: calc(var(--gutter) + 32px); inset-block-end: 32px;
+    width: clamp(312px, 26vw, 380px); max-width: none; padding: 32px 28px 28px; border-radius: 28px;
+    background: rgba(255, 253, 250, 0.9); backdrop-filter: blur(14px) saturate(1.1); -webkit-backdrop-filter: blur(14px) saturate(1.1);
+    box-shadow: 0 24px 60px rgba(31, 22, 18, 0.18), 0 0 0 1px rgba(31, 22, 18, 0.05);
+  }
+  .home-hero__logo { width: 100%; max-width: 232px; margin-bottom: 22px; }
+  .home-hero__title { font-size: 60px; margin-bottom: 24px; }
+  html[lang="he"] .home-hero__title { font-size: 54px; }
+}
+@media (prefers-reduced-motion: reduce) { .home-hero__photo img { animation: none; } }
+/* Short laptop screens: a smaller card, so it stays clear of her lifted foot */
+@media (min-width: 1200px) and (max-height: 800px) {
+  .home-hero__card { padding: 24px 24px 22px; inset-block-end: 24px; }
+  .home-hero__logo { max-width: 184px; margin-bottom: 16px; }
+  .home-hero__title, html[lang="he"] .home-hero__title { font-size: 48px; margin-bottom: 18px; }
+  .home-hero__cta .btn, html[lang="he"] .home-hero__cta .btn { min-height: 50px; }
+}
