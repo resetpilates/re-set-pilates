@@ -2612,13 +2612,17 @@ html[lang="he"] .hero--logo .hero__greet { font-size: 20px; font-weight: 800; le
 .footer__logo { height: 64px; margin: 0 auto; }
 .profile-hello .avatar--brand .logo { height: 56px; }
 
-/* ───────── v4.9 · 17 Nov: home hero is one big studio photo (a plank on the Reformer, in the brand's ivory, oak, beige and logo gold) ─────────
+/* ───────── v4.9 · 17 Nov: home hero is one big studio photo (a plank on the Reformer, in the November 2026 brand kit: ivory room, blush outfit, a little sage) ─────────
    The first screen is the photo, edge to edge, with one cream card on it: logo (always the English mark), welcome, one headline, two buttons.
    Upright screens (phones): a tall photo, the card across the bottom over the open floor.
    Wide screens: the wide photo, the card on its calm side. The photo carries no lettering, so Hebrew mirrors it and the card never covers her. */
-.home-hero { background: var(--paper); color: var(--ink); padding: 8px 12px 20px; }
+/* Brand kit colours, named as in the kit. Kept on the hero so this section matches the kit wherever the page tokens stand. */
+.home-hero {
+  --kit-blush: #cdbab6; --kit-blush-deep: #7a5e58; --kit-blush-soft: #e3d6d2; --kit-ivory: #f6f2ee; --kit-card: #fbf9f6; --kit-ink: #3f3733; --kit-ink-rgb: 63, 55, 51;
+  background: var(--kit-ivory); color: var(--kit-ink); padding: 8px 12px 20px;
+}
 .home-hero__frame {
-  position: relative; overflow: hidden; margin-inline: auto; max-width: 520px; border-radius: 24px; background: var(--b-sun);
+  position: relative; overflow: hidden; margin-inline: auto; max-width: 520px; border-radius: 24px; background: var(--kit-blush-soft);
   /* fills the screen between the header and the tab bar */
   height: calc(100svh - var(--hdr) - var(--safe-t) - var(--safe-b) - 84px); min-height: 580px; max-height: 900px;
 }
@@ -2627,29 +2631,30 @@ html[lang="he"] .hero--logo .hero__greet { font-size: 20px; font-weight: 800; le
 .home-hero__card {
   position: absolute; inset-inline: 12px; inset-block-end: 12px; padding: 20px 18px 18px; border-radius: 20px;
   display: flex; flex-direction: column; align-items: center; text-align: center;
-  background: rgba(255, 253, 250, 0.9); backdrop-filter: blur(14px) saturate(1.1); -webkit-backdrop-filter: blur(14px) saturate(1.1);
-  box-shadow: 0 18px 44px rgba(31, 22, 18, 0.16), 0 0 0 1px rgba(31, 22, 18, 0.05);
+  background: rgba(251, 249, 246, 0.92); backdrop-filter: blur(14px) saturate(1.1); -webkit-backdrop-filter: blur(14px) saturate(1.1);
+  box-shadow: 0 18px 44px rgba(var(--kit-ink-rgb), 0.16), 0 0 0 1px rgba(var(--kit-ink-rgb), 0.06);
 }
 .home-hero__logo { width: 148px; height: auto; margin-bottom: 14px; }
 .home-hero__greet {
   margin: 0 0 6px; display: flex; flex-wrap: wrap; justify-content: center; align-items: baseline; gap: 2px 8px;
-  font-family: "Inter", "Heebo", sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: var(--sand-deep);
+  font-family: "Inter", "Heebo", sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: var(--kit-blush-deep);
 }
 html[lang="he"] .home-hero__greet { font-size: 15px; letter-spacing: 0; }
-.home-hero__greet b { font-family: "Cormorant Garamond", "Frank Ruhl Libre", Georgia, serif; font-size: 22px; font-weight: 700; letter-spacing: 0; text-transform: none; line-height: 1.05; color: var(--ink); }
+.home-hero__greet b { font-family: "Cormorant Garamond", "Frank Ruhl Libre", Georgia, serif; font-size: 22px; font-weight: 600; letter-spacing: 0; text-transform: none; line-height: 1.05; color: var(--kit-ink); }
 .home-hero__title {
-  margin: 0 0 16px; font-family: "Cormorant Garamond", "Frank Ruhl Libre", Georgia, serif; font-weight: 700;
-  font-size: 44px; line-height: 1; letter-spacing: -0.015em; color: var(--ink);
+  margin: 0 0 16px; font-family: "Cormorant Garamond", Georgia, serif; font-weight: 500;
+  font-size: 46px; line-height: 1; letter-spacing: -0.015em; color: var(--kit-ink);
 }
-html[lang="he"] .home-hero__title { font-family: "Frank Ruhl Libre", "Cormorant Garamond", Georgia, serif; font-size: 40px; letter-spacing: 0; line-height: 1.08; }
+html[lang="he"] .home-hero__title { font-family: "Heebo", "Inter", sans-serif; font-weight: 700; font-size: 38px; letter-spacing: -0.01em; line-height: 1.1; }
 .home-hero__cta { width: 100%; display: flex; flex-direction: column; gap: 8px; }
 .home-hero__cta .btn, html[lang="he"] .home-hero__cta .btn { width: 100%; min-height: 50px; padding-inline: 16px; font-family: "Inter", "Heebo", sans-serif; font-size: 15.5px; font-weight: 800; letter-spacing: 0.04em; }
 html[lang="he"] .home-hero__cta .btn { font-size: 17px; letter-spacing: 0; }
-.home-hero__book { background: var(--ink); color: var(--paper); border: 2px solid var(--ink); text-transform: uppercase; }
-.home-hero__join { background: transparent; color: var(--ink); border: 1.5px solid var(--ink); }
+/* Kit: Frosted Blush is the one welcoming button on the first screen, with Deep Mushroom text (never ivory on blush) */
+.home-hero__book { background: var(--kit-blush); color: var(--kit-ink); border: 2px solid var(--kit-blush); text-transform: uppercase; }
+.home-hero__join { background: transparent; color: var(--kit-ink); border: 1.5px solid var(--kit-ink); }
 @media (hover: hover) and (pointer: fine) {
-  .home-hero__book:hover { background: #3a2d25; border-color: #3a2d25; }
-  .home-hero__join:hover { background: rgba(31, 22, 18, 0.06); }
+  .home-hero__book:hover { background: #c2ada8; border-color: #c2ada8; }
+  .home-hero__join:hover { background: rgba(var(--kit-ink-rgb), 0.06); }
 }
 /* Wide screens: the wide photo, shown whole from side to side, the card on its calm side */
 @media (min-width: 900px) and (min-aspect-ratio: 1/1) {
@@ -2660,11 +2665,11 @@ html[lang="he"] .home-hero__cta .btn { font-size: 17px; letter-spacing: 0; }
   .home-hero__card {
     inset-inline: clamp(16px, 2.4%, 32px) auto; inset-block-end: clamp(16px, 2.4%, 32px);
     width: clamp(250px, 28%, 380px); padding: clamp(20px, 2.2vw, 32px) clamp(18px, 2vw, 28px) clamp(18px, 2vw, 28px); border-radius: 28px;
-    box-shadow: 0 24px 60px rgba(31, 22, 18, 0.18), 0 0 0 1px rgba(31, 22, 18, 0.05);
+    box-shadow: 0 24px 60px rgba(var(--kit-ink-rgb), 0.18), 0 0 0 1px rgba(var(--kit-ink-rgb), 0.06);
   }
   .home-hero__logo { width: 64%; max-width: 232px; margin-bottom: clamp(14px, 1.6vw, 22px); }
   .home-hero__title { font-size: clamp(40px, 4.2vw, 60px); margin-bottom: clamp(16px, 1.8vw, 24px); }
-  html[lang="he"] .home-hero__title { font-size: clamp(36px, 3.8vw, 54px); }
+  html[lang="he"] .home-hero__title { font-size: clamp(34px, 3.5vw, 50px); }
   .home-hero__cta { gap: 10px; }
   .home-hero__cta .btn, html[lang="he"] .home-hero__cta .btn { min-height: clamp(48px, 4vw, 56px); }
 }
@@ -2672,7 +2677,8 @@ html[lang="he"] .home-hero__cta .btn { font-size: 17px; letter-spacing: 0; }
 @media (min-width: 900px) and (min-aspect-ratio: 1/1) and (max-height: 800px) {
   .home-hero__card { padding: 22px 22px 20px; }
   .home-hero__logo { max-width: 176px; margin-bottom: 14px; }
-  .home-hero__title, html[lang="he"] .home-hero__title { font-size: 44px; margin-bottom: 16px; }
+  .home-hero__title { font-size: 44px; margin-bottom: 16px; }
+  html[lang="he"] .home-hero__title { font-size: 38px; margin-bottom: 16px; }
   .home-hero__cta .btn, html[lang="he"] .home-hero__cta .btn { min-height: 48px; }
 }
 @media (prefers-reduced-motion: reduce) { .home-hero__photo img { animation: none; } }

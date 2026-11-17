@@ -90,7 +90,7 @@ export const siteConfig = {
   studioMedia: {
     heroVideo: "/media/hero.mp4", // Seedance 1.5 Pro: empty studio at dawn, dolly in to the gold-ring sign (12s, 1080p, silent); replace with real footage after the shoot
     heroVideoPhone: "/media/hero-720.mp4", // lighter 720p encode served below 1000px (made by the compress-hero workflow)
-    // Home hero photo: a plank on the Reformer in the brand colours (ivory room, oak, beige, the logo's gold). Generated to match the room;
+    // Home hero photo: a plank on the Reformer in the brand kit colours (Warm Ivory room, Frosted Blush outfit, oak, a little sage). Generated to match the room;
     // replace both files after the real shoot. Wide for laptops and landscape tablets, tall for phones.
     heroPhoto: "/assets/hero-reformer-1920.webp",
     heroPhotoTall: "/assets/hero-reformer-tall-1080.webp",
