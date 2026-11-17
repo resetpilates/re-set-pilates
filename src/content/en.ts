@@ -501,6 +501,18 @@ export const en = {
     autoRenewOff: "Ends on {date}. Switch on to keep your membership going.",
     ends: "Ends",
   },
+  space: {
+    eyebrow: "The space",
+    title: "The room, as it is.",
+    sub: "Real photos from the studio in Hod Hasharon.",
+    leadAlt: "The re:set studio: Reformers facing two arched, back-lit mirrors and sheer white curtains",
+    shots: [
+      "Reformers in a row with the coffee corner behind the arches",
+      "The view from the studio door",
+      "A Reformer up close: shoulder rest, rope and headrest",
+      "The coffee corner: coffee, dates, walnuts and almonds",
+    ],
+  },
   about: {
     eyebrow: "The studio",
     headline: "More than a workout",

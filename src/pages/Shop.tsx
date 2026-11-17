@@ -36,9 +36,9 @@ export default function Shop() {
         </div>
       </header>
 
-      {/* Hero: the class, each girl at a different moment */}
+      {/* Hero: the real RE:SET flat-lay (ball, ring, wrist weights, band) */}
       <section className="wrap shop-hero">
-        <Reveal className="shop-hero__media">
+        <Reveal className="shop-hero__media shop-hero__media--tall">
           <img src={shopMedia.hero.src} alt="" style={{ objectPosition: shopMedia.hero.pos }} loading="eager" decoding="async" />
           <span className="shop-tag">{c.comingSoon}</span>
         </Reveal>

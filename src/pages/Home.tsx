@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { GoogleReviews, MapEmbed, PersonCard, ScheduleBoard, effectivePrice, planName, pricesVisible } from "../components/blocks";
+import { GoogleReviews, MapEmbed, PersonCard, ScheduleBoard, SpaceGallery, effectivePrice, planName, pricesVisible } from "../components/blocks";
 import { openChat } from "../components/ChatWidget";
 import { Logo } from "../components/Shell";
 import { Accordion, Reveal, Verified } from "../components/ui";
@@ -86,6 +86,9 @@ export default function Home() {
           </Link>
         </section>
       )}
+
+      {/* The real room, straight under the first screen */}
+      <SpaceGallery />
 
       {/* Why */}
       <section className="section">

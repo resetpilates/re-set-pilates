@@ -42,7 +42,7 @@ export const teenBundle = {
 };
 
 export const shopMedia = {
-  hero: { src: "/assets/shop/hero.webp", pos: "50% 45%" },
+  hero: { src: "/assets/real/flatlay.webp", pos: "50% 50%" }, // real product photo (owner, 17 Nov 2026)
   moment: { src: "/assets/shop/moment.webp", pos: "50% 40%" },
 };
 

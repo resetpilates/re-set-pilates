@@ -17,13 +17,42 @@ import { sampleBeds, useRoster, type RosterSlots } from "../lib/roster";
 import { scheduleName } from "../lib/relayTypes";
 import { loadTurnstile } from "../lib/turnstile";
 import { ConsentField, ContactFields, HeardField, profileFrom, readContact, readExtras } from "./forms";
-import { MaskImg, Price, Segmented } from "./ui";
+import { MaskImg, Price, Reveal, Segmented } from "./ui";
 
 export const instructorName = (id: string, isHe: boolean) => {
   const i = roster.find((x) => x.id === id);
   // First name only on class rows ("with Orit"); the full name stays on the founder's card.
   return i ? (isHe ? i.nameHe : i.nameEn).split(" ")[0] : "";
 };
+
+/** "The space": the real studio photos. One large photo with a slow zoom, then a strip to swipe through. */
+export function SpaceGallery({ title = true }: { title?: boolean }) {
+  const { t } = useI18n();
+  const m = siteConfig.studioMedia.real;
+  return (
+    <section className="section--tight space">
+      <div className="wrap stack gap-16">
+        {title && (
+          <Reveal className="stack gap-8 sec-title">
+            <p className="eyebrow">{t.space.eyebrow}</p>
+            <h2 className="display d-lg">{t.space.title}</h2>
+            <p className="small muted">{t.space.sub}</p>
+          </Reveal>
+        )}
+        <Reveal className="space__lead">
+          <img src={m.lead} alt={t.space.leadAlt} width={1122} height={1140} decoding="async" />
+        </Reveal>
+      </div>
+      <ul className="space__rail" aria-label={t.space.eyebrow}>
+        {m.shots.map((src, i) => (
+          <li key={src} className="space__shot">
+            <img src={src} alt={t.space.shots[i]} loading="lazy" decoding="async" />
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
 
 /** Same dark title band at the top of every inner page. */
 export function PageHead({ title, sub, app = false }: { title: string; sub?: string; app?: boolean }) {

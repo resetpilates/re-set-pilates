@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { PageHead, PersonCard } from "../components/blocks";
+import { PageHead, PersonCard, SpaceGallery } from "../components/blocks";
 import { Accordion, MaskImg, Reveal } from "../components/ui";
 import { siteConfig } from "../config/site";
 import { founder, instructors, pressMentions } from "../config/team";
@@ -15,7 +15,7 @@ export function About() {
   return (
     <div className="page page--bleed tone-dark">
       <section className="phero" style={{ minHeight: "min(78svh, 680px)" }}>
-        <img src="/assets/studio.webp" alt="" style={{ objectPosition: "50% 60%" }} />
+        <img src={siteConfig.studioMedia.real.arches} alt="" style={{ objectPosition: "42% 50%" }} />
         <div className="wrap phero__body stack gap-12">
           <span className="eyebrow fade-up" style={{ color: "var(--cream)" }}>
             {t.about.eyebrow}
@@ -46,9 +46,11 @@ export function About() {
               </div>
             </div>
           </Reveal>
-          <MaskImg src="/assets/studio-entry.webp" ratio="4 / 5" pos="50% 40%" delay={120} />
+          <MaskImg src={siteConfig.studioMedia.real.entry} alt={t.space.shots[1]} ratio="4 / 5" pos="50% 60%" delay={120} />
         </div>
       </section>
+
+      <SpaceGallery />
 
       <section className="section tone-dark tone-raise">
         <div className="wrap stack gap-32">

@@ -2611,3 +2611,23 @@ html[lang="he"] .hero--logo .hero__greet { font-size: 20px; font-weight: 800; le
 /* Footer and profile header show the full logo (letters + PILATES) */
 .footer__logo { height: 64px; margin: 0 auto; }
 .profile-hello .avatar--brand .logo { height: 56px; }
+
+/* ───────── v3.10 · 17 Nov: real studio photos. "The space" (one photo with a slow zoom + a strip to swipe), taller shop photo ───────── */
+.space__lead { position: relative; overflow: hidden; border-radius: 28px; aspect-ratio: 1 / 1; background: var(--b-cream); box-shadow: 0 18px 44px rgba(31, 22, 18, 0.12); }
+.space__lead img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 45%; transform-origin: 62% 42%; animation: space-drift 26s ease-in-out infinite alternate; }
+@keyframes space-drift { from { transform: scale(1); } to { transform: scale(1.09); } }
+.space__rail {
+  list-style: none; margin: 14px 0 0; padding: 0 var(--gutter); display: grid; grid-auto-flow: column; grid-auto-columns: min(64vw, 280px); gap: 12px;
+  overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scroll-snap-type: x mandatory; scroll-padding-inline: var(--gutter); scrollbar-width: none;
+}
+.space__rail::-webkit-scrollbar { display: none; }
+.space__shot { position: relative; overflow: hidden; border-radius: 22px; aspect-ratio: 4 / 5; scroll-snap-align: start; background: var(--b-cream); }
+.space__shot img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.shop-hero__media--tall { aspect-ratio: 4 / 5; }
+@media (min-width: 1000px) {
+  .space__lead { aspect-ratio: 16 / 9; border-radius: 32px; }
+  .space__lead img { object-position: 50% 62%; }
+  .space__rail { max-width: var(--max); margin-inline: auto; grid-auto-flow: row; grid-template-columns: repeat(4, 1fr); grid-auto-columns: auto; gap: 16px; overflow: visible; }
+  .shop-hero__media--tall { aspect-ratio: 4 / 5; max-height: 620px; }
+}
+@media (prefers-reduced-motion: reduce) { .space__lead img { animation: none; } }

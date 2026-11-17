@@ -94,7 +94,17 @@ export const siteConfig = {
     // Link preview (WhatsApp, Instagram, Facebook, Google): the RE:SET logo on white, 1200×630 (new file name so WhatsApp drops its cached preview). og-studio.jpg (the five
     // reformers) stays for the schema.org photo list only; the owner asked that a shared link shows the logo, not the studio.
     ogImage: "/assets/og-logo-v2.jpg",
-    ogStudio: "/assets/og-studio.jpg",
+    ogStudio: "/assets/og-studio-real.jpg", // real photo (17 Nov 2026): the two arches and the coffee corner
+    // Real photos of the studio (owner, 17 Nov 2026), Instagram header and captions cropped off. `lead` opens "The space"
+    // on Home and About with a slow zoom; `shots` is the swipeable strip under it, in the order of content `space.shots`.
+    real: {
+      lead: "/assets/real/room.webp",
+      arches: "/assets/real/arches.webp",
+      entry: "/assets/real/entry.webp",
+      detail: "/assets/real/detail.webp",
+      coffee: "/assets/real/coffee.webp",
+      shots: ["/assets/real/arches.webp", "/assets/real/entry.webp", "/assets/real/detail.webp", "/assets/real/coffee.webp"],
+    },
     // Chat launcher and chat header avatar: the same logo on white, sized to sit inside a circle.
     chatAvatar: "/icons/icon-chat-512.png",
     // The RE:SET logo with PILATES under it on a white square, sized to sit inside a circle: welcome screen.

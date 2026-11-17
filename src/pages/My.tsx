@@ -29,7 +29,7 @@ export default function My() {
         {store.upcoming.length === 0 ? (
           <div className="my-empty stack gap-12 center">
             <div className="media media--bare my-empty__img" aria-hidden>
-              <img src="/assets/ex-rest.webp" alt="" style={{ objectPosition: "50% 40%" }} />
+              <img src={siteConfig.studioMedia.real.detail} alt="" style={{ objectPosition: "50% 55%" }} />
             </div>
             <h2 className="display d-sm">{t.my.emptyTitle}</h2>
             <p className="small muted">{t.my.emptySub}</p>
