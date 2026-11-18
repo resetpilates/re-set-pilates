@@ -75,6 +75,10 @@ export default function ClassDetail() {
   const atLimit = !!usage && usage.left <= 0;
   // The balance once this class is redeemed, shown on the "spot saved" screen
   const after = plan && confirmed ? planUsage(plan, store.bookings, fromISO(slot.date), store.planStart, store.carry ?? 0, renews) : null;
+  // Before payment only one class can be held at a time. Reserving here would hold another one when the plan is still
+  // unpaid, or (no plan covering this class, payment closed) when the class would be held at checkout.
+  const holdsUnpaid = plan ? !!store.planPending : !siteConfig.flags.paymentsLive;
+  const otherHeld = holdsUnpaid && store.held && store.held.slotId !== slot.id ? store.held : undefined;
   // One class bought on its own: a visitor's way in, and a member's when the plan is used up
   const singleLink = (primary: boolean) => (
     <Link
@@ -108,7 +112,7 @@ export default function ClassDetail() {
   const confirm = (e: FormEvent) => {
     e.preventDefault();
     if (atLimit) return;
-    const local = store.book(slot, isReformer ? bed : null, remind);
+    const local = store.book(slot, isReformer ? bed : null, remind, { held: !!store.planPending });
     if (!local) return;
     const contact = whoFrom(e.currentTarget as HTMLFormElement);
     // A plan ordered before online payment opened holds the bed (status "Held") until the studio takes payment
@@ -289,7 +293,16 @@ export default function ClassDetail() {
                     : (plan.billingType === "monthly" ? t.confirm.limitWeek : t.confirm.limitPass).replace("{used}", String(usage.used)).replace("{cap}", String(usage.cap))}
               </p>
             )}
-            {plan && usage && atLimit ? (
+            {otherHeld ? (
+              <div className="notice stack gap-8" role="status">
+                <span className="small">
+                  {t.confirm.holdLimit.replace("{class}", `${fmtDate(fromISO(otherHeld.date))} · ${otherHeld.time}`)}
+                </span>
+                <Link to={href("my")} className="btn btn--secondary btn--sm" style={{ alignSelf: "flex-start" }}>
+                  {t.confirm.viewBookings}
+                </Link>
+              </div>
+            ) : plan && usage && atLimit ? (
               <>
                 <p className="small muted center">{plan.billingType === "monthly" && !usage.expired ? t.confirm.limitHint : t.confirm.limitPassHint}</p>
                 <Link to={href(`pricing?kind=${slot.service}&next=${slot.id}`)} className="btn btn--sand btn--block" onClick={() => rememberBed(slot.id, isReformer ? bed : null)}>

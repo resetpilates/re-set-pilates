@@ -58,7 +58,7 @@ export function Checkout() {
   const [blockedUntil, setBlockedUntil] = useState<Date | null>(null); // the relay found the same membership still running
   const [receiptNo, setReceiptNo] = useState("");
   const [waitlisted, setWaitlisted] = useState(false); // payments not live: the order went to the launch waitlist
-  const [hold, setHold] = useState<"held" | "full" | null>(null); // checkout for a class: its bed was held, or it had just filled
+  const [hold, setHold] = useState<"held" | "full" | "limit" | null>(null); // checkout for a class: bed held, class just filled, or another class already held
   const [sentVia, setSentVia] = useState<string[]>([]);
   const plan = planById(planId);
   const next = params.get("next");
@@ -212,9 +212,13 @@ export function Checkout() {
     if (!s) return;
     const bed = s.service === "reformer" ? rememberedBed(s.id) : null;
     const slot: SlotRef = { slotId: s.id, service: s.service, date: s.date, time: s.time, minutes: s.minutes, capacity: s.capacity };
-    const local = store.book(s, bed, store.reminders, single);
-    // Not saved on the phone (the plan just ordered does not cover this class): don't hold a bed nobody could cancel
-    if (!local) return;
+    const local = store.book(s, bed, store.reminders, { single, held: true });
+    // Not saved on the phone: another class is already held before payment, or the plan just ordered does not cover
+    // this class. Either way no bed is held that the customer could not see or cancel.
+    if (!local) {
+      if (store.held && store.held.slotId !== s.id) setHold("limit");
+      return;
+    }
     const r = await relay("booking", { lang, contact, slot, bed, showAs: store.profile.showAs ?? "short", held: true }, { ref: local.id });
     if (r.error === "full") {
       store.cancel(local.id);
@@ -239,6 +243,7 @@ export function Checkout() {
             {store.planId === plan.id && plan.sessions !== 1 && <p className="small">{t.launchWaitlist.planReady}</p>}
             {hold === "held" && <p className="small hi">{t.launchWaitlist.bedHeld}</p>}
             {hold === "full" && <p className="small hi">{t.launchWaitlist.classFull}</p>}
+            {hold === "limit" && <p className="small hi">{t.launchWaitlist.holdLimit}</p>}
             <HealthNextStep profile={store.profile} next={next ? `class/${next}` : undefined} />
             <p className="small">
               <b>{t.launchWaitlist.youChose}:</b> {[`${planName(plan, t, slotLabel ? null : kind)} · ₪${effectivePrice(plan, kind)}`, slotLabel].filter(Boolean).join(" · ")}

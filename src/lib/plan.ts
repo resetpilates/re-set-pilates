@@ -39,6 +39,19 @@ export function planEnd(plan: PricingItem, planStart: string | null) {
  */
 export const planCovers = (plan: PricingItem, kind: ClassKind | null | undefined, service: Booking["service"]) => plan.track !== "teens" && (!kind || kind === service);
 
+/**
+ * The class this customer holds without having paid (a bed held at checkout, or on a plan still waiting for payment),
+ * if it has not taken place yet. While payment is pending only one class can be held at a time.
+ */
+export const heldClass = (bookings: Booking[], now: Date) =>
+  bookings.find((b) => b.held && !b.cancelledLate && slotStartOf(b) > now);
+const slotStartOf = (b: Booking) => {
+  const d = fromISO(b.date);
+  const [h, m] = b.time.split(":").map(Number);
+  d.setHours(h, m, 0, 0);
+  return d;
+};
+
 /** Classes redeemed from the plan bought at `start`: not the ones paid for one at a time, nor those of an earlier plan. */
 const onPlan = (bookings: Booking[], start: number) => bookings.filter((b) => !b.single && bookedAt(b) >= start);
 

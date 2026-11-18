@@ -325,6 +325,7 @@ export const en = {
     plusCarried: "+ {n} carried over",
     planEnded: "Your membership ends before this date.",
     pending: "Payment pending: nothing was charged yet. The studio confirms your plan when payments open.",
+    holdLimit: "You already have a class held ({class}). Until the studio confirms your payment, you can hold one class at a time.",
     payNone: "Purchase at booking",
     confirmBtn: "Confirm",
     limitWeek: "This week is full: {used} of {cap} classes in your plan are booked.",
@@ -679,6 +680,7 @@ export const en = {
     planReady: "Your plan is now in the app: book your classes with it.",
     bedHeld: "Your bed is held for this class and your name now shows on the schedule.",
     classFull: "That class filled up just now, so you're on its waitlist. The studio will call you if a bed opens.",
+    holdLimit: "Your order is saved, but this class was not held: you already have a class held. Until the studio confirms your payment, you can hold one class at a time.",
     atPay: "Online payment isn't open yet, so nothing was charged. Your order is saved and the studio will call you to confirm your spot and take payment as soon as it opens.",
   },
   form: {

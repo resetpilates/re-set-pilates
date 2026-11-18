@@ -2,8 +2,9 @@ import type { ShowAs } from "./relayTypes";
 import type { HealthRecord } from "./health";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { planById, type ClassKind } from "../config/pricing";
+import { siteConfig } from "../config/site";
 import { fromISO, israelNow, slotStart, type ClassSlot } from "./booking";
-import { planCovers, planUsage } from "./plan";
+import { heldClass, planCovers, planUsage } from "./plan";
 import type { ReceiptData } from "./receipt";
 import { RELAY_REPLY, relay, type RelayReplyDetail } from "./relay";
 
@@ -21,6 +22,7 @@ export interface Booking {
   cancelledLate?: boolean; // cancelled inside the policy window: no longer attended, but the session stays used
   remoteId?: string; // Airtable record id from the relay, used to cancel there too
   single?: boolean; // paid for on its own (single class) while a plan was active: it does not use the plan
+  held?: boolean; // held before payment (checkout while payment is closed, or a plan still pending): one at a time
 }
 
 export interface Profile {
@@ -66,12 +68,15 @@ interface Persisted {
 interface Store extends Persisted {
   isMember: boolean;
   upcoming: Booking[];
+  /** The class held before payment that is still ahead, if any: no other class can be held until it is paid or over. */
+  held?: Booking;
   past: Booking[];
   /**
    * Returns null when the plan's allowance is used up (weekly cap, pass balance, ended plan) or the plan does not
    * cover this class. `single` = the class was bought on its own, so the plan is neither checked nor used.
+   * `held` = booked before payment: refused (null) while another unpaid class is still ahead.
    */
-  book: (slot: ClassSlot, bed: number | null, remind: boolean, single?: boolean) => Booking | null;
+  book: (slot: ClassSlot, bed: number | null, remind: boolean, opts?: { single?: boolean; held?: boolean }) => Booking | null;
   /** `late` keeps the booking on the record (hidden from lists) so the plan still counts it. */
   cancel: (bookingId: string, late?: boolean) => void;
   joinWaitlist: (slotId: string) => void;
@@ -117,7 +122,12 @@ function load(): Persisted {
       const [first, ...last] = String(name).trim().split(/\s+/);
       Object.assign(rest, { firstName: first ?? "", lastName: last.join(" ") });
     }
-    return { ...initial, planStart: saved.memberSince ?? null, ...saved, profile: { ...initial.profile, ...rest } };
+    const out: Persisted = { ...initial, planStart: saved.memberSince ?? null, ...saved, profile: { ...initial.profile, ...rest } };
+    // Saved before bookings carried the "held" mark (18 Nov 2026): while payment is closed, a class booked with no plan
+    // (held at checkout) or on a plan still waiting for payment was held, not paid.
+    if (!siteConfig.flags.paymentsLive && (!out.planId || out.planPending))
+      out.bookings = out.bookings.map((b) => (b.held === undefined && !b.cancelledLate ? { ...b, held: true } : b));
+    return out;
   } catch {
     return initial;
   }
@@ -138,11 +148,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
   }, [s]);
 
-  const book = useCallback<Store["book"]>((slot, bed, remind, single = false) => {
+  const book = useCallback<Store["book"]>((slot, bed, remind, { single = false, held = false } = {}) => {
     // Never book past the plan's allowance; a booking for the same slot is being replaced, so it doesn't count
     const allowed = (p: Persisted) => {
       // A late cancel keeps the session used: the same class can't be taken again
       if (p.bookings.some((x) => x.slotId === slot.id && x.cancelledLate)) return false;
+      // Before payment, one held class at a time (the same class being re-booked doesn't count)
+      if (held && heldClass(p.bookings.filter((x) => x.slotId !== slot.id), israelNow())) return false;
       const plan = p.planId ? planById(p.planId) : undefined;
       if (!plan || single) return true;
       const others = p.bookings.filter((x) => x.slotId !== slot.id);
@@ -161,6 +173,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       remind,
       bookedAt: new Date().toISOString(),
       ...(single ? { single: true } : {}),
+      ...(held ? { held: true } : {}),
     };
     setS((p) => (allowed(p) ? { ...p, bookings: [...p.bookings.filter((x) => x.slotId !== slot.id), b] } : p));
     return b;
@@ -189,7 +202,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   );
   const confirmPlan = useCallback(
     (planId: string, membershipId: string, autoRenew: boolean) =>
-      setS((p) => (p.planPending && p.planId === planId ? { ...p, planPending: false, membershipId, autoRenew } : p)),
+      setS((p) =>
+        p.planPending && p.planId === planId
+          ? { ...p, planPending: false, membershipId, autoRenew, bookings: p.bookings.map((b) => (b.held && !b.single ? { ...b, held: undefined } : b)) }
+          : p,
+      ),
     [],
   );
   const addReceipt = useCallback(
@@ -261,6 +278,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       ...s,
       isMember: !!s.planId,
       upcoming: sorted.filter((b) => slotStart(b) > now),
+      held: heldClass(s.bookings, now),
       past: sorted.filter((b) => slotStart(b) <= now).reverse(),
       book,
       cancel,

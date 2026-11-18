@@ -1,7 +1,7 @@
 // Plan balances, carry-over and the one-membership-at-a-time rule. Run with `bun test src/`.
 import { expect, test } from "bun:test";
 import { planById, type PricingItem } from "../config/pricing";
-import { carryOver, checkPurchase, planCovers, planSeat, planUsage } from "./plan";
+import { carryOver, checkPurchase, heldClass, planCovers, planSeat, planUsage } from "./plan";
 import type { Booking } from "./store";
 
 const p5 = planById("p5")!; // 5 classes (no launch bonus any more)
@@ -119,4 +119,13 @@ test("a teens plan never covers the adult schedule; a Mat plan covers Mat only",
   expect(planCovers(p5, "mat", "reformer")).toBe(false);
   expect(planCovers(p5, "reformer", "reformer")).toBe(true);
   expect(planCovers(p5, undefined, "mat")).toBe(true);
+});
+
+test("before payment one class can be held at a time; a class that is over or late-cancelled frees the hold", () => {
+  const held = { ...booking("2026-10-21", daysAgo(1)), held: true };
+  const paid = booking("2026-10-22", daysAgo(1));
+  expect(heldClass([paid], now)).toBeUndefined();
+  expect(heldClass([held, paid], now)?.id).toBe(held.id);
+  expect(heldClass([{ ...held, date: "2026-10-18" }], now)).toBeUndefined(); // already taken place
+  expect(heldClass([{ ...held, cancelledLate: true }], now)).toBeUndefined();
 });
