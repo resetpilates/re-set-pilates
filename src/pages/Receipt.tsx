@@ -89,7 +89,7 @@ export default function Receipt() {
           ref={frame}
           title={`${t.receipt[type]} ${r.no}`}
           srcDoc={html}
-          style={{ width: "100%", height, border: 0, borderRadius: 16, background: "#f6f1ea" }}
+          style={{ width: "100%", height, border: 0, borderRadius: 16, background: "#efeae4" }}
           onLoad={() => {
             const d = frame.current?.contentDocument;
             if (d) setHeight(d.documentElement.scrollHeight + 8);

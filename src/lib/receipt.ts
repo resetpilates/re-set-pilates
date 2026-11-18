@@ -121,9 +121,9 @@ export function renderReceiptHtml(r: ReceiptData, type: DocType, opts: { logo?: 
   const he = r.lang === "he";
   const s = studioContact();
   const title = type === "invoice" ? t.invoice : t.receipt;
-  const ink = "#2b2522";
-  const muted = "#7a6f68";
-  const line = "#e8e0d6";
+  const ink = "#3f3733";
+  const muted = "#6f655e";
+  const line = "#e4ddd6";
   // each part isolated so phone numbers, addresses and the @handle keep their direction inside Hebrew text
   const contact = [s.email, s.whatsapp ? `WhatsApp ${s.whatsapp}` : ""].filter(Boolean).map((v) => `<bdi>${esc(v)}</bdi>`).join(" · ");
   const rows = r.lines
@@ -150,8 +150,8 @@ export function renderReceiptHtml(r: ReceiptData, type: DocType, opts: { logo?: 
 <title>${esc(title)} ${esc(r.no)} · ${esc(s.name)}</title>
 <style>@media print{body{background:#fff!important}.sheet{box-shadow:none!important;margin:0!important}}</style>
 </head>
-<body style="margin:0;background:#f6f1ea;font-family:${he ? "Heebo," : ""}Inter,-apple-system,'Segoe UI',Arial,sans-serif;color:${ink};font-size:15px;line-height:1.5">
-<div class="sheet" style="max-width:560px;margin:24px auto;background:#fffdf9;border-radius:16px;box-shadow:0 1px 3px rgba(0,0,0,.06);padding:32px 28px">
+<body style="margin:0;background:#efeae4;font-family:${he ? "Heebo," : ""}Inter,-apple-system,'Segoe UI',Arial,sans-serif;color:${ink};font-size:15px;line-height:1.5">
+<div class="sheet" style="max-width:560px;margin:24px auto;background:#fbf9f6;border-radius:16px;box-shadow:0 1px 3px rgba(63, 55, 51, .06);padding:32px 28px">
   <table role="presentation" style="width:100%;border-collapse:collapse"><tr>
     <td style="vertical-align:middle"><img src="${esc(opts.logo ?? receiptLogo())}" width="124" height="60" alt="${esc(s.name)}" style="display:block;height:60px;width:auto"></td>
     <td style="vertical-align:middle;text-align:${he ? "left" : "right"}">
@@ -177,11 +177,11 @@ export function renderReceiptHtml(r: ReceiptData, type: DocType, opts: { logo?: 
         <td style="padding-top:14px;font-weight:600;font-size:18px;text-align:${he ? "left" : "right"};direction:ltr">${money(r.total)}</td></tr>
   </table>
 
-  ${facts.length ? `<table role="presentation" style="width:100%;border-collapse:collapse;margin-top:20px;background:#f6f1ea;border-radius:12px">${facts
+  ${facts.length ? `<table role="presentation" style="width:100%;border-collapse:collapse;margin-top:20px;background:#efeae4;border-radius:12px">${facts
     .map(([k, v]) => `<tr><td style="padding:8px 14px;color:${muted};font-size:14px">${esc(k)}</td><td style="padding:8px 14px;text-align:${he ? "left" : "right"};font-weight:600;direction:ltr">${esc(v)}</td></tr>`)
     .join("")}</table>` : ""}
   ${type === "receipt" && !r.paid ? `<p style="margin:16px 0 0;color:${muted};font-size:13px">${esc(t.pending)}</p>` : ""}
-  ${opts.link ? `<p style="margin:20px 0 0"><a href="${esc(opts.link)}" style="color:#2e5670">${esc(t.view)}</a></p>` : ""}
+  ${opts.link ? `<p style="margin:20px 0 0"><a href="${esc(opts.link)}" style="color:#6b514c">${esc(t.view)}</a></p>` : ""}
 
   <p style="margin:28px 0 0;font-size:15px">${esc(t.thanks)}</p>
   <p style="margin:6px 0 0;color:${muted};font-size:12px">${esc(t.note)}</p>
