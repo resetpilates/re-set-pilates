@@ -10,6 +10,7 @@ import type { Content } from "../content/en";
 import { track } from "../lib/analytics";
 import { bookingProvider, fromISO, hasClasses, toISO, upcomingDays, type BookableService, type ClassSlot } from "../lib/booking";
 import { useI18n } from "../lib/i18n";
+import type { PlanUsage } from "../lib/plan";
 import { relay } from "../lib/relay";
 import { PREF_TIMES, type PrefTime } from "../lib/relayTypes";
 import { useStore } from "../lib/store";
@@ -101,6 +102,21 @@ export const planName = (p: PricingItem, t: Content, kind?: ClassKind | null) =>
         ? t.pricing.single
         : `${p.sessions} ${t.pricing.sessions}`;
   return kind ? `${base} · ${t.pricing.kinds[kind]}` : base;
+};
+/** What is left on a plan this week (monthly) or on the pass: "3 of 5 classes left on your pass", "1 of 2 classes left this week + 2 carried over". */
+export const planLeft = (p: PricingItem, u: PlanUsage, t: Content) => {
+  if (u.cap === null) return t.profile.unlimitedNote;
+  const fill = (text: string, left: number) => text.replace("{left}", String(left)).replace("{cap}", String(u.cap));
+  if (p.billingType !== "monthly") return fill(t.confirm.leftPass, u.left);
+  // Carried-over classes sit on top of the weekly allowance, so they are named apart instead of inflating it
+  return fill(t.confirm.leftWeek, Math.max(0, u.cap - u.used)) + (u.extra > 0 ? ` ${t.confirm.plusCarried.replace("{n}", String(u.extra))}` : "");
+};
+/** The booking button for a member: "Redeem 1 class · 3 of 5 left". */
+export const redeemLabel = (p: PricingItem, u: PlanUsage, t: Content) => {
+  if (u.cap === null) return t.confirm.redeemUnlimited;
+  const week = p.billingType === "monthly" ? u.cap - u.used : u.left;
+  if (week <= 0) return t.confirm.redeemCarried.replace("{n}", String(u.extra));
+  return t.confirm.redeem.replace("{left}", String(week)).replace("{cap}", String(u.cap));
 };
 /** Price-list title for a pass during the launch month: "5 + 1 free" (poster 2); otherwise the plain name. */
 export const listName = (p: PricingItem, t: Content) =>

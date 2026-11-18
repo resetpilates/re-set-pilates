@@ -1,7 +1,7 @@
 import { ReformerSketch } from "../components/art";
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { instructorName } from "../components/blocks";
+import { instructorName, planLeft, planName, redeemLabel } from "../components/blocks";
 import { openChat } from "../components/ChatWidget";
 import { Check, Sheet, Switch } from "../components/ui";
 import { classPrices, planById, priceFor, singleClass } from "../config/pricing";
@@ -11,7 +11,7 @@ import { bookingProvider, fromISO, rememberBed, slotStart, type ClassSlot } from
 import { withRoster } from "../lib/roster";
 import { useI18n } from "../lib/i18n";
 import { downloadIcs } from "../lib/ics";
-import { planUsage } from "../lib/plan";
+import { planCovers, planUsage } from "../lib/plan";
 import { useSeo } from "../lib/seo";
 import { relay } from "../lib/relay";
 import { SHOW_AS, scheduleName, type Contact, type ShowAs, type SlotRef } from "../lib/relayTypes";
@@ -66,9 +66,28 @@ export default function ClassDetail() {
   const bedLabel = !isReformer ? copy.short : bed === null ? t.klass.anyBed : `${t.klass.bed} ${bed + 1}`;
 
   // Plan limit: weekly cap for monthly plans, remaining sessions and validity for passes
-  const plan = store.planId ? planById(store.planId) : undefined;
-  const usage = plan ? planUsage(plan, store.bookings.filter((b) => b.slotId !== slot.id), fromISO(slot.date), store.planStart, store.carry ?? 0) : null;
+  // A plan that does not cover this class (a teens plan on the adult schedule, a Mat plan on a Reformer class)
+  // is left out: the class is then bought like a visitor's, on its own.
+  const owned = store.planId ? planById(store.planId) : undefined;
+  const plan = owned && planCovers(owned, store.planKind, slot.service) ? owned : undefined;
+  const renews = !!store.autoRenew && !store.planPending;
+  const usage = plan ? planUsage(plan, store.bookings.filter((b) => b.slotId !== slot.id), fromISO(slot.date), store.planStart, store.carry ?? 0, renews) : null;
   const atLimit = !!usage && usage.left <= 0;
+  // The balance once this class is redeemed, shown on the "spot saved" screen
+  const after = plan && confirmed ? planUsage(plan, store.bookings, fromISO(slot.date), store.planStart, store.carry ?? 0, renews) : null;
+  // One class bought on its own: a visitor's way in, and a member's when the plan is used up
+  const singleLink = (primary: boolean) => (
+    <Link
+      to={href(`checkout/${singleClass.id}?kind=${slot.service}&next=${slot.id}`)}
+      className={`btn ${primary ? "btn--sand" : "btn--secondary"} btn--block`}
+      onClick={() => {
+        rememberBed(slot.id, isReformer ? bed : null);
+        track("membership_click", { plan: singleClass.id, kind: slot.service });
+      }}
+    >
+      {t.confirm.single.replace("{price}", String(priceFor(singleClass, slot.service)))}
+    </Link>
+  );
   // Name and phone are asked once (first booking or waitlist), then remembered on this device.
   const needsDetails = !store.profile.firstName || !store.profile.lastName || !store.profile.phone;
   // How the name shows on the schedule beds for the others in the class; remembered for next time
@@ -92,7 +111,8 @@ export default function ClassDetail() {
     const local = store.book(slot, isReformer ? bed : null, remind);
     if (!local) return;
     const contact = whoFrom(e.currentTarget as HTMLFormElement);
-    relay("booking", { lang, contact, slot: slotRef, bed: isReformer ? bed : null, showAs }, { ref: local.id }).then(
+    // A plan ordered before online payment opened holds the bed (status "Held") until the studio takes payment
+    relay("booking", { lang, contact, slot: slotRef, bed: isReformer ? bed : null, showAs, ...(store.planPending ? { held: true } : {}) }, { ref: local.id }).then(
       (r) => r.id && store.setRemoteId(local.id, r.id),
     );
     track("booking_confirmed", { service: slot.service });
@@ -221,7 +241,7 @@ export default function ClassDetail() {
             <button className="btn btn--primary btn--block" onClick={() => setSheet(true)}>
               {t.klass.reserve}
             </button>
-            <p className="tiny center">{store.isMember ? t.klass.payNote : t.klass.payNoteVisitor}</p>
+            <p className="tiny center">{!plan ? t.klass.payNoteVisitor : store.planPending ? t.klass.payNotePending : t.klass.payNote}</p>
           </div>
         )}
       </div>
@@ -249,8 +269,8 @@ export default function ClassDetail() {
               )}
               <div className="kv">
                 <span>{t.confirm.payWith}</span>
-                <span className={store.isMember ? "" : "hi"}>
-                  {store.isMember ? t.confirm.payMember : t.confirm.payNone}
+                <span className={plan ? "" : "hi"}>
+                  {plan ? (store.planPending ? t.confirm.payPlanPending : t.confirm.payPlan).replace("{plan}", planName(plan, t, store.planKind)) : t.confirm.payNone}
                 </span>
               </div>
               <div className="kv" style={{ alignItems: "center", borderBottom: 0 }}>
@@ -260,27 +280,24 @@ export default function ClassDetail() {
             </div>
             {usage && plan && (
               <p className={`plan-left ${atLimit ? "is-out" : ""}`}>
-                {atLimit
-                  ? usage.expired
-                    ? t.confirm.passExpired
-                    : (plan.billingType === "monthly" ? t.confirm.limitWeek : t.confirm.limitPass)
-                        .replace("{used}", String(usage.used))
-                        .replace("{cap}", String(usage.cap))
-                  : usage.cap === null
-                    ? t.profile.unlimitedNote
-                    : (plan.billingType === "monthly" ? t.confirm.leftWeek : t.confirm.leftPass)
-                        .replace("{left}", String(usage.left))
-                        .replace("{cap}", String(usage.cap))}
+                {!atLimit
+                  ? planLeft(plan, usage, t)
+                  : usage.expired
+                    ? plan.billingType === "monthly"
+                      ? t.confirm.planEnded
+                      : t.confirm.passExpired
+                    : (plan.billingType === "monthly" ? t.confirm.limitWeek : t.confirm.limitPass).replace("{used}", String(usage.used)).replace("{cap}", String(usage.cap))}
               </p>
             )}
-            {store.isMember && atLimit ? (
+            {plan && usage && atLimit ? (
               <>
-                <p className="small muted center">{plan?.billingType === "monthly" ? t.confirm.limitHint : t.confirm.limitPassHint}</p>
-                <Link to={href(`pricing?next=${slot.id}`)} className="btn btn--sand btn--block">
+                <p className="small muted center">{plan.billingType === "monthly" && !usage.expired ? t.confirm.limitHint : t.confirm.limitPassHint}</p>
+                <Link to={href(`pricing?kind=${slot.service}&next=${slot.id}`)} className="btn btn--sand btn--block" onClick={() => rememberBed(slot.id, isReformer ? bed : null)}>
                   {t.confirm.upgrade}
                 </Link>
+                {singleLink(false)}
               </>
-            ) : store.isMember ? (
+            ) : plan && usage ? (
               <form className="stack gap-12" onSubmit={confirm}>
                 {needsDetails && (
                   <>
@@ -293,7 +310,12 @@ export default function ClassDetail() {
                   <ShowAsPicker value={showAs} onChange={setShowAs} name={needsDetails ? undefined : store.profile} />
                 )}
                 {healthValid(store.profile.health) ? (
-                  <button className="btn btn--sand btn--block">{t.confirm.confirmBtn}</button>
+                  <>
+                    <button className="btn btn--sand btn--block">
+                      {redeemLabel(plan, usage, t)}
+                    </button>
+                    {store.planPending && <p className="tiny center">{t.confirm.pending}</p>}
+                  </>
                 ) : (
                   <div className="notice stack gap-8" role="status">
                     <b>{t.health.gateTitle}</b>
@@ -306,16 +328,7 @@ export default function ClassDetail() {
               </form>
             ) : (
               <>
-                <Link
-                  to={href(`checkout/${singleClass.id}?kind=${slot.service}&next=${slot.id}`)}
-                  className="btn btn--sand btn--block"
-                  onClick={() => {
-                    rememberBed(slot.id, isReformer ? bed : null);
-                    track("membership_click", { plan: singleClass.id, kind: slot.service });
-                  }}
-                >
-                  {t.confirm.single.replace("{price}", String(priceFor(singleClass, slot.service)))}
-                </Link>
+                {singleLink(true)}
                 <Link to={href(`pricing?kind=${slot.service}&next=${slot.id}`)} className="btn btn--secondary btn--block" onClick={() => rememberBed(slot.id, isReformer ? bed : null)}>
                   {t.confirm.choosePlan}
                 </Link>
@@ -345,6 +358,7 @@ export default function ClassDetail() {
               <br />
               {t.confirm.bookedSub}
             </p>
+            {after && plan && after.cap !== null && <p className="plan-left">{planLeft(plan, after, t)}</p>}
             <button
               className="btn btn--sand btn--block"
               onClick={() => {

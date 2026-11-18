@@ -44,7 +44,7 @@ export default function Profile() {
   const unread = (store.notices ?? []).filter((n) => !n.read).length;
 
   // Demo usage figures from local bookings; real balances come from the booking backend once connected.
-  const usage = plan ? planUsage(plan, store.bookings, new Date(), store.planStart, store.carry ?? 0) : null;
+  const usage = plan ? planUsage(plan, store.bookings, new Date(), store.planStart, store.carry ?? 0, !!store.autoRenew && !store.planPending) : null;
   const pct = usage && usage.cap ? Math.min(1, usage.used / usage.cap) : 1;
   const since = store.memberSince ? new Date(store.memberSince) : null;
   const until = plan ? planEnd(plan, store.planStart) : new Date();
@@ -130,7 +130,9 @@ export default function Profile() {
                 </span>
               </div>
             </div>
-            {monthly && (
+            {store.planPending && <p className="tiny">{t.confirm.pending}</p>}
+            {/* The renewal switch updates the studio's membership record, which an unpaid order does not have yet */}
+            {monthly && !store.planPending && (
               <div className="card rows renew-row" style={{ paddingBlock: 4 }}>
                 <div>
                   <span className="stack gap-4">

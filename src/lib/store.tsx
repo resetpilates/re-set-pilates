@@ -3,7 +3,7 @@ import type { HealthRecord } from "./health";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { planById, type ClassKind } from "../config/pricing";
 import { fromISO, israelNow, slotStart, type ClassSlot } from "./booking";
-import { planUsage } from "./plan";
+import { planCovers, planUsage } from "./plan";
 import type { ReceiptData } from "./receipt";
 import { RELAY_REPLY, relay, type RelayReplyDetail } from "./relay";
 
@@ -20,6 +20,7 @@ export interface Booking {
   bookedAt?: string; // when the booking was made (ISO)
   cancelledLate?: boolean; // cancelled inside the policy window: no longer attended, but the session stays used
   remoteId?: string; // Airtable record id from the relay, used to cancel there too
+  single?: boolean; // paid for on its own (single class) while a plan was active: it does not use the plan
 }
 
 export interface Profile {
@@ -50,6 +51,7 @@ interface Persisted {
   memberSince: string | null;
   planStart: string | null; // when the current plan was bought; pass balances and validity count from here
   carry?: number; // classes carried over from the previous plan into the current one
+  planPending?: boolean; // plan chosen at checkout while online payment is closed: usable in the app, payment still owed
   autoRenew?: boolean; // monthly membership renews every month (opted in at checkout, switched on/off in the profile)
   membershipId?: string; // Airtable record of the current membership, so the profile switch can update it
   receipts?: ReceiptData[]; // newest first
@@ -65,14 +67,18 @@ interface Store extends Persisted {
   isMember: boolean;
   upcoming: Booking[];
   past: Booking[];
-  /** Returns null when the plan's allowance is used up (weekly cap, pass balance or expired pass). */
-  book: (slot: ClassSlot, bed: number | null, remind: boolean) => Booking | null;
+  /**
+   * Returns null when the plan's allowance is used up (weekly cap, pass balance, ended plan) or the plan does not
+   * cover this class. `single` = the class was bought on its own, so the plan is neither checked nor used.
+   */
+  book: (slot: ClassSlot, bed: number | null, remind: boolean, single?: boolean) => Booking | null;
   /** `late` keeps the booking on the record (hidden from lists) so the plan still counts it. */
   cancel: (bookingId: string, late?: boolean) => void;
   joinWaitlist: (slotId: string) => void;
   leaveWaitlist: (slotId: string) => void;
   /** `carry` = unused classes moved over from the previous plan (see checkPurchase in plan.ts). */
-  setPlan: (planId: string | null, kind?: ClassKind | null, carry?: number) => void;
+  /** `pending` = ordered while online payment is closed: the plan works in the app, the studio still takes payment. */
+  setPlan: (planId: string | null, kind?: ClassKind | null, carry?: number, pending?: boolean) => void;
   /** Keep a purchase's receipt and notify in the app. */
   addReceipt: (r: ReceiptData) => void;
   /** Auto-renew on/off for the current monthly membership; `membershipId` is kept when given. */
@@ -129,14 +135,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
   }, [s]);
 
-  const book = useCallback<Store["book"]>((slot, bed, remind) => {
+  const book = useCallback<Store["book"]>((slot, bed, remind, single = false) => {
     // Never book past the plan's allowance; a booking for the same slot is being replaced, so it doesn't count
     const allowed = (p: Persisted) => {
       // A late cancel keeps the session used: the same class can't be taken again
       if (p.bookings.some((x) => x.slotId === slot.id && x.cancelledLate)) return false;
       const plan = p.planId ? planById(p.planId) : undefined;
+      if (!plan || single) return true;
       const others = p.bookings.filter((x) => x.slotId !== slot.id);
-      return !plan || planUsage(plan, others, fromISO(slot.date), p.planStart, p.carry ?? 0).left > 0;
+      return planCovers(plan, p.planKind, slot.service) && planUsage(plan, others, fromISO(slot.date), p.planStart, p.carry ?? 0, !!p.autoRenew && !p.planPending).left > 0;
     };
     if (!allowed(latest.current)) return null;
     const b: Booking = {
@@ -150,6 +157,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       bed,
       remind,
       bookedAt: new Date().toISOString(),
+      ...(single ? { single: true } : {}),
     };
     setS((p) => (allowed(p) ? { ...p, bookings: [...p.bookings.filter((x) => x.slotId !== slot.id), b] } : p));
     return b;
@@ -165,12 +173,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const joinWaitlist = useCallback((id: string) => setS((p) => ({ ...p, waitlist: [...new Set([...p.waitlist, id])] })), []);
   const leaveWaitlist = useCallback((id: string) => setS((p) => ({ ...p, waitlist: p.waitlist.filter((w) => w !== id) })), []);
   const setPlan = useCallback(
-    (planId: string | null, kind: ClassKind | null = null, carry = 0) =>
-      setS((p) => {
-        // Every purchase starts a fresh plan period (carrying unused classes over); "member since" keeps the first one
-        const now = new Date().toISOString();
-        return { ...p, planId, planKind: planId ? kind : null, planStart: planId ? now : null, carry: planId ? carry : 0, memberSince: planId ? (p.memberSince ?? now) : null, autoRenew: false, membershipId: undefined };
-      }),
+    (planId: string | null, kind: ClassKind | null = null, carry = 0, pending = false) => {
+      // Every purchase starts a fresh plan period (carrying unused classes over); "member since" keeps the first one.
+      // The clock is read here, not inside the update, so a class booked right after the purchase counts on the new plan.
+      const now = new Date().toISOString();
+      const next = (p: Persisted): Persisted => ({ ...p, planId, planKind: planId ? kind : null, planStart: planId ? now : null, carry: planId ? carry : 0, planPending: !!planId && pending, memberSince: planId ? (p.memberSince ?? now) : null, autoRenew: false, membershipId: undefined });
+      // book() checks the allowance before React has re-rendered: let it see the new plan straight away
+      latest.current = next(latest.current);
+      setS(next);
+    },
     [],
   );
   const addReceipt = useCallback(
