@@ -13,7 +13,7 @@ export interface PackageConfig {
 }
 
 export const packages: PackageConfig[] = [
-  { id: "group", price: 375, minutes: 50, capacity: 5, approved: true, image: "/assets/class/group-team.webp", pos: "50% 45%" },
+  { id: "group", price: 375, minutes: 50, capacity: 5, approved: true, image: "/assets/real/arches.webp", pos: "50% 45%" },
   { id: "event", price: 750, minutes: 90, capacity: 5, approved: true, image: "/assets/real/coffee.webp", pos: "50% 55%" },
 ];
 

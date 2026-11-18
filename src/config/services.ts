@@ -14,7 +14,7 @@ export interface ServiceConfig {
 }
 
 export const services: ServiceConfig[] = [
-  { id: "reformer", slug: "reformer-groups", image: "/assets/class/group.webp", pos: "50% 50%", thumb: "/assets/class/tab-reformer-sm.webp", bookable: true, capacity: 5, minutes: 50, approved: true },
+  { id: "reformer", slug: "reformer-groups", image: "/assets/real/room.webp", pos: "50% 50%", thumb: "/assets/real/room-sm.webp", bookable: true, capacity: 5, minutes: 50, approved: true },
   { id: "mat", slug: "mat-pilates", image: "/assets/class/mat.webp", pos: "50% 50%", thumb: "/assets/class/tab-mat-sm.webp", bookable: false, minutes: 50, approved: true }, // by request until Mat instructors join (then true + slots in lib/booking.ts)
   { id: "private", slug: "private-1to1", image: "/assets/class/private.webp", pos: "50% 50%", thumb: "/assets/class/private-sm.webp", bookable: false, minutes: 50, approved: true },
   { id: "duo", slug: "duo", image: "/assets/class/duo.webp", pos: "50% 50%", thumb: "/assets/class/duo-sm.webp", bookable: false, minutes: 50, approved: true },
