@@ -37,7 +37,7 @@ export function ChatWidget() {
   // On Home the bubble stays out of the way until the hero's Book button has scrolled off screen.
   const [overHero, setOverHero] = useState(false);
   useEffect(() => {
-    const cta = document.querySelector(".hero__offer");
+    const cta = document.querySelector(".home-hero__cta");
     if (!cta) {
       setOverHero(false);
       return;
