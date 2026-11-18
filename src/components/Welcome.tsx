@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "motion/react";
-import type { CSSProperties } from "react";
+import { useState, type CSSProperties } from "react";
 import { useNavigate } from "react-router-dom";
 import { siteConfig } from "../config/site";
 import { track } from "../lib/analytics";
@@ -24,16 +24,22 @@ export function Welcome() {
   const nav = useNavigate();
   const params = typeof window !== "undefined" ? new URLSearchParams(location.search) : null;
   const forced = params?.get("welcome") ?? null;
-  const standalone =
-    typeof window !== "undefined" && (window.matchMedia("(display-mode: standalone)").matches || params?.has("welcome"));
-  const show = standalone && !store.seenWelcome;
+  // ?welcome (or ?welcome=a/b/c) always opens it, even after it was closed once on this device (for previews and sharing).
+  const [closed, setClosed] = useState(false);
+  const linked = params?.has("welcome") ?? false;
+  const standalone = typeof window !== "undefined" && window.matchMedia("(display-mode: standalone)").matches;
+  const show = !closed && (linked || (standalone && !store.seenWelcome));
+  const close = () => {
+    setClosed(true);
+    store.markWelcomeSeen();
+  };
   const layout: Layout = LAYOUTS.includes(forced as Layout) ? (forced as Layout) : siteConfig.welcome.layout;
   const photo = siteConfig.welcome.photo[layout];
   const d = (ms: number) => ({ "--d": `${ms}ms` }) as CSSProperties;
 
   const book = () => {
     track("book_reformer_click", { source: "welcome" });
-    store.markWelcomeSeen();
+    close();
     nav(href("schedule"));
   };
 
@@ -48,7 +54,7 @@ export function Welcome() {
       <button className="btn btn--block welcome__book fade-up" style={d(650)} onClick={book}>
         {t.common.book}
       </button>
-      <button className="welcome__explore fade-up" style={d(750)} onClick={store.markWelcomeSeen}>
+      <button className="welcome__explore fade-up" style={d(750)} onClick={close}>
         {t.welcome.explore}
       </button>
     </div>
