@@ -2733,3 +2733,25 @@ html[lang="he"] .home-hero__cta .btn { font-size: 17px; letter-spacing: 0; }
   [dir="rtl"] .home-hero__video { transform: scaleX(-1); }
 }
 @media (prefers-reduced-motion: reduce) { .home-hero__video { display: none; } }
+
+/* ───────── v5.4 · 18 Nov: short phones (iPhone SE, small Androids): the first screen fits above the tab bar, both buttons in view ─────────
+   The frame may shrink below 580px and the card tightens, so "Sign in or join" is never hidden behind the tab bar. */
+@media (max-width: 899px) and (max-height: 720px) {
+  .home-hero__frame { min-height: 430px; }
+  .home-hero__card { padding: 14px 14px 12px; inset-inline: 10px; inset-block-end: 10px; }
+  .home-hero__logo { width: 112px; margin-bottom: 8px; }
+  .home-hero__greet, html[lang="he"] .home-hero__greet { margin-bottom: 2px; font-size: 11px; }
+  html[lang="he"] .home-hero__greet { font-size: 13px; }
+  .home-hero__title { font-size: 38px; margin-bottom: 10px; }
+  html[lang="he"] .home-hero__title { font-size: 32px; margin-bottom: 10px; }
+  .home-hero__cta { gap: 6px; }
+  .home-hero__cta .btn, html[lang="he"] .home-hero__cta .btn { min-height: 44px; }
+  .home-hero__photo img, .home-hero__video { inset: -30% 0 auto 0; height: 130%; object-position: 58% 50%; }
+}
+@media (max-width: 899px) and (max-height: 600px) {
+  .home-hero__frame { min-height: 380px; }
+  .home-hero__logo { width: 96px; margin-bottom: 6px; }
+  .home-hero__greet { display: none; }
+  .home-hero__title { font-size: 34px; }
+  html[lang="he"] .home-hero__title { font-size: 29px; }
+}
