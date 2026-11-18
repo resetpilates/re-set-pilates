@@ -79,6 +79,9 @@ interface Store extends Persisted {
   /** `carry` = unused classes moved over from the previous plan (see checkPurchase in plan.ts). */
   /** `pending` = ordered while online payment is closed: the plan works in the app, the studio still takes payment. */
   setPlan: (planId: string | null, kind?: ClassKind | null, carry?: number, pending?: boolean) => void;
+  /** The studio took payment for the pending plan: drop "payment pending" and link the studio's membership record. */
+  /** `planId` = the plan the studio confirmed; ignored if the device has since ordered another one. */
+  confirmPlan: (planId: string, membershipId: string, autoRenew: boolean) => void;
   /** Keep a purchase's receipt and notify in the app. */
   addReceipt: (r: ReceiptData) => void;
   /** Auto-renew on/off for the current monthly membership; `membershipId` is kept when given. */
@@ -184,6 +187,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     },
     [],
   );
+  const confirmPlan = useCallback(
+    (planId: string, membershipId: string, autoRenew: boolean) =>
+      setS((p) => (p.planPending && p.planId === planId ? { ...p, planPending: false, membershipId, autoRenew } : p)),
+    [],
+  );
   const addReceipt = useCallback(
     (r: ReceiptData) =>
       setS((p) => {
@@ -259,6 +267,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       joinWaitlist,
       leaveWaitlist,
       setPlan,
+      confirmPlan,
       addReceipt,
       setRenewal,
       markNoticesRead,
@@ -269,7 +278,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       signOut,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- tick only forces the clock-based split to recompute
-  }, [s, tick, book, cancel, joinWaitlist, leaveWaitlist, setPlan, addReceipt, setRenewal, markNoticesRead, setReminders, markWelcomeSeen, saveProfile, setRemoteId, signOut]);
+  }, [s, tick, book, cancel, joinWaitlist, leaveWaitlist, setPlan, confirmPlan, addReceipt, setRenewal, markNoticesRead, setReminders, markWelcomeSeen, saveProfile, setRemoteId, signOut]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
