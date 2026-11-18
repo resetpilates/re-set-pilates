@@ -23,7 +23,7 @@ export const founder: Person = {
     "אורית היא אמא לארבעה, יזמת ובעלת עסקים, ומדריכת פילאטיס שהתאהבה בשיטה הרבה לפני שהפכה אותה למקצוע. היא קוראת בלי הפסקה על בריאות, תנועה וכושר, ומביאה לסטודיו את מה שהיא מאמינה בו בבית: עקביות, תשומת לב וחום. את re:set היא הקימה כדי ליצור חדר קטן ואישי, שבו כל אחת מקבלת יחס מלא ויוצאת חזקה ורגועה יותר.",
   bioEn:
     "Orit is a mother of four, a multi-business owner, and a Pilates instructor who fell in love with the method long before she made it her work. An avid reader of everything health and fitness, she brings to the studio what she believes in at home: consistency, attention and warmth. She founded re:set to create a small, personal room where every woman gets full attention and leaves stronger and calmer.",
-  portrait: "/assets/orit.webp", // owner-supplied photo (17 Nov 2026): background cleaned to cream, light evened, sand-beige top
+  portrait: "/assets/orit-v2.webp", // owner-supplied photo (18 Nov 2026): blush sports top on a warm ivory wall, cropped 4:5 (new file name so caches drop the old one)
   approved: true,
 };
 
