@@ -15,7 +15,7 @@ export interface Person {
 
 export const founder: Person = {
   id: "founder",
-  nameHe: "אורית שיבר אביטן",
+  nameHe: "אורית שחיבר אביטן",
   nameEn: "Orit Schieber Abitan",
   roleHe: "מייסדת ומדריכה",
   roleEn: "Founder & instructor",
