@@ -2734,10 +2734,12 @@ html[lang="he"] .home-hero__cta .btn { font-size: 17px; letter-spacing: 0; }
 }
 @media (prefers-reduced-motion: reduce) { .home-hero__video { display: none; } }
 
-/* ───────── v5.4 · 18 Nov: short phones (iPhone SE, small Androids): the first screen fits above the tab bar, both buttons in view ─────────
-   The frame may shrink below 580px and the card tightens, so "Sign in or join" is never hidden behind the tab bar. */
-@media (max-width: 899px) and (max-height: 720px) {
-  .home-hero__frame { min-height: 430px; }
+/* ───────── v5.4 · 19 Nov: the first screen fits every phone, upright or sideways, with both buttons above the tab bar ─────────
+   The frame's height comes from 100svh, which does not change when a browser hides its toolbars, so nothing here may depend on
+   the live viewport height (an earlier max-height query made iPhones flip layout while scrolling). The frame is a size
+   container instead: when it is short the card tightens, and it may shrink below 580px. */
+.home-hero__frame { min-height: 380px; container-type: size; container-name: hero; }
+@container hero (max-height: 560px) {
   .home-hero__card { padding: 14px 14px 12px; inset-inline: 10px; inset-block-end: 10px; }
   .home-hero__logo { width: 112px; margin-bottom: 8px; }
   .home-hero__greet, html[lang="he"] .home-hero__greet { margin-bottom: 2px; font-size: 11px; }
@@ -2746,12 +2748,36 @@ html[lang="he"] .home-hero__cta .btn { font-size: 17px; letter-spacing: 0; }
   html[lang="he"] .home-hero__title { font-size: 32px; margin-bottom: 10px; }
   .home-hero__cta { gap: 6px; }
   .home-hero__cta .btn, html[lang="he"] .home-hero__cta .btn { min-height: 44px; }
-  .home-hero__photo img, .home-hero__video { inset: -30% 0 auto 0; height: 130%; object-position: 58% 50%; }
+  .home-hero__photo img, .home-hero__video { inset: -30% 0 auto 0; height: 130%; }
 }
-@media (max-width: 899px) and (max-height: 600px) {
-  .home-hero__frame { min-height: 380px; }
+@container hero (max-height: 440px) {
   .home-hero__logo { width: 96px; margin-bottom: 6px; }
-  .home-hero__greet { display: none; }
+  .home-hero__greet, html[lang="he"] .home-hero__greet { display: none; }
   .home-hero__title { font-size: 34px; }
   html[lang="he"] .home-hero__title { font-size: 29px; }
+}
+/* A phone held sideways: very little height, so the frame is as tall as the screen allows and the card is one slim row
+   beside the photo: small logo, headline, the two buttons side by side. Orientation does not change with the toolbars. */
+@media (max-width: 899px) and (orientation: landscape) {
+  .home-hero__frame { max-width: none; min-height: 210px; height: max(210px, calc(100svh - var(--hdr) - var(--safe-t) - var(--safe-b) - 84px)); }
+  .home-hero__card { inset-inline: 10px auto; inset-block: auto 10px; width: min(52%, 340px); padding: 12px 12px 10px; }
+  .home-hero__logo { width: 84px; margin-bottom: 6px; }
+  .home-hero__greet, html[lang="he"] .home-hero__greet { display: none; }
+  .home-hero__title, html[lang="he"] .home-hero__title { font-size: 26px; margin-bottom: 8px; }
+  .home-hero__cta { flex-direction: row; gap: 6px; }
+  .home-hero__cta .btn, html[lang="he"] .home-hero__cta .btn { min-height: 40px; padding-inline: 8px; font-size: 12.5px; letter-spacing: 0; }
+  .home-hero__photo img, .home-hero__video { inset: 0; height: 100%; object-position: 70% 42%; }
+  [dir="rtl"] .home-hero__photo img, [dir="rtl"] .home-hero__video { transform: scaleX(-1); }
+}
+@media (min-width: 900px) and (min-aspect-ratio: 1/1) { .home-hero__frame { min-height: 460px; container-type: normal; } }
+
+/* The film stays invisible until it is really playing (a refused autoplay leaves the still, with no play button over it) */
+.home-hero__video { opacity: 0; transition: opacity 500ms ease-out; }
+.home-hero__video.is-playing { opacity: 1; }
+.home-hero__video::-webkit-media-controls-start-playback-button, .home-hero__video::-webkit-media-controls { display: none !important; -webkit-appearance: none; }
+
+/* Shop photo on laptops: keeps its 4:5 shape (a max-height used to squash it into a strip); "The space" strip with only a few photos */
+@media (min-width: 1000px) {
+  .shop-hero__media--tall { max-height: none; width: min(100%, 480px); justify-self: center; }
+  .space__rail--few { grid-template-columns: repeat(2, minmax(0, 340px)); justify-content: center; }
 }

@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { GoogleReviews, MapEmbed, PersonCard, ScheduleBoard, SpaceGallery, effectivePrice, planName, pricesVisible } from "../components/blocks";
 import { openChat } from "../components/ChatWidget";
@@ -17,6 +17,62 @@ import { useStore } from "../lib/store";
 import { WaIcon, useWaLink, waReady } from "../lib/whatsapp";
 
 const FEATURED = ["m1x", "m3x", "munl"];
+
+const HERO_WIDE = "(min-aspect-ratio: 1/1)"; // any screen wider than it is tall (laptops, and phones held sideways) gets the wide shot
+const REDUCED = "(prefers-reduced-motion: reduce)";
+const mq = (q: string) => typeof window !== "undefined" && window.matchMedia(q).matches;
+
+/** The first-screen film. The file is chosen here (wide or tall) so every browser gets the right one and it follows a rotate;
+ *  it is not rendered at all when motion is switched off, and it stays invisible until it is really playing, so a phone that
+ *  refuses autoplay (Low Power Mode) just keeps the still photo underneath. */
+function HeroVideo() {
+  const [wide, setWide] = useState(() => mq(HERO_WIDE));
+  const [reduced, setReduced] = useState(() => mq(REDUCED));
+  const [playing, setPlaying] = useState(false);
+  const ref = useRef<HTMLVideoElement>(null);
+  const m = siteConfig.studioMedia;
+  const src = wide ? m.heroVideo : m.heroVideoTall;
+
+  useEffect(() => {
+    const w = window.matchMedia(HERO_WIDE);
+    const r = window.matchMedia(REDUCED);
+    const onW = () => setWide(w.matches);
+    const onR = () => setReduced(r.matches);
+    w.addEventListener("change", onW);
+    r.addEventListener("change", onR);
+    return () => {
+      w.removeEventListener("change", onW);
+      r.removeEventListener("change", onR);
+    };
+  }, []);
+
+  useEffect(() => {
+    const v = ref.current;
+    if (!v) return;
+    setPlaying(false);
+    v.muted = true; // React sets no muted attribute; browsers want it before they allow autoplay
+    v.setAttribute("muted", "");
+    v.play().catch(() => {}); // refused: the still stays
+  }, [src, reduced]);
+
+  if (reduced) return null;
+  return (
+    <video
+      key={src}
+      ref={ref}
+      className={`home-hero__video${playing ? " is-playing" : ""}`}
+      src={src}
+      muted
+      loop
+      playsInline
+      autoPlay
+      preload="metadata"
+      aria-hidden="true"
+      tabIndex={-1}
+      onPlaying={() => setPlaying(true)}
+    />
+  );
+}
 
 /** One long page: hero → why → classes → schedule → pricing → people → visit → questions → book. */
 export default function Home() {
@@ -38,19 +94,16 @@ export default function Home() {
     <div className="page page--bleed tone-dark">
       {/* Hero */}
       {/* First screen: one big studio photo with a cream card on it: the RE:SET logo (always the English mark), the welcome line,
-          one headline and the two buttons. Phones get the tall photo, wide screens the wide one (same breakpoint as the CSS).
+          one headline and the two buttons. Upright screens get the tall photo, screens wider than they are tall the wide one.
           (fetchpriority is spread in lowercase: React 18 does not know the camelCase prop.) */}
       <section className="home-hero">
         <div className="home-hero__frame">
           <picture className="home-hero__photo">
-            <source media="(min-width: 900px) and (min-aspect-ratio: 1/1)" srcSet={siteConfig.studioMedia.heroPhoto} />
+            <source media={HERO_WIDE} srcSet={siteConfig.studioMedia.heroPhoto} />
             <img src={siteConfig.studioMedia.heroPhotoTall} alt={t.home.heroAlt} decoding="async" {...{ fetchpriority: "high" }} />
           </picture>
           {/* The same shot in motion: silent, looping, never with sound. The still above shows first and stays if the film cannot play. */}
-          <video className="home-hero__video" muted loop playsInline autoPlay preload="metadata" aria-hidden="true" tabIndex={-1}>
-            <source media="(min-width: 900px) and (min-aspect-ratio: 1/1)" src={siteConfig.studioMedia.heroVideo} type="video/mp4" />
-            <source src={siteConfig.studioMedia.heroVideoTall} type="video/mp4" />
-          </video>
+          <HeroVideo />
           <div className="home-hero__card">
             <Logo className="home-hero__logo fade-up" />
             <p className="home-hero__greet fade-up" style={d(100)}>

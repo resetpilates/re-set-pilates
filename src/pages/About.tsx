@@ -46,11 +46,11 @@ export function About() {
               </div>
             </div>
           </Reveal>
-          <MaskImg src={siteConfig.studioMedia.real.entry} alt={t.space.shots[1]} ratio="4 / 5" pos="50% 60%" delay={120} />
+          <MaskImg src={siteConfig.studioMedia.real.coffee} alt={t.space.shots[3]} ratio="4 / 5" pos="38% 50%" delay={120} />
         </div>
       </section>
 
-      <SpaceGallery />
+      <SpaceGallery omit={[siteConfig.studioMedia.real.arches, siteConfig.studioMedia.real.coffee]} />
 
       <section className="section tone-dark tone-raise">
         <div className="wrap stack gap-32">

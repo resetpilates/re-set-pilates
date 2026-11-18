@@ -5,7 +5,7 @@ export interface ServiceConfig {
   slug: string;
   image: string; // photo slot: rendered inside the real studio room, Orit as the instructor (17 Nov 2026); replace with shoot photos when there are any
   pos: string; // object-position
-  thumb: string; // 240px square-ish exercise photo for tabs and class cards (ex-*-sm.jpg)
+  thumb: string; // small square-ish photo for tabs and class cards (assets/class/*-sm.webp)
   thumbPos?: string;
   bookable: boolean; // bookable in the schedule vs. by request
   capacity?: number;

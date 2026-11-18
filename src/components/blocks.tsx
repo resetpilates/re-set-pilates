@@ -25,28 +25,28 @@ export const instructorName = (id: string, isHe: boolean) => {
   return i ? (isHe ? i.nameHe : i.nameEn).split(" ")[0] : "";
 };
 
-/** "The space": the real studio photos. One large photo with a slow zoom, then a strip to swipe through. */
-export function SpaceGallery({ title = true }: { title?: boolean }) {
+/** "The space": the real studio photos. One large photo with a slow zoom, then a strip to swipe through.
+ *  `omit` leaves out photos the page already shows elsewhere (About uses two of them above the gallery). */
+export function SpaceGallery({ omit = [] }: { omit?: string[] }) {
   const { t } = useI18n();
   const m = siteConfig.studioMedia.real;
+  const shots = m.shots.map((src, i) => ({ src, alt: t.space.shots[i] })).filter((s) => !omit.includes(s.src));
   return (
     <section className="section--tight space">
       <div className="wrap stack gap-16">
-        {title && (
-          <Reveal className="stack gap-8 sec-title">
-            <p className="eyebrow">{t.space.eyebrow}</p>
-            <h2 className="display d-lg">{t.space.title}</h2>
-            <p className="small muted">{t.space.sub}</p>
-          </Reveal>
-        )}
+        <Reveal className="stack gap-8 sec-title">
+          <p className="eyebrow">{t.space.eyebrow}</p>
+          <h2 className="display d-lg">{t.space.title}</h2>
+          <p className="small muted">{t.space.sub}</p>
+        </Reveal>
         <Reveal className="space__lead">
           <img src={m.lead} alt={t.space.leadAlt} width={1122} height={1140} decoding="async" />
         </Reveal>
       </div>
-      <ul className="space__rail" aria-label={t.space.eyebrow}>
-        {m.shots.map((src, i) => (
-          <li key={src} className="space__shot">
-            <img src={src} alt={t.space.shots[i]} loading="lazy" decoding="async" />
+      <ul className={`space__rail${shots.length < 4 ? " space__rail--few" : ""}`} aria-label={t.space.eyebrow}>
+        {shots.map((s) => (
+          <li key={s.src} className="space__shot">
+            <img src={s.src} alt={s.alt} loading="lazy" decoding="async" />
           </li>
         ))}
       </ul>
@@ -326,7 +326,7 @@ const PLAN_PHOTOS: Record<PriceTab, { src: string; pos: string }> = {
   monthly: { src: "/assets/real/room.webp", pos: "50% 32%" },
   passes: { src: "/assets/real/detail.webp", pos: "50% 55%" },
   teens: { src: "/assets/real/entry.webp", pos: "50% 65%" },
-  groups: { src: "/assets/real/arches.webp", pos: "50% 35%" },
+  groups: { src: "/assets/real/coffee.webp", pos: "50% 55%" },
 };
 function PlanPhoto({ tab }: { tab: PriceTab }) {
   const p = PLAN_PHOTOS[tab];

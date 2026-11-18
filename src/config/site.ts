@@ -95,9 +95,8 @@ export const siteConfig = {
     heroVideoTall: "/media/hero-orit-tall.mp4",
     heroPhoto: "/assets/hero-orit-wide.webp",
     heroPhotoTall: "/assets/hero-orit-tall.webp",
-    heroPoster: "/assets/hero-poster.webp", // first frame of the hero video (studio + sign); studio-wide.jpg is the plain studio photo
-    // Link preview (WhatsApp, Instagram, Facebook, Google): the RE:SET logo on white, 1200×630 (new file name so WhatsApp drops its cached preview). og-studio.jpg (the five
-    // reformers) stays for the schema.org photo list only; the owner asked that a shared link shows the logo, not the studio.
+    // Link preview (WhatsApp, Instagram, Facebook, Google): the RE:SET logo on white, 1200×630 (new file name so WhatsApp drops its cached preview). og-studio-real.jpg (a real studio
+    // photo) is for the schema.org photo list only; the owner asked that a shared link shows the logo, not the studio.
     ogImage: "/assets/og-logo-v2.jpg",
     ogStudio: "/assets/og-studio-real.jpg", // real photo (17 Nov 2026): the two arches and the coffee corner
     // Real photos of the studio (owner, 17 Nov 2026), Instagram header and captions cropped off. `lead` opens "The space"
