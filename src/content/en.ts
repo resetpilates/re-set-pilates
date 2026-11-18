@@ -73,6 +73,7 @@ export const en = {
   welcome: {
     supporting: "STRONG BODY · CALM MIND · HAPPIER YOU",
     explore: "Explore first",
+    eyebrow: "Boutique Reformer · Hod Hasharon",
   },
   home: {
     greetingMorning: "Good morning",
