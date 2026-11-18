@@ -220,6 +220,11 @@ export function Checkout() {
       return;
     }
     const r = await relay("booking", { lang, contact, slot, bed, showAs: store.profile.showAs ?? "short", held: true }, { ref: local.id });
+    if (r.error === "held limit") {
+      store.cancel(local.id);
+      setHold("limit");
+      return;
+    }
     if (r.error === "full") {
       store.cancel(local.id);
       store.joinWaitlist(s.id);
