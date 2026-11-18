@@ -2938,3 +2938,9 @@ html[lang="he"] .welcome--c .welcome__eyebrow { font-size: 13px; letter-spacing:
 .welcome--a .welcome__eyebrow, .welcome--a .welcome__support { text-shadow: 0 1px 12px rgba(63, 55, 51, 0.55); }
 .welcome--a .welcome__support { white-space: nowrap; letter-spacing: 0.16em; }
 @media (max-width: 380px) { .welcome--a .welcome__support { font-size: 10.5px; letter-spacing: 0.12em; } }
+
+/* v5.x (18 Nov 2026) — Studio page top: the whole room from the corner (real photo, empty studio).
+   Phones keep the lit arches and the front reformer in frame; wide screens show both rows, arches and the props wall,
+   from just under the ceiling track down to the front reformer, so the arches and the props wall stay in frame. */
+.phero > img.phero__room { object-position: 46% 50%; }
+@media (min-width: 760px) { .phero > img.phero__room { object-position: 50% 20%; } }

@@ -28,7 +28,7 @@ export const instructorName = (id: string, isHe: boolean) => {
 
 /** "The space": the real studio photos. One large photo with a slow zoom, then a strip to swipe through.
  *  `omit` leaves out photos the page already shows elsewhere (About uses two of them above the gallery). */
-export function SpaceGallery({ omit = [] }: { omit?: string[] }) {
+export function SpaceGallery({ omit = [], lead }: { omit?: string[]; lead?: string }) {
   const { t } = useI18n();
   const m = siteConfig.studioMedia.real;
   const shots = m.shots.map((src, i) => ({ src, alt: t.space.shots[i] })).filter((s) => !omit.includes(s.src));
@@ -41,7 +41,7 @@ export function SpaceGallery({ omit = [] }: { omit?: string[] }) {
           <p className="small muted">{t.space.sub}</p>
         </Reveal>
         <Reveal className="space__lead">
-          <img src={m.lead} alt={t.space.leadAlt} width={1122} height={1140} decoding="async" />
+          <img src={lead ?? m.lead} alt={lead ? t.space.shots[m.shots.indexOf(lead)] ?? t.space.leadAlt : t.space.leadAlt} width={1122} height={1140} decoding="async" />
         </Reveal>
       </div>
       <ul className={`space__rail${shots.length < 4 ? " space__rail--few" : ""}`} aria-label={t.space.eyebrow}>

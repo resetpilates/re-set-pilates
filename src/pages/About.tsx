@@ -15,7 +15,8 @@ export function About() {
   return (
     <div className="page page--bleed tone-dark">
       <section className="phero" style={{ minHeight: "min(78svh, 680px)" }}>
-        <img src={siteConfig.studioMedia.real.arches} alt="" style={{ objectPosition: "42% 50%" }} />
+        {/* The whole room from the corner: both reformer rows, the lit arches, the props wall (real photo, empty studio). */}
+        <img className="phero__room" src={siteConfig.studioMedia.real.lead} alt={t.space.leadAlt} />
         <div className="wrap phero__body stack gap-12">
           <span className="eyebrow fade-up" style={{ color: "var(--cream)" }}>
             {t.about.eyebrow}
@@ -50,7 +51,7 @@ export function About() {
         </div>
       </section>
 
-      <SpaceGallery omit={[siteConfig.studioMedia.real.arches, siteConfig.studioMedia.real.coffee]} />
+      <SpaceGallery lead={siteConfig.studioMedia.real.arches} omit={[siteConfig.studioMedia.real.arches, siteConfig.studioMedia.real.coffee]} />
 
       <section className="section tone-dark tone-raise">
         <div className="wrap stack gap-32">
