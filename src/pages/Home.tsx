@@ -96,34 +96,63 @@ export default function Home() {
       {/* First screen: one big studio photo with a cream card on it: the RE:SET logo (always the English mark), the welcome line,
           one headline and the two buttons. Upright screens get the tall photo, screens wider than they are tall the wide one.
           (fetchpriority is spread in lowercase: React 18 does not know the camelCase prop.) */}
-      <section className="home-hero">
-        <div className="home-hero__frame">
-          <picture className="home-hero__photo">
-            <source media={HERO_WIDE} srcSet={siteConfig.studioMedia.heroPhoto} />
-            <img src={siteConfig.studioMedia.heroPhotoTall} alt={t.home.heroAlt} decoding="async" {...{ fetchpriority: "high" }} />
-          </picture>
-          {/* The same shot in motion: silent, looping, never with sound. The still above shows first and stays if the film cannot play. */}
-          <HeroVideo />
-          <div className="home-hero__card">
-            <Logo className="home-hero__logo fade-up" />
-            <p className="home-hero__greet fade-up" style={d(100)}>
-              {t.home.greetingGuest}
-              {profile.firstName && <b>{profile.firstName}</b>}
-            </p>
-            <h1 className="home-hero__title fade-up" style={d(200)}>
-              {t.home.heroLine}
-            </h1>
-            <div className="home-hero__cta fade-up" style={d(320)}>
-              <a href="#schedule" className="btn home-hero__book" onClick={() => track("book_reformer_click", { source: "hero" })}>
-                {t.nav.bookTitle}
-              </a>
-              <Link to={href("profile")} className="btn home-hero__join" onClick={() => track("hero_join_click")}>
-                {t.home.heroJoin}
-              </Link>
+      {siteConfig.studioMedia.heroMode === "still" ? (
+        <section className="home-hero home-hero--still">
+          <div className="home-hero__frame">
+            <picture className="home-hero__photo">
+              <source media={HERO_WIDE} srcSet={siteConfig.studioMedia.heroPhoto} />
+              <img src={siteConfig.studioMedia.heroPhotoTall} alt={t.home.heroAlt} decoding="async" {...{ fetchpriority: "high" }} />
+            </picture>
+            {/* No card: the welcome, headline and buttons sit straight on the photo, over a soft ivory fade */}
+            <div className="home-hero__over">
+              <p className="home-hero__greet fade-up" style={d(100)}>
+                {t.home.greetingGuest}
+                {profile.firstName && <b>{profile.firstName}</b>}
+              </p>
+              <h1 className="home-hero__title fade-up" style={d(200)}>
+                {t.home.heroLine}
+              </h1>
+              <div className="home-hero__cta fade-up" style={d(320)}>
+                <a href="#schedule" className="btn home-hero__book" onClick={() => track("book_reformer_click", { source: "hero" })}>
+                  {t.nav.bookTitle}
+                </a>
+                <Link to={href("profile")} className="btn home-hero__join" onClick={() => track("hero_join_click")}>
+                  {t.home.heroJoin}
+                </Link>
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      ) : (
+        <section className="home-hero">
+          <div className="home-hero__frame">
+            <picture className="home-hero__photo">
+              <source media={HERO_WIDE} srcSet={siteConfig.studioMedia.heroPhoto} />
+              <img src={siteConfig.studioMedia.heroPhotoTall} alt={t.home.heroAlt} decoding="async" {...{ fetchpriority: "high" }} />
+            </picture>
+            {/* The same shot in motion: silent, looping, never with sound. The still above shows first and stays if the film cannot play. */}
+            <HeroVideo />
+            <div className="home-hero__card">
+              <Logo className="home-hero__logo fade-up" />
+              <p className="home-hero__greet fade-up" style={d(100)}>
+                {t.home.greetingGuest}
+                {profile.firstName && <b>{profile.firstName}</b>}
+              </p>
+              <h1 className="home-hero__title fade-up" style={d(200)}>
+                {t.home.heroLine}
+              </h1>
+              <div className="home-hero__cta fade-up" style={d(320)}>
+                <a href="#schedule" className="btn home-hero__book" onClick={() => track("book_reformer_click", { source: "hero" })}>
+                  {t.nav.bookTitle}
+                </a>
+                <Link to={href("profile")} className="btn home-hero__join" onClick={() => track("hero_join_click")}>
+                  {t.home.heroJoin}
+                </Link>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Member: next class */}
       {next && (

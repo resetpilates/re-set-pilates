@@ -2781,3 +2781,60 @@ html[lang="he"] .home-hero__cta .btn { font-size: 17px; letter-spacing: 0; }
   .shop-hero__media--tall { max-height: none; width: min(100%, 480px); justify-self: center; }
   .space__rail--few { grid-template-columns: repeat(2, minmax(0, 340px)); justify-content: center; }
 }
+
+/* ───────── v5.5 · 19 Nov: still hero. The photo of Orit fills the whole first screen, edge to edge; no card.
+   The welcome, headline and two buttons sit on the photo over a soft ivory fade: across the floor on upright screens,
+   down the calm side on wide ones. Sizes follow the frame, so it holds on every phone, upright or sideways. ───────── */
+.home-hero--still { padding: 0; }
+.home-hero--still .home-hero__frame {
+  max-width: none; border-radius: 0; min-height: 380px; max-height: none; aspect-ratio: auto;
+  height: calc(100svh - var(--hdr) - var(--safe-t) - var(--safe-b) - 59px);
+}
+.home-hero--still .home-hero__photo img { inset: 0; height: 100%; object-position: 50% 0%; }
+.home-hero--still .home-hero__frame::after {
+  content: ""; position: absolute; inset: auto 0 0 0; height: 56%; pointer-events: none;
+  background: linear-gradient(180deg, rgba(246, 242, 238, 0) 0%, rgba(246, 242, 238, 0.62) 38%, rgba(246, 242, 238, 0.95) 100%);
+}
+.home-hero__over {
+  position: absolute; z-index: 1; inset-inline: 0; inset-block-end: 0; padding: 0 22px clamp(16px, 4cqh, 30px);
+  display: flex; flex-direction: column; align-items: center; text-align: center;
+}
+.home-hero--still .home-hero__greet, html[lang="he"] .home-hero--still .home-hero__greet { margin-bottom: 4px; }
+.home-hero--still .home-hero__title { font-size: clamp(42px, 9.5cqh, 68px); margin-bottom: clamp(12px, 2.6cqh, 20px); }
+html[lang="he"] .home-hero--still .home-hero__title { font-size: clamp(36px, 8cqh, 56px); margin-bottom: clamp(12px, 2.6cqh, 20px); }
+.home-hero--still .home-hero__cta { max-width: 400px; gap: 8px; }
+.home-hero--still .home-hero__cta .btn, html[lang="he"] .home-hero--still .home-hero__cta .btn { min-height: clamp(44px, 7.4cqh, 54px); }
+.home-hero--still .home-hero__book { background: var(--hy-ink); border-color: var(--hy-ink); color: var(--hy-ivory); }
+.home-hero--still .home-hero__join { background: rgba(251, 249, 246, 0.55); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+@media (hover: hover) { .home-hero--still .home-hero__book:hover { background: #2f2926; border-color: #2f2926; } }
+/* Screens wider than they are tall (laptops, phones held sideways): the wide photo, text down the calm side */
+@media (min-aspect-ratio: 1/1) {
+  .home-hero--still .home-hero__frame { min-height: 200px; }
+  .home-hero--still .home-hero__photo img { object-position: 72% 50%; }
+  [dir="rtl"] .home-hero--still .home-hero__photo img { transform: scaleX(-1); }
+  .home-hero--still .home-hero__frame::after { inset: 0 auto 0 0; width: 62%; height: auto; background: linear-gradient(90deg, rgba(246, 242, 238, 0.95) 0%, rgba(246, 242, 238, 0.8) 42%, rgba(246, 242, 238, 0) 100%); }
+  [dir="rtl"] .home-hero--still .home-hero__frame::after { inset: 0 0 0 auto; background: linear-gradient(270deg, rgba(246, 242, 238, 0.95) 0%, rgba(246, 242, 238, 0.8) 42%, rgba(246, 242, 238, 0) 100%); }
+  .home-hero__over {
+    inset-inline: clamp(20px, 5.5vw, 96px) auto; inset-block: 0; padding: 0; width: min(38%, 440px);
+    justify-content: center; align-items: flex-start; text-align: start;
+  }
+  .home-hero--still .home-hero__greet { justify-content: flex-start; }
+  .home-hero--still .home-hero__title, html[lang="he"] .home-hero--still .home-hero__title { font-size: clamp(30px, 5.6vw, 92px); margin-bottom: clamp(10px, 2vw, 28px); }
+  html[lang="he"] .home-hero--still .home-hero__title { font-size: clamp(28px, 4.8vw, 78px); }
+  .home-hero--still .home-hero__cta { max-width: 340px; }
+  .home-hero--still .home-hero__cta .btn, html[lang="he"] .home-hero--still .home-hero__cta .btn { min-height: clamp(40px, 4vw, 56px); }
+}
+@media (min-width: 1000px) { .home-hero--still .home-hero__frame { height: calc(100svh - var(--hdr) - var(--safe-t)); min-height: 480px; max-height: 920px; } }
+/* Short upright phones: drop the welcome line, then put the two buttons side by side, so the text stays on the floor below Orit */
+@container hero (max-height: 560px) {
+  .home-hero--still .home-hero__greet, html[lang="he"] .home-hero--still .home-hero__greet { display: none; }
+  .home-hero--still .home-hero__title, html[lang="he"] .home-hero--still .home-hero__title { font-size: 38px; margin-bottom: 10px; }
+  html[lang="he"] .home-hero--still .home-hero__title { font-size: 33px; }
+}
+@container hero (max-height: 470px) {
+  .home-hero--still .home-hero__cta { flex-direction: row; gap: 6px; }
+  .home-hero--still .home-hero__cta .btn, html[lang="he"] .home-hero--still .home-hero__cta .btn { min-height: 44px; padding-inline: 6px; font-size: 13px; letter-spacing: 0; }
+  .home-hero--still .home-hero__title, html[lang="he"] .home-hero--still .home-hero__title { font-size: 32px; margin-bottom: 8px; }
+  .home-hero--still .home-hero__frame::after { height: 38%; }
+}
+@media (min-aspect-ratio: 1/1) { .home-hero--still .home-hero__frame::after { height: auto; } }

@@ -91,6 +91,9 @@ export const siteConfig = {
     // Home first screen (18 Nov 2026): Orit in a plank with a leg lift on a Reformer, set in the real studio room (arches, sheer curtains).
     // A silent 10-second loop over a still of its first frame; rendered from the owner's real room and portrait photos, replace with
     // real footage after the shoot. Wide for laptops and landscape tablets, tall for phones.
+    // "still": the photo fills the whole first screen, headline and buttons sit on the photo itself (19 Nov 2026, owner preview).
+    // "video": the same shot as a silent loop with the cream card on it. One word switches between them.
+    heroMode: "still" as "still" | "video",
     heroVideo: "/media/hero-orit-wide.mp4",
     heroVideoTall: "/media/hero-orit-tall.mp4",
     heroPhoto: "/assets/hero-orit-wide.webp",
