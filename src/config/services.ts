@@ -22,7 +22,7 @@ export const services: ServiceConfig[] = [
   // Teens (girls 12-17): a fixed weekly group, sold as its own monthly plan (pricing.ts: "teens"). Photo is a stand-in until the shoot.
   { id: "teens", slug: "teens", image: "/assets/class/teens.webp", pos: "50% 50%", thumb: "/assets/class/teens-sm.webp", bookable: false, capacity: 5, minutes: 50, approved: true },
   // Closed groups: the studio closes for your group. Two packages (packages.ts): private group and event.
-  { id: "groups", slug: "closed-groups", image: "/assets/class/groups.webp", pos: "50% 50%", thumb: "/assets/class/groups-sm.webp", bookable: false, capacity: 5, minutes: 50, approved: true },
+  { id: "groups", slug: "closed-groups", image: "/assets/class/groups.webp", pos: "50% 92%", thumb: "/assets/class/groups-sm.webp", bookable: false, capacity: 5, minutes: 50, approved: true },
 ];
 
 export const serviceById = (id: string) => services.find((s) => s.id === id);
