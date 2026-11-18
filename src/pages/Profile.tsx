@@ -130,6 +130,7 @@ export default function Profile() {
                 </span>
               </div>
             </div>
+            {store.planPending && <p className="tiny">{t.confirm.pending}</p>}
             {monthly && (
               <div className="card rows renew-row" style={{ paddingBlock: 4 }}>
                 <div>

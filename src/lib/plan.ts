@@ -59,6 +59,27 @@ export function planUsage(plan: PricingItem, bookings: Booking[], forDate: Date,
   return { used, cap, left: expired ? 0 : Math.max(0, cap - used), expired, extra: 0 };
 }
 
+/**
+ * Which class of the plan a booking is: "class 2 of 5" on a pass, "class 1 of 3 this week" on a monthly plan.
+ * null when it was not booked on this plan (as a visitor, or on an earlier plan) or the plan is unlimited.
+ * A class above the weekly cap used a carried-over class, so it has a number but no cap.
+ */
+export function planSeat(plan: PricingItem, bookings: Booking[], booking: Booking, planStart: string | null, carry = 0): { n: number; cap: number | null } | null {
+  const start = planStart ? Date.parse(planStart) : 0;
+  if (bookedAt(booking) < start || plan.perWeek === "unlimited") return null;
+  const mine = bookings.filter((b) => bookedAt(b) >= start);
+  const when = (b: Booking) => fromISO(b.date).getTime() + Number(b.time.replace(":", ""));
+  if (plan.billingType === "monthly") {
+    const { start: ws, end: we } = weekOf(fromISO(booking.date));
+    const week = mine.filter((b) => fromISO(b.date) >= ws && fromISO(b.date) < we).sort((a, b) => when(a) - when(b));
+    const n = week.findIndex((b) => b.id === booking.id) + 1;
+    const cap = plan.perWeek as number;
+    return n ? { n, cap: n > cap ? null : cap } : null;
+  }
+  const n = [...mine].sort((a, b) => bookedAt(a) - bookedAt(b) || when(a) - when(b)).findIndex((b) => b.id === booking.id) + 1;
+  return n ? { n, cap: (plan.sessions ?? 0) + (siteConfig.flags.launchPricing ? (plan.bonusSessions ?? 0) : 0) + carry } : null;
+}
+
 /** Bookings above the weekly cap, summed over every week (each one used a carried class). */
 function overflow(bookings: Booking[], cap: number) {
   const perWeek = new Map<number, number>();

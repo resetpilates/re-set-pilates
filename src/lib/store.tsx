@@ -20,6 +20,7 @@ export interface Booking {
   bookedAt?: string; // when the booking was made (ISO)
   cancelledLate?: boolean; // cancelled inside the policy window: no longer attended, but the session stays used
   remoteId?: string; // Airtable record id from the relay, used to cancel there too
+  planId?: string; // the plan this class was redeemed from (none: booked as a visitor)
 }
 
 export interface Profile {
@@ -50,6 +51,7 @@ interface Persisted {
   memberSince: string | null;
   planStart: string | null; // when the current plan was bought; pass balances and validity count from here
   carry?: number; // classes carried over from the previous plan into the current one
+  planPending?: boolean; // plan chosen at checkout while online payment is closed: usable in the app, payment still owed
   autoRenew?: boolean; // monthly membership renews every month (opted in at checkout, switched on/off in the profile)
   membershipId?: string; // Airtable record of the current membership, so the profile switch can update it
   receipts?: ReceiptData[]; // newest first
@@ -72,7 +74,8 @@ interface Store extends Persisted {
   joinWaitlist: (slotId: string) => void;
   leaveWaitlist: (slotId: string) => void;
   /** `carry` = unused classes moved over from the previous plan (see checkPurchase in plan.ts). */
-  setPlan: (planId: string | null, kind?: ClassKind | null, carry?: number) => void;
+  /** `pending` = ordered while online payment is closed: the plan works in the app, the studio still takes payment. */
+  setPlan: (planId: string | null, kind?: ClassKind | null, carry?: number, pending?: boolean) => void;
   /** Keep a purchase's receipt and notify in the app. */
   addReceipt: (r: ReceiptData) => void;
   /** Auto-renew on/off for the current monthly membership; `membershipId` is kept when given. */
@@ -151,7 +154,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       remind,
       bookedAt: new Date().toISOString(),
     };
-    setS((p) => (allowed(p) ? { ...p, bookings: [...p.bookings.filter((x) => x.slotId !== slot.id), b] } : p));
+    setS((p) => (allowed(p) ? { ...p, bookings: [...p.bookings.filter((x) => x.slotId !== slot.id), { ...b, ...(p.planId ? { planId: p.planId } : {}) }] } : p));
     return b;
   }, []);
   const cancel = useCallback(
@@ -165,12 +168,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const joinWaitlist = useCallback((id: string) => setS((p) => ({ ...p, waitlist: [...new Set([...p.waitlist, id])] })), []);
   const leaveWaitlist = useCallback((id: string) => setS((p) => ({ ...p, waitlist: p.waitlist.filter((w) => w !== id) })), []);
   const setPlan = useCallback(
-    (planId: string | null, kind: ClassKind | null = null, carry = 0) =>
-      setS((p) => {
-        // Every purchase starts a fresh plan period (carrying unused classes over); "member since" keeps the first one
-        const now = new Date().toISOString();
-        return { ...p, planId, planKind: planId ? kind : null, planStart: planId ? now : null, carry: planId ? carry : 0, memberSince: planId ? (p.memberSince ?? now) : null, autoRenew: false, membershipId: undefined };
-      }),
+    (planId: string | null, kind: ClassKind | null = null, carry = 0, pending = false) => {
+      // Every purchase starts a fresh plan period (carrying unused classes over); "member since" keeps the first one.
+      // The clock is read here, not inside the update, so a class booked right after the purchase counts on the new plan.
+      const now = new Date().toISOString();
+      setS((p) => ({ ...p, planId, planKind: planId ? kind : null, planStart: planId ? now : null, carry: planId ? carry : 0, planPending: !!planId && pending, memberSince: planId ? (p.memberSince ?? now) : null, autoRenew: false, membershipId: undefined }));
+    },
     [],
   );
   const addReceipt = useCallback(

@@ -189,6 +189,9 @@ export function Checkout() {
     }
     store.saveProfile(profileFrom(contact, x));
     track("launch_waitlist_join", { source: next ? "Booking" : "Pricing", plan: plan.id, method });
+    // The plan starts working in the app right away (payment pending), so the class held below and every
+    // later booking are redeemed from it and the balance shows on the booking sheet and in My classes.
+    store.setPlan(plan.id, kind, carry, true);
     if (next) await holdBed(next, contact);
     setWaitlisted(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -225,6 +228,7 @@ export function Checkout() {
             <Check />
             <h1 className="display d-md">{t.launchWaitlist.doneTitle}</h1>
             <p className="muted">{t.launchWaitlist.atPay}</p>
+            {store.planId === plan.id && plan.sessions !== 1 && <p className="small">{t.launchWaitlist.planReady}</p>}
             {hold === "held" && <p className="small hi">{t.launchWaitlist.bedHeld}</p>}
             {hold === "full" && <p className="small hi">{t.launchWaitlist.classFull}</p>}
             <HealthNextStep profile={store.profile} next={next ? `class/${next}` : undefined} />

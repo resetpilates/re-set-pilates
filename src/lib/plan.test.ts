@@ -1,7 +1,7 @@
 // Plan balances, carry-over and the one-membership-at-a-time rule. Run with `bun test src/`.
 import { expect, test } from "bun:test";
 import { planById, type PricingItem } from "../config/pricing";
-import { carryOver, checkPurchase, planUsage } from "./plan";
+import { carryOver, checkPurchase, planSeat, planUsage } from "./plan";
 import type { Booking } from "./store";
 
 const p5 = planById("p5")!; // 5 classes (no launch bonus any more)
@@ -73,4 +73,23 @@ test("carried classes on a weekly membership cover bookings above the weekly cap
   expect(u.used).toBe(3);
   expect(u.extra).toBe(1); // one carried class used for the 3rd booking
   expect(u.left).toBe(1);
+});
+
+test("each class knows its place in the plan: 2 of 5 on a pass, 1 of 2 this week on a membership", () => {
+  const start = daysAgo(5);
+  const visitor = booking("2026-10-12", daysAgo(9)); // booked before the pass was bought
+  const a = booking("2026-10-20", daysAgo(4));
+  const b = booking("2026-10-21", daysAgo(3));
+  const all = [visitor, a, b];
+  expect(planSeat(p5, all, visitor, iso(start))).toBeNull();
+  expect(planSeat(p5, all, a, iso(start))).toEqual({ n: 1, cap: 5 });
+  expect(planSeat(p5, all, b, iso(start))).toEqual({ n: 2, cap: 5 });
+  expect(planUsage(p5, all, now, iso(start)).left).toBe(3);
+  // carried classes raise the pass total
+  expect(planSeat(p5, all, b, iso(start), 2)).toEqual({ n: 2, cap: 7 });
+  // membership: counted per week, in class order
+  const nextWeek = booking("2026-10-27", daysAgo(1));
+  expect(planSeat(m2x, [...all, nextWeek], b, iso(start))).toEqual({ n: 2, cap: 2 });
+  expect(planSeat(m2x, [...all, nextWeek], nextWeek, iso(start))).toEqual({ n: 1, cap: 2 });
+  expect(planSeat(munl, all, a, iso(start))).toBeNull();
 });
