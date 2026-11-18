@@ -87,6 +87,13 @@ export const siteConfig = {
   siteUrl: "https://resetpilates.org",
   // Cloudflare Turnstile site key (public). Leave empty to skip the bot check; the secret key lives only in the Worker.
   turnstileSiteKey: "0x4AAAAAAFU9mcKzrVwPIAhL",
+  // Opening screen of the installed app (18 Nov 2026): three layouts to choose from, see components/Welcome.tsx.
+  // Preview each with ?welcome=a / b / c. Photos are new angles of the real room, rendered from the owner's studio photos.
+  welcome: {
+    layout: "a" as "a" | "b" | "c",
+    photo: { a: "/assets/welcome/aisle.webp", b: "/assets/welcome/arch.webp", c: "/assets/welcome/above.webp" },
+    // Spare: the same room at dusk with the arch lights on (/assets/welcome/evening.webp); swap it into any slot above.
+  },
   studioMedia: {
     // Home first screen (18 Nov 2026): Orit in a plank with a leg lift on a Reformer, set in the real studio room (arches, sheer curtains).
     // A silent 10-second loop over a still of its first frame; rendered from the owner's real room and portrait photos, replace with

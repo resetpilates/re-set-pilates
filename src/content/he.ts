@@ -75,6 +75,7 @@ export const he: Content = {
   welcome: {
     supporting: "גוף חזק · ראש שקט · את מאושרת יותר",
     explore: "להמשיך בלי להירשם",
+    eyebrow: "סטודיו בוטיק לרפורמר · הוד השרון",
   },
   home: {
     greetingMorning: "בוקר טוב",
