@@ -91,8 +91,9 @@ export const siteConfig = {
   // Preview each with ?welcome=a / b / c. Photos are new angles of the real room, rendered from the owner's studio photos.
   welcome: {
     layout: "a" as "a" | "b" | "c",
-    photo: { a: "/assets/welcome/aisle.webp", b: "/assets/welcome/arch.webp", c: "/assets/welcome/above.webp" },
-    // Spare: the same room at dusk with the arch lights on (/assets/welcome/evening.webp); swap it into any slot above.
+    // Live (owner, 18 Nov 2026): layout a, full screen, with the room seen from above (the photo first shown in c).
+    photo: { a: "/assets/welcome/above.webp", b: "/assets/welcome/arch.webp", c: "/assets/welcome/above.webp" },
+    // Spares, same room: down the centre aisle (/assets/welcome/aisle.webp), at dusk with the arch lights on (/assets/welcome/evening.webp).
   },
   studioMedia: {
     // Home first screen (18 Nov 2026): Orit in a plank with a leg lift on a Reformer, set in the real studio room (arches, sheer curtains).

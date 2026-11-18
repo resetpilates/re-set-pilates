@@ -2932,3 +2932,9 @@ html[lang="he"] .welcome--c .welcome__eyebrow { font-size: 13px; letter-spacing:
   .welcome__sign { font-size: 46px; }
   .welcome__sheet { padding-top: 40px; }
 }
+/* v6.1 · 18 Nov 2026: live opening screen is layout a with the room from above (owner's pick). That photo is busier behind
+   the words, so the ink fade starts higher and goes deeper; the small lines stay on one line on short phones. */
+.welcome--a::before { background: linear-gradient(180deg, rgba(63, 55, 51, 0.34) 0%, rgba(63, 55, 51, 0) 18%, rgba(63, 55, 51, 0.08) 34%, rgba(63, 55, 51, 0.6) 52%, rgba(63, 55, 51, 0.86) 70%, rgba(63, 55, 51, 0.94) 100%); }
+.welcome--a .welcome__eyebrow, .welcome--a .welcome__support { text-shadow: 0 1px 12px rgba(63, 55, 51, 0.55); }
+.welcome--a .welcome__support { white-space: nowrap; letter-spacing: 0.16em; }
+@media (max-width: 380px) { .welcome--a .welcome__support { font-size: 10.5px; letter-spacing: 0.12em; } }
