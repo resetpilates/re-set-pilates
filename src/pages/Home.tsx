@@ -350,7 +350,8 @@ export default function Home() {
               </Reveal>
             ))}
           </div>
-          <p className="tiny">{t.home.teamNote}</p>
+          {/* "Sample profiles" only while an unconfirmed placeholder is shown; Orit is the confirmed founder. */}
+          {[founder, ...instructors].some((p) => !p.approved) && <p className="tiny">{t.home.teamNote}</p>}
           {siteConfig.flags.showReviews && reviews.some((r) => r.approved) && (
             <div className="grid-3">
               {reviews

@@ -98,7 +98,7 @@ export function About() {
                     <PersonCard key={ins.id} p={ins} sample />
                   ))}
                 </div>
-                <p className="tiny">{t.home.teamNote}</p>
+                {instructors.some((ins) => !ins.approved) && <p className="tiny">{t.home.teamNote}</p>}
               </>
             )}
           </Reveal>
