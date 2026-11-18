@@ -466,3 +466,32 @@ test("checkout before payments open holds the bed; a full class refuses; a held 
   expect(body.slots[`reformer_${Y}-11-02_0800`].length).toBe(5);
   expect(body.slots[`reformer_${Y}-11-02_0800`][0]).toEqual({ bed: 2, name: "P. Last0" });
 });
+
+test("plan-status answers once the studio marks a membership for the ordered plan Active", async () => {
+  // Payment closed: the order only reached the launch waitlist, so the member exists but has no membership yet
+  await call("launch-waitlist", { lang: "he", contact: maya, classType: "Reformer", prefTime: "Adult morning", source: "Booking", planId: "m3x", consent: false });
+  const member = db[T.members][0];
+  const status = async (body: unknown) => (await (await call("plan-status", body)).json()) as { ok: boolean; membership?: { id: string; until: string; autoRenew: boolean } };
+  const ask = { lang: "he", phone: "050-123-4567", lastName: "Test", planId: "m3x" };
+  expect((await status(ask)).membership).toBeUndefined();
+
+  // Orit takes payment: a membership for the plan, still without status, then Active
+  const S = F.memberships;
+  const later = `${Y}-01-15`;
+  db[T.memberships] = [{ id: "recMembAAAAAAAAAA", fields: { [S.member]: [member.id], [S.plan]: [PLAN.id], [S.start]: `${Y - 1}-12-15`, [S.renews]: later, [S.autoRenew]: true } }];
+  member.fields[F.members.memberships] = ["recMembAAAAAAAAAA"];
+  expect((await status(ask)).membership).toBeUndefined();
+  db[T.memberships][0].fields[S.status] = "Active";
+  const found = await status(ask);
+  expect(found.membership).toEqual({ id: "recMembAAAAAAAAAA", until: later, autoRenew: true });
+  expect(Object.keys(found).sort()).toEqual(["membership", "ok"]);
+
+  // Wrong last name, another phone, another plan, or a membership that has ended: nothing
+  expect((await status({ ...ask, lastName: "Someone" })).membership).toBeUndefined();
+  expect((await status({ ...ask, phone: "050-999-9999" })).membership).toBeUndefined();
+  expect((await status({ ...ask, planId: "p10" })).membership).toBeUndefined();
+  db[T.memberships][0].fields[S.renews] = "2020-01-01";
+  expect((await status(ask)).membership).toBeUndefined();
+  // An unknown plan id is refused
+  expect((await call("plan-status", { ...ask, planId: "nope" })).status).toBe(400);
+});

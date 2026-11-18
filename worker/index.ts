@@ -23,6 +23,7 @@ import type {
   RenewalMsg,
   HealthMsg,
   HealthStatusMsg,
+  PlanStatusMsg,
   RelayReply,
   SlotRef,
   WaitlistMsg,
@@ -631,6 +632,28 @@ const handlers: Record<RelayEvent, Handler> = {
       .sort()
       .pop();
     return { ok: true, ...(best ? { validUntil: best } : {}) };
+  },
+
+  // A plan ordered while online payment was closed shows "payment pending" in the app. Once Orit takes payment and
+  // marks a membership for that plan Active, the app asks here and clears the note. Same check as health-status
+  // (phone + last name), and the answer is only the membership's record id, last day and auto-renew setting.
+  async "plan-status"(at, b) {
+    const m = b as unknown as PlanStatusMsg;
+    const phone = phoneDigits(m.phone);
+    const last = text(m.lastName, 60, true).toLowerCase();
+    const p = await planByWebsiteId(at, text(m.planId, 12, true));
+    const member = await memberByPhone(at, phone);
+    if (!member || String(member.fields[F.members.lastName] ?? "").trim().toLowerCase() !== last) return { ok: true };
+    const ids = linkIds(member.fields[F.members.memberships]).slice(0, 20);
+    if (!ids.length) return { ok: true };
+    const S = F.memberships;
+    const today = todayIL();
+    const rows = await at.find(T.memberships, `AND(OR(${ids.map((id) => `RECORD_ID()=${q(id)}`).join(",")}),IS_AFTER({${S.renews}},${q(addDays(today, -1))}))`, ids.length);
+    const ms = rows
+      .filter((r) => r.fields[S.status] === "Active" && linkIds(r.fields[S.plan]).includes(p.plan.id))
+      .sort((a, z) => String(z.fields[S.start] ?? "").localeCompare(String(a.fields[S.start] ?? "")))[0];
+    if (!ms) return { ok: true };
+    return { ok: true, membership: { id: ms.id, until: String(ms.fields[S.renews] ?? ""), autoRenew: ms.fields[S.autoRenew] === true } };
   },
 
   async waitlist(at, b) {

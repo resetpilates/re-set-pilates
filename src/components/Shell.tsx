@@ -7,6 +7,7 @@ import { track } from "../lib/analytics";
 import { useI18n } from "../lib/i18n";
 import { useStore } from "../lib/store";
 import { useHealthSync } from "../lib/healthSync";
+import { usePlanSync } from "../lib/planSync";
 import { WaIcon, useWaLink, waReady } from "../lib/whatsapp";
 import { ChatWidget } from "./ChatWidget";
 
@@ -345,6 +346,7 @@ function Footer() {
 export function Shell() {
   const { t } = useI18n();
   useHealthSync();
+  usePlanSync();
   const loc = useLocation();
   const section = loc.pathname.split("/")[2] ?? "";
 

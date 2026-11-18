@@ -132,6 +132,13 @@ export interface HealthStatusMsg extends Base {
   lastName: string;
 }
 
+/** Has the studio confirmed (marked Active) the plan this device ordered while online payment was closed? */
+export interface PlanStatusMsg extends Base {
+  phone: string;
+  lastName: string;
+  planId: string; // Plans & Prices > Website ID of the plan ordered
+}
+
 /** Auto-renew switched on or off from the profile. */
 export interface RenewalMsg extends Base {
   membershipId: string; // Airtable record id returned by checkout
@@ -194,6 +201,7 @@ export interface RelayMap {
   renewal: RenewalMsg;
   "health-declaration": HealthMsg; // not "health": /api/health is the Worker's status check
   "health-status": HealthStatusMsg;
+  "plan-status": PlanStatusMsg;
   waitlist: WaitlistMsg;
   "launch-waitlist": LaunchWaitlistMsg;
   gift: GiftMsg;
@@ -215,6 +223,7 @@ export interface RelayReply {
   duplicate?: boolean; // this order was already saved; nothing new was created
   retry?: string; // on a 5xx after the bot check passed: pass for resending the same message later
   validUntil?: string; // health-status: the latest current declaration's last day (YYYY-MM-DD)
+  membership?: { id: string; until: string; autoRenew: boolean }; // plan-status: the Active membership for the plan, once Orit confirmed it
   airtable?: boolean; // /api/health only
   turnstile?: boolean;
 }
