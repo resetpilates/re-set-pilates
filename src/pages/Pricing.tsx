@@ -88,7 +88,8 @@ export function Checkout() {
       : undefined;
 
   // One active plan at a time: the same running membership can't be bought twice, and unused classes move to the new plan.
-  const current = store.planId ? planById(store.planId) : undefined;
+  // A plan ordered while payment was closed was never paid for: it neither blocks a new order nor carries classes into it.
+  const current = store.planId && !store.planPending ? planById(store.planId) : undefined;
   const check = checkPurchase(plan, current ? { plan: current, bookings: store.bookings, planStart: store.planStart, carry: store.carry ?? 0 } : null, new Date(), confirmedRepeat);
   const carry = "carry" in check ? check.carry : 0;
   const activeUntil = blockedUntil ?? (!check.ok && check.reason === "active" ? check.until : null);
@@ -182,17 +183,22 @@ export function Checkout() {
       consent: x.consent,
       website: x.website,
     });
-    setSending(false);
     if (!r.ok && !r.queued) {
+      setSending(false);
       setFailed(true);
       return;
     }
     store.saveProfile(profileFrom(contact, x));
     track("launch_waitlist_join", { source: next ? "Booking" : "Pricing", plan: plan.id, method });
-    // The plan starts working in the app right away (payment pending), so the class held below and every
-    // later booking are redeemed from it and the balance shows on the booking sheet and in My classes.
-    store.setPlan(plan.id, kind, carry, true);
-    if (next) await holdBed(next, contact);
+    // A membership or pass starts working in the app right away (payment pending), so the class held below and
+    // every later booking are redeemed from it. One class on its own is just that class: no plan is set.
+    const single = plan.sessions === 1;
+    if (!single) {
+      store.setPlan(plan.id, kind, carry, true);
+      if (monthly && x.autoRenew) store.setRenewal(true);
+    }
+    if (next) await holdBed(next, contact, single);
+    setSending(false);
     setWaitlisted(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -201,21 +207,23 @@ export function Checkout() {
    * Checkout for a specific class before payments open: hold the bed (Airtable status "Held") so the person's
    * name shows on the schedule. If the class filled up meanwhile, they go on that class's waitlist instead.
    */
-  const holdBed = async (slotId: string, contact: Contact) => {
+  const holdBed = async (slotId: string, contact: Contact, single: boolean) => {
     const s = await bookingProvider.getSlot(slotId);
     if (!s) return;
     const bed = s.service === "reformer" ? rememberedBed(s.id) : null;
     const slot: SlotRef = { slotId: s.id, service: s.service, date: s.date, time: s.time, minutes: s.minutes, capacity: s.capacity };
-    const local = store.book(s, bed, store.reminders);
-    const r = await relay("booking", { lang, contact, slot, bed, showAs: store.profile.showAs ?? "short", held: true }, local ? { ref: local.id } : undefined);
+    const local = store.book(s, bed, store.reminders, single);
+    // Not saved on the phone (the plan just ordered does not cover this class): don't hold a bed nobody could cancel
+    if (!local) return;
+    const r = await relay("booking", { lang, contact, slot, bed, showAs: store.profile.showAs ?? "short", held: true }, { ref: local.id });
     if (r.error === "full") {
-      if (local) store.cancel(local.id);
+      store.cancel(local.id);
       store.joinWaitlist(s.id);
       relay("waitlist", { lang, contact, slot });
       setHold("full");
       return;
     }
-    if (local && r.id) store.setRemoteId(local.id, r.id);
+    if (r.id) store.setRemoteId(local.id, r.id);
     rememberBed(s.id, null);
     setHold("held");
   };

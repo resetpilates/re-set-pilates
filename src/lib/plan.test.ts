@@ -1,7 +1,7 @@
 // Plan balances, carry-over and the one-membership-at-a-time rule. Run with `bun test src/`.
 import { expect, test } from "bun:test";
 import { planById, type PricingItem } from "../config/pricing";
-import { carryOver, checkPurchase, planSeat, planUsage } from "./plan";
+import { carryOver, checkPurchase, planCovers, planSeat, planUsage } from "./plan";
 import type { Booking } from "./store";
 
 const p5 = planById("p5")!; // 5 classes (no launch bonus any more)
@@ -92,4 +92,31 @@ test("each class knows its place in the plan: 2 of 5 on a pass, 1 of 2 this week
   expect(planSeat(m2x, [...all, nextWeek], b, iso(start))).toEqual({ n: 2, cap: 2 });
   expect(planSeat(m2x, [...all, nextWeek], nextWeek, iso(start))).toEqual({ n: 1, cap: 2 });
   expect(planSeat(munl, all, a, iso(start))).toBeNull();
+});
+
+test("a single class bought on its own never uses the plan; classes are numbered in class order", () => {
+  const start = daysAgo(5);
+  const late = booking("2026-10-22", daysAgo(4)); // booked first, takes place last
+  const early = booking("2026-10-20", daysAgo(3));
+  const single = { ...booking("2026-10-21", daysAgo(2)), single: true };
+  const all = [late, early, single];
+  expect(planUsage(p5, all, now, iso(start)).left).toBe(3);
+  expect(planSeat(p5, all, single, iso(start))).toBeNull();
+  expect(planSeat(p5, all, early, iso(start))).toEqual({ n: 1, cap: 5 });
+  expect(planSeat(p5, all, late, iso(start))).toEqual({ n: 2, cap: 5 });
+  expect(carryOver(p5, all, iso(start), 0, now)).toBe(3);
+});
+
+test("a membership that does not renew ends on its last day; a renewing one keeps going", () => {
+  const start = daysAgo(40);
+  expect(planUsage(m2x, [], now, iso(start))).toMatchObject({ left: 0, expired: true });
+  expect(planUsage(munl, [], now, iso(start))).toMatchObject({ left: 0, expired: true });
+  expect(planUsage(m2x, [], now, iso(start), 0, true)).toMatchObject({ left: 2, expired: false });
+});
+
+test("a teens plan never covers the adult schedule; a Mat plan covers Mat only", () => {
+  expect(planCovers(planById("teens")!, null, "reformer")).toBe(false);
+  expect(planCovers(p5, "mat", "reformer")).toBe(false);
+  expect(planCovers(p5, "reformer", "reformer")).toBe(true);
+  expect(planCovers(p5, undefined, "mat")).toBe(true);
 });

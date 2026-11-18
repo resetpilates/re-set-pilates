@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { PageHead, instructorName, planName } from "../components/blocks";
+import { PageHead, instructorName, planLeft, planName } from "../components/blocks";
 import { Sheet } from "../components/ui";
 import { mapsLink, siteConfig } from "../config/site";
 import { HealthNextStep } from "../components/forms";
@@ -20,19 +20,21 @@ export default function My() {
   const store = useStore();
   const [toCancel, setToCancel] = useState<Booking | null>(null);
   const maps = mapsLink();
-  // Inside the policy window the session stays used (same rule as a no-show).
   // The plan the classes are redeemed from: balance for this week (monthly) or for the pass
   const plan = store.planId ? planById(store.planId) : undefined;
-  const usage = plan ? planUsage(plan, store.bookings, israelNow(), store.planStart, store.carry ?? 0) : null;
-  const total = usage?.cap == null ? null : Math.max(usage.cap, usage.left);
+  const usage = plan ? planUsage(plan, store.bookings, israelNow(), store.planStart, store.carry ?? 0, !!store.autoRenew && !store.planPending) : null;
+  // One dot per class of the week (monthly) or of the pass; hollow = already booked
+  const total = usage?.cap ?? null;
+  const dotsUsed = !usage || total === null ? 0 : plan?.billingType === "monthly" ? Math.min(usage.used, total) : total - usage.left;
   const until = plan ? planEnd(plan, store.planStart) : null;
-  const passDone = plan?.billingType === "pass" && !!usage && usage.left <= 0;
+  const passDone = !!usage && usage.left <= 0 && (usage.expired || plan?.billingType === "pass");
   const seatLabel = (b: Booking) => {
     const seat = plan ? planSeat(plan, store.bookings, b, store.planStart, store.carry ?? 0) : null;
     if (!seat) return null;
     if (seat.cap === null) return t.my.seatExtra;
     return (plan!.billingType === "monthly" ? t.my.seatWeek : t.my.seat).replace("{n}", String(seat.n)).replace("{cap}", String(seat.cap));
   };
+  // Inside the policy window the session stays used (same rule as a no-show).
   const isLate = (b: Booking) => slotStart(b).getTime() - Date.now() < siteConfig.policies.cancelHours * 3600_000;
 
   return (
@@ -56,16 +58,12 @@ export default function My() {
               )}
             </div>
             <p className={`plan-left ${usage.left <= 0 ? "is-out" : ""}`}>
-              {usage.expired
-                ? t.confirm.passExpired
-                : total === null
-                  ? t.profile.unlimitedNote
-                  : (plan.billingType === "monthly" ? t.confirm.leftWeek : t.confirm.leftPass).replace("{left}", String(usage.left)).replace("{cap}", String(total))}
+              {usage.expired ? t.my.planEnded : planLeft(plan, usage, t)}
             </p>
-            {total !== null && total > 0 && (
+            {total !== null && total > 0 && !usage.expired && (
               <span className="plan-card__dots" aria-hidden>
                 {Array.from({ length: total }, (_, i) => (
-                  <i key={i} className={i < total - usage.left ? "is-used" : ""} />
+                  <i key={i} className={i < dotsUsed ? "is-used" : ""} />
                 ))}
               </span>
             )}

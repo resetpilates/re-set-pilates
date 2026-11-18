@@ -1,4 +1,4 @@
-import type { PricingItem } from "../config/pricing";
+import type { ClassKind, PricingItem } from "../config/pricing";
 import { siteConfig } from "../config/site";
 import { fromISO } from "./booking";
 import type { Booking } from "./store";
@@ -33,26 +33,37 @@ export function planEnd(plan: PricingItem, planStart: string | null) {
   return end;
 }
 
+/**
+ * Can a class of this kind be redeemed from the plan? A teens plan covers the teens group only (booked by request,
+ * never the adult schedule) and a Reformer or Mat plan covers its own kind. Plans saved without a kind cover both.
+ */
+export const planCovers = (plan: PricingItem, kind: ClassKind | null | undefined, service: Booking["service"]) => plan.track !== "teens" && (!kind || kind === service);
+
+/** Classes redeemed from the plan bought at `start`: not the ones paid for one at a time, nor those of an earlier plan. */
+const onPlan = (bookings: Booking[], start: number) => bookings.filter((b) => !b.single && bookedAt(b) >= start);
+
 /** When a booking was made; older saved bookings only carry it in their `b<ms>` id. */
 const bookedAt = (b: Booking) => (b.bookedAt ? Date.parse(b.bookedAt) : Number(b.id.slice(1)) || 0);
 
 /**
  * How much of the plan is used, measured for the week of `forDate` (monthly plans) or since the plan was bought (passes).
  * `carry` = classes carried over from the previous plan when this one was bought (see `carryOver`).
+ * `renews` = the monthly membership renews by itself, so it has no last day; without it a membership ends like a pass.
  * Real balances come from the booking backend once connected; this keeps the demo honest in the meantime.
  */
-export function planUsage(plan: PricingItem, bookings: Booking[], forDate: Date, planStart: string | null, carry = 0): PlanUsage {
+export function planUsage(plan: PricingItem, bookings: Booking[], forDate: Date, planStart: string | null, carry = 0, renews = false): PlanUsage {
   const start = planStart ? Date.parse(planStart) : 0;
   // Only classes booked on this plan count, so a new purchase starts from zero
-  const mine = bookings.filter((b) => bookedAt(b) >= start);
+  const mine = onPlan(bookings, start);
   const expired = forDate >= planEnd(plan, planStart);
   if (plan.billingType === "monthly") {
+    const ended = expired && !renews;
     const used = countInWeek(mine, forDate);
-    if (plan.perWeek === "unlimited") return { used, cap: null, left: Infinity, expired: false, extra: 0 };
+    if (plan.perWeek === "unlimited") return { used, cap: null, left: ended ? 0 : Infinity, expired: ended, extra: 0 };
     const cap = plan.perWeek as number;
     // Carried classes cover bookings above the weekly cap, in any week of the plan
-    const extra = expired ? 0 : Math.max(0, carry - overflow(mine, cap));
-    return { used, cap, left: Math.max(0, cap - used) + extra, expired: false, extra };
+    const extra = ended ? 0 : Math.max(0, carry - overflow(mine, cap));
+    return { used, cap, left: ended ? 0 : Math.max(0, cap - used) + extra, expired: ended, extra };
   }
   const cap = (plan.sessions ?? 0) + (siteConfig.flags.launchPricing ? (plan.bonusSessions ?? 0) : 0) + carry;
   const used = mine.length;
@@ -60,24 +71,24 @@ export function planUsage(plan: PricingItem, bookings: Booking[], forDate: Date,
 }
 
 /**
- * Which class of the plan a booking is: "class 2 of 5" on a pass, "class 1 of 3 this week" on a monthly plan.
- * null when it was not booked on this plan (as a visitor, or on an earlier plan) or the plan is unlimited.
+ * Which class of the plan a booking is: "class 2 of 5" on a pass, "class 1 of 3 this week" on a monthly plan,
+ * numbered in class order (the order My classes lists them).
+ * null when it was not redeemed from this plan (a visitor's or single class, or an earlier plan) or the plan is unlimited.
  * A class above the weekly cap used a carried-over class, so it has a number but no cap.
  */
 export function planSeat(plan: PricingItem, bookings: Booking[], booking: Booking, planStart: string | null, carry = 0): { n: number; cap: number | null } | null {
-  const start = planStart ? Date.parse(planStart) : 0;
-  if (bookedAt(booking) < start || plan.perWeek === "unlimited") return null;
-  const mine = bookings.filter((b) => bookedAt(b) >= start);
-  const when = (b: Booking) => fromISO(b.date).getTime() + Number(b.time.replace(":", ""));
-  if (plan.billingType === "monthly") {
-    const { start: ws, end: we } = weekOf(fromISO(booking.date));
-    const week = mine.filter((b) => fromISO(b.date) >= ws && fromISO(b.date) < we).sort((a, b) => when(a) - when(b));
-    const n = week.findIndex((b) => b.id === booking.id) + 1;
-    const cap = plan.perWeek as number;
-    return n ? { n, cap: n > cap ? null : cap } : null;
+  if (plan.perWeek === "unlimited") return null;
+  let mine = onPlan(bookings, planStart ? Date.parse(planStart) : 0);
+  const monthly = plan.billingType === "monthly";
+  if (monthly) {
+    const { start, end } = weekOf(fromISO(booking.date));
+    mine = mine.filter((b) => fromISO(b.date) >= start && fromISO(b.date) < end);
   }
-  const n = [...mine].sort((a, b) => bookedAt(a) - bookedAt(b) || when(a) - when(b)).findIndex((b) => b.id === booking.id) + 1;
-  return n ? { n, cap: (plan.sessions ?? 0) + (siteConfig.flags.launchPricing ? (plan.bonusSessions ?? 0) : 0) + carry } : null;
+  const when = (b: Booking) => `${b.date} ${b.time}`;
+  const n = mine.sort((a, b) => when(a).localeCompare(when(b))).findIndex((b) => b.id === booking.id) + 1;
+  if (!n) return null;
+  const cap = monthly ? (plan.perWeek as number) : (plan.sessions ?? 0) + (siteConfig.flags.launchPricing ? (plan.bonusSessions ?? 0) : 0) + carry;
+  return { n, cap: monthly && n > cap ? null : cap };
 }
 
 /** Bookings above the weekly cap, summed over every week (each one used a carried class). */
@@ -106,7 +117,8 @@ function countInWeek(bookings: Booking[], d: Date) {
  * Pass: its balance. Weekly membership: what is left of this week, each remaining week until it ends, plus unused
  * carried classes. Unlimited: nothing countable. An expired plan carries nothing.
  */
-export function carryOver(plan: PricingItem, bookings: Booking[], planStart: string | null, carry: number, now = new Date()): number {
+export function carryOver(plan: PricingItem, all: Booking[], planStart: string | null, carry: number, now = new Date()): number {
+  const bookings = all.filter((b) => !b.single); // a class paid for on its own never used the plan
   const end = planEnd(plan, planStart);
   if (now >= end) return 0;
   const u = planUsage(plan, bookings, now, planStart, carry);
