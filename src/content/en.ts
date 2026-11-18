@@ -83,7 +83,7 @@ export const en = {
     heroTitle: ["Reformer Pilates,", "in a room of five."],
     heroEditorial: ["Reset your", "strength."],
     heroLine: "Get strong.",
-    heroAlt: "A woman holding a long plank on a Reformer in the re:set studio",
+    heroAlt: "Orit holding a plank with one leg lifted on a Reformer in the re:set studio",
     heroChips: ["5 Reformers", "50 min", "All levels"],
     heroSecondary: "First class · what to expect",
     heroJoin: "Sign in or join",

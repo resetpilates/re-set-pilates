@@ -2723,3 +2723,13 @@ html[lang="he"] .home-hero__cta .btn { font-size: 17px; letter-spacing: 0; }
   .shop-hero__media--tall { aspect-ratio: 4 / 5; max-height: 620px; }
 }
 @media (prefers-reduced-motion: reduce) { .space__lead img { animation: none; } }
+
+/* ───────── v5.3 · 18 Nov: home first screen is Orit in the real studio, as a silent 10-second loop over its own first frame ───────── */
+/* Phones: the shot is lifted so Orit and the carriage sit above the card, not under it */
+.home-hero__photo img, .home-hero__video { position: absolute; inset: -16% 0 auto 0; width: 100%; height: 116%; object-fit: cover; object-position: 58% 50%; }
+.home-hero__video { pointer-events: none; }
+@media (min-width: 900px) and (min-aspect-ratio: 1/1) {
+  .home-hero__photo img, .home-hero__video { inset: 0; height: 100%; object-position: 60% 50%; }
+  [dir="rtl"] .home-hero__video { transform: scaleX(-1); }
+}
+@media (prefers-reduced-motion: reduce) { .home-hero__video { display: none; } }

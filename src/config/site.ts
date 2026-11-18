@@ -88,12 +88,13 @@ export const siteConfig = {
   // Cloudflare Turnstile site key (public). Leave empty to skip the bot check; the secret key lives only in the Worker.
   turnstileSiteKey: "0x4AAAAAAFU9mcKzrVwPIAhL",
   studioMedia: {
-    heroVideo: "/media/hero.mp4", // Seedance 1.5 Pro: empty studio at dawn, dolly in to the gold-ring sign (12s, 1080p, silent); replace with real footage after the shoot
-    heroVideoPhone: "/media/hero-720.mp4", // lighter 720p encode served below 1000px (made by the compress-hero workflow)
-    // Home hero photo: a plank on the Reformer in the brand kit colours (Warm Ivory room, Frosted Blush outfit, oak, a little sage). Generated to match the room;
-    // replace both files after the real shoot. Wide for laptops and landscape tablets, tall for phones.
-    heroPhoto: "/assets/hero-reformer-1920.webp",
-    heroPhotoTall: "/assets/hero-reformer-tall-1080.webp",
+    // Home first screen (18 Nov 2026): Orit in a plank with a leg lift on a Reformer, set in the real studio room (arches, sheer curtains).
+    // A silent 10-second loop over a still of its first frame; rendered from the owner's real room and portrait photos, replace with
+    // real footage after the shoot. Wide for laptops and landscape tablets, tall for phones.
+    heroVideo: "/media/hero-orit-wide.mp4",
+    heroVideoTall: "/media/hero-orit-tall.mp4",
+    heroPhoto: "/assets/hero-orit-wide.webp",
+    heroPhotoTall: "/assets/hero-orit-tall.webp",
     heroPoster: "/assets/hero-poster.webp", // first frame of the hero video (studio + sign); studio-wide.jpg is the plain studio photo
     // Link preview (WhatsApp, Instagram, Facebook, Google): the RE:SET logo on white, 1200×630 (new file name so WhatsApp drops its cached preview). og-studio.jpg (the five
     // reformers) stays for the schema.org photo list only; the owner asked that a shared link shows the logo, not the studio.

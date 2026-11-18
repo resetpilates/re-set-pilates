@@ -46,6 +46,11 @@ export default function Home() {
             <source media="(min-width: 900px) and (min-aspect-ratio: 1/1)" srcSet={siteConfig.studioMedia.heroPhoto} />
             <img src={siteConfig.studioMedia.heroPhotoTall} alt={t.home.heroAlt} decoding="async" {...{ fetchpriority: "high" }} />
           </picture>
+          {/* The same shot in motion: silent, looping, never with sound. The still above shows first and stays if the film cannot play. */}
+          <video className="home-hero__video" muted loop playsInline autoPlay preload="metadata" aria-hidden="true" tabIndex={-1}>
+            <source media="(min-width: 900px) and (min-aspect-ratio: 1/1)" src={siteConfig.studioMedia.heroVideo} type="video/mp4" />
+            <source src={siteConfig.studioMedia.heroVideoTall} type="video/mp4" />
+          </video>
           <div className="home-hero__card">
             <Logo className="home-hero__logo fade-up" />
             <p className="home-hero__greet fade-up" style={d(100)}>
