@@ -240,7 +240,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const onReply = (e: Event) => {
       const { event, ref, reply } = (e as CustomEvent<RelayReplyDetail>).detail;
-      if (event !== "booking" || !ref || !reply.id) return;
+      if (event !== "booking" || !ref) return;
+      // Sent later from the outbox and refused (class full, or another class already held before payment): drop it here too
+      if (!reply.ok) {
+        if (reply.error === "full" || reply.error === "held limit") setS((p) => ({ ...p, bookings: p.bookings.filter((b) => b.id !== ref) }));
+        return;
+      }
+      if (!reply.id) return;
       const cur = latest.current;
       if (cur.bookings.some((b) => b.id === ref)) setRemoteId(ref, reply.id);
       else relay("cancel", { lang: document.documentElement.lang === "en" ? "en" : "he", bookingId: reply.id, phone: cur.profile.phone });

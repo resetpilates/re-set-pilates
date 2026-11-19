@@ -326,6 +326,7 @@ export const en = {
     planEnded: "Your membership ends before this date.",
     pending: "Payment pending: nothing was charged yet. The studio confirms your plan when payments open.",
     holdLimit: "You already have a class held ({class}). Until the studio confirms your payment, you can hold one class at a time.",
+    holdLimitStudio: "This class wasn't held: the studio already has another class held for you. Until your payment is confirmed, you can hold one class at a time.",
     payNone: "Purchase at booking",
     confirmBtn: "Confirm",
     limitWeek: "This week is full: {used} of {cap} classes in your plan are booked.",

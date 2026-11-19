@@ -29,6 +29,7 @@ export default function ClassDetail() {
   const [bed, setBed] = useState<number | null>(null);
   const [sheet, setSheet] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
+  const [refused, setRefused] = useState(false); // the studio refused the hold: another class is already held before payment
   const [remind, setRemind] = useState(store.reminders);
   useSeo(t.meta.schedule);
 
@@ -116,9 +117,14 @@ export default function ClassDetail() {
     if (!local) return;
     const contact = whoFrom(e.currentTarget as HTMLFormElement);
     // A plan ordered before online payment opened holds the bed (status "Held") until the studio takes payment
-    relay("booking", { lang, contact, slot: slotRef, bed: isReformer ? bed : null, showAs, ...(store.planPending ? { held: true } : {}) }, { ref: local.id }).then(
-      (r) => r.id && store.setRemoteId(local.id, r.id),
-    );
+    relay("booking", { lang, contact, slot: slotRef, bed: isReformer ? bed : null, showAs, ...(store.planPending ? { held: true } : {}) }, { ref: local.id }).then((r) => {
+      if (r.id) store.setRemoteId(local.id, r.id);
+      else if (r.error === "held limit") {
+        store.cancel(local.id);
+        setConfirmed(false);
+        setRefused(true);
+      }
+    });
     track("booking_confirmed", { service: slot.service });
     setConfirmed(true);
   };
@@ -293,7 +299,11 @@ export default function ClassDetail() {
                     : (plan.billingType === "monthly" ? t.confirm.limitWeek : t.confirm.limitPass).replace("{used}", String(usage.used)).replace("{cap}", String(usage.cap))}
               </p>
             )}
-            {otherHeld ? (
+            {refused ? (
+              <div className="notice" role="alert">
+                <span className="small">{t.confirm.holdLimitStudio}</span>
+              </div>
+            ) : otherHeld ? (
               <div className="notice stack gap-8" role="status">
                 <span className="small">
                   {t.confirm.holdLimit.replace("{class}", `${fmtDate(fromISO(otherHeld.date))} · ${otherHeld.time}`)}
