@@ -953,6 +953,12 @@ async function roster(env: Env, url: URL, ectx: ExecutionContext): Promise<Respo
 export default {
   async fetch(req, env, ectx): Promise<Response> {
     const url = new URL(req.url);
+    // Preview versions (https://<version-id>-re-set-pilates.resetpilates11.workers.dev) are review
+    // links: read-only, so testing can never create bookings, payments or Airtable records. The
+    // production hosts (custom domains and the plain workers.dev name) are unaffected.
+    if (url.hostname.endsWith(".workers.dev") && url.hostname !== "re-set-pilates.resetpilates11.workers.dev" && req.method !== "GET" && req.method !== "HEAD") {
+      return json({ ok: false, error: "preview read-only" }, 403);
+    }
     if (url.pathname.startsWith("/go/")) return go(url.pathname.slice(4).replace(/\/$/, ""), url);
     if (url.pathname.startsWith("/r/")) return serveReceipt(env, url);
     if (url.pathname === "/api/roster" && req.method === "GET") return roster(env, url, ectx);
