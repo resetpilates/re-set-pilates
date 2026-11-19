@@ -39,6 +39,7 @@ export const F = {
     consentDate: "fldIBoLDqrWPmftwu",
     consentSource: "fldUIz3RUlMZs0TnN",
     memberships: "fldVVteIRW53tgSFK",
+    bookings: "fldUq9AGWE2REsefs", // links to the member's Bookings rows
     termsOn: "fldObNiMJJSXpGxyV",
     health: "fldX2zCZAjHgZ7EfG", // links to Health & Consent rows
   },

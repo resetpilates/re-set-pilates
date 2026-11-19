@@ -495,3 +495,30 @@ test("plan-status answers once the studio marks a membership for the ordered pla
   // An unknown plan id is refused
   expect((await call("plan-status", { ...ask, planId: "nope" })).status).toBe(400);
 });
+
+test("before payment one held class per person: a second held class is refused, whatever device it comes from", async () => {
+  const hold = (date: string, bed: number) => call("booking", { lang: "he", contact: maya, slot: { ...slot, date }, bed, held: true });
+  expect((await hold(`${Y}-10-20`, 0)).status).toBe(200);
+  const first = db[T.bookings].at(-1)!;
+  // Airtable fills the member's side of the link itself; the stand-in needs it set by hand.
+  const member = db[T.members][0];
+  member.fields[F.members.bookings] = [first.id];
+
+  const second = await hold(`${Y}-10-21`, 1);
+  expect(second.status).toBe(409);
+  expect(((await second.json()) as { error?: string }).error).toBe("held limit");
+  expect(db[T.bookings].length).toBe(1);
+
+  // The same class again is not a second class; a paid booking is never limited
+  expect((await hold(`${Y}-10-20`, 2)).status).toBe(200);
+  member.fields[F.members.bookings] = [first.id];
+  expect((await call("booking", { lang: "he", contact: maya, slot: { ...slot, date: `${Y}-10-22` }, bed: 3 })).status).toBe(200);
+
+  // Once the studio switches the held class to Booked (payment taken), or it has taken place, another can be held
+  first.fields[F.bookings.status] = "Booked";
+  expect((await hold(`${Y}-10-23`, 0)).status).toBe(200);
+  const third = db[T.bookings].at(-1)!;
+  third.fields[F.bookings.slotId] = "reformer_2020-01-01_0800";
+  member.fields[F.members.bookings] = [first.id, third.id];
+  expect((await hold(`${Y}-10-24`, 0)).status).toBe(200);
+});

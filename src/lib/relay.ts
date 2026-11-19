@@ -126,7 +126,8 @@ async function flush() {
       // The bot check can be retried later; any other 4xx means the message itself is wrong.
       if (!reply.ok && reply.error === "turnstile") continue;
       handled.add(keyOf(i));
-      if (reply.ok) dispatchEvent(new CustomEvent<RelayReplyDetail>(RELAY_REPLY, { detail: { event: i.event, ref: i.ref, reply } }));
+      // Refusals too (a booking for a class that filled up, or a second held class), so the app can undo it
+      dispatchEvent(new CustomEvent<RelayReplyDetail>(RELAY_REPLY, { detail: { event: i.event, ref: i.ref, reply } }));
     } catch {
       /* still failing; keep it */
     }

@@ -284,6 +284,21 @@ async function findOrCreateClass(at: Airtable, s: SlotRef): Promise<AirRecord> {
   });
 }
 
+/** Does the member already hold (unpaid, status Held) another class that has not started yet? */
+async function heldElsewhere(at: Airtable, member: AirRecord, slotId: string): Promise<boolean> {
+  const ids = linkIds(member.fields[F.members.bookings]).slice(-50); // newest links are last
+  if (!ids.length) return false;
+  const B = F.bookings;
+  const rows = await at.find(T.bookings, `AND({${B.status}}='Held',OR(${ids.map((id) => `RECORD_ID()=${q(id)}`).join(",")}))`, ids.length);
+  const now = Date.now();
+  return rows.some((r) => {
+    const id = String(r.fields[B.slotId] ?? "");
+    const [, date, hhmm] = id.split("_");
+    if (r.fields[B.status] !== "Held" || id === slotId || !/^\d{4}-\d{2}-\d{2}$/.test(date ?? "") || !/^\d{4}$/.test(hhmm ?? "")) return false;
+    return Date.parse(studioInstant(date, `${hhmm.slice(0, 2)}:${hhmm.slice(2)}`)) > now;
+  });
+}
+
 /** The member's current Active membership, if the studio has marked one active. */
 async function activeMembership(at: Airtable, member: AirRecord): Promise<string | undefined> {
   const ids = linkIds(member.fields[F.members.memberships]);
@@ -493,6 +508,8 @@ const handlers: Record<RelayEvent, Handler> = {
     if (s.capacity && taken.length >= s.capacity) throw new Conflict("full");
     if (bed !== "Any" && taken.some((r) => String(r.fields[B.bed] ?? "") === bed)) bed = "Any";
     const member = await upsertMember(at, c, { lang: lang(m.lang), attribution: attribution(m.attribution) });
+    // Before payment, one held class at a time per person, whichever phone or browser they book from
+    if (m.held && (await heldElsewhere(at, member, s.slotId))) throw new Conflict("held limit");
     const klass = await findOrCreateClass(at, s);
     const membership = await activeMembership(at, member);
     const booking = await at.create(T.bookings, {
