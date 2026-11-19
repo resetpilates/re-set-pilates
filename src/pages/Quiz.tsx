@@ -108,10 +108,10 @@ export default function Quiz() {
     const c = t.services.items[rec as ServiceId];
     return (
       <>
-        <div className="media" style={{ height: 240 }}>
+        <div className="media media--page">
           <img src={s.image} alt="" style={{ objectPosition: s.pos }} />
           <div className="scrim" />
-          <div className="stack gap-4" style={{ position: "absolute", inset: "auto 20px 18px 20px" }}>
+          <div className="media__cap stack gap-4">
             <span className="eyebrow">{t.quiz.resultEyebrow}</span>
             <h1 className="display d-md">{c.name}</h1>
           </div>
