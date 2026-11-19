@@ -1,4 +1,6 @@
 User-agent: *
 Allow: /
 Disallow: /api/
+Disallow: /he/studio
+Disallow: /en/studio
 Sitemap: https://resetpilates.org/sitemap.xml

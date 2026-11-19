@@ -185,6 +185,7 @@ export type Fields = Record<string, unknown>;
 export interface AirRecord {
   id: string;
   fields: Fields;
+  createdTime?: string; // Airtable sends it with every row it reads
 }
 
 export class AirtableError extends Error {
@@ -198,12 +199,27 @@ export class AirtableError extends Error {
 
 /** One instance per request: holds the token and base for that request only. */
 export class Airtable {
+  /**
+   * `paceMs` spaces this instance's requests out, one at a time. Airtable allows 5 requests a second per base and
+   * answers a burst with 30 seconds of refusals for everyone, the public site included. The Studio hub reads a lot
+   * at once, so it paces itself; the relay (a few calls per form) does not need to.
+   */
   constructor(
     private readonly token: string,
     private readonly base: string,
+    private readonly paceMs = 0,
   ) {}
 
+  private gate: Promise<void> = Promise.resolve();
+  private async turn(): Promise<void> {
+    if (!this.paceMs) return;
+    const mine = this.gate;
+    this.gate = mine.then(() => new Promise((ok) => setTimeout(ok, this.paceMs)));
+    await mine;
+  }
+
   private async call(method: string, path: string, body?: unknown): Promise<unknown> {
+    await this.turn();
     const res = await fetch(`https://api.airtable.com/v0/${this.base}/${path}`, {
       method,
       headers: { Authorization: `Bearer ${this.token}`, "Content-Type": "application/json" },
@@ -242,6 +258,30 @@ export class Airtable {
     const q = new URLSearchParams({ filterByFormula: formula, maxRecords: String(max), returnFieldsByFieldId: "true" });
     const r = (await this.call("GET", `${table}?${q}`)) as { records: AirRecord[] };
     return r.records;
+  }
+
+  /**
+   * Many records, following Airtable's pages (100 rows each) up to `max`. Only the listed fields are read.
+   * `more` is true when rows were left behind. Used by the Studio hub (worker/studio.ts).
+   */
+  async list(table: string, o: { formula?: string; fields: string[]; sort?: [field: string, dir: "asc" | "desc"]; max?: number }): Promise<{ records: AirRecord[]; more: boolean }> {
+    const max = o.max ?? 100;
+    const records: AirRecord[] = [];
+    let offset: string | undefined;
+    do {
+      const p = new URLSearchParams({ returnFieldsByFieldId: "true", pageSize: String(Math.min(100, max - records.length)) });
+      if (o.formula) p.set("filterByFormula", o.formula);
+      for (const f of o.fields) p.append("fields[]", f);
+      if (o.sort) {
+        p.set("sort[0][field]", o.sort[0]);
+        p.set("sort[0][direction]", o.sort[1]);
+      }
+      if (offset) p.set("offset", offset);
+      const r = (await this.call("GET", `${table}?${p}`)) as { records: AirRecord[]; offset?: string };
+      records.push(...r.records);
+      offset = r.offset;
+    } while (offset && records.length < max);
+    return { records, more: Boolean(offset) };
   }
 }
 
