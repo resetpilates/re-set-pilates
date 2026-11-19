@@ -407,4 +407,4 @@ export function ShowAsPicker({ value, onChange, name, label = true }: { value: S
       </div>
     </fieldset>
   );
-                  }
+}
