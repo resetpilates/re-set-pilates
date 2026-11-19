@@ -1,5 +1,5 @@
 // Browser side of the Studio hub: the passcode pass kept on this phone, and the three calls to /api/studio/.
-import type { StudioAction, StudioData, StudioReply } from "./studioTypes";
+import type { StudioAction, StudioData, StudioMember, StudioReply } from "./studioTypes";
 
 const KEY = "reset.studio.pass";
 type Fail = Extract<StudioReply, { ok: false }>["error"] | "offline";
@@ -48,6 +48,7 @@ export async function signIn(code: string): Promise<Fail | null> {
 }
 
 export const loadStudio = () => call<StudioData>("data");
+export const loadMember = (id: string) => call<StudioMember>(`member?id=${encodeURIComponent(id)}`);
 
 export async function sendAction(a: StudioAction): Promise<boolean> {
   return (await call<StudioReply>("act", { method: "POST", body: JSON.stringify(a) })).ok;

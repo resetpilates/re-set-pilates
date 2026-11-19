@@ -183,6 +183,7 @@ export type Fields = Record<string, unknown>;
 export interface AirRecord {
   id: string;
   fields: Fields;
+  createdTime?: string; // Airtable sends it with every row it reads
 }
 
 export class AirtableError extends Error {

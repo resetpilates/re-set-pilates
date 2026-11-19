@@ -10,6 +10,7 @@ export type Attendance = (typeof ATTENDANCE)[number];
 
 export interface StBooking {
   id: string;
+  memberId: string;
   name: string; // member's full name ("" when the member row is missing)
   phone: string;
   bed: string;
@@ -62,19 +63,30 @@ export interface StMember {
 }
 export interface StPayment {
   id: string;
-  name: string;
+  name: string; // as saved: "RS-261119-A1B2 · Maya Levi · 10 sessions"
   what: string;
   amount: number;
   method: string;
   status: string;
   paidOn: string;
+  created: string; // when the order was placed
+  no: string; // receipt number, "" for a payment typed in by hand
+  memberId: string;
+  member: string; // the customer's name
+  receipt: string; // link to the printable receipt, "" when there is none
 }
+/** One plan a member bought. status "" = bought on the website, waiting for Orit to confirm the payment. */
 export interface StPlan {
   id: string;
   name: string;
+  status: string;
+  type: string; // Monthly / Pass …
+  start: string;
   renews: string;
   autoRenew: boolean;
+  price: number | null;
   sessionsLeft: number | null;
+  memberId: string;
 }
 export interface StCampaign {
   id: string;
@@ -113,11 +125,37 @@ export interface StudioData {
   members: StMember[];
   membersCapped: boolean; // true when there are more members than the hub loads
   pending: StPayment[]; // payments waiting for Orit to confirm
-  paid: StPayment[]; // confirmed payments, last 60 days
-  plans: StPlan[]; // active plans
+  paid: StPayment[]; // confirmed payments, last 90 days
+  plans: StPlan[]; // every plan, newest first (Today counts the Active ones)
   campaigns: StCampaign[];
   chat: StChat[]; // chat questions handed to Orit
   meta: StMeta | null;
+}
+
+/** One line of a customer's history. */
+export interface StEvent {
+  when: string; // ISO instant or YYYY-MM-DD
+  kind: "class" | "payment" | "plan" | "inquiry" | "joined";
+  title: string;
+  status: string;
+  amount?: number;
+  receipt?: string;
+}
+/** Everything about one customer (GET /api/studio/member?id=). Medical answers are not part of it. */
+export interface StudioMember {
+  ok: true;
+  member: StMember;
+  language: string;
+  notes: string; // Orit's own notes in Airtable (Staff notes)
+  memberSince: string;
+  spent: number; // confirmed payments, all time
+  noShows: number;
+  lateCancels: number;
+  health: boolean; // a signed health declaration is on file (the answers stay in Airtable)
+  plans: StPlan[];
+  payments: StPayment[];
+  history: StEvent[]; // newest first
+  capped: boolean; // true when only the latest 100 classes are listed
 }
 
 export type StudioAction =

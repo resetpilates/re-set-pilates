@@ -2,12 +2,15 @@
 //
 //   POST /api/studio/login   { code }  → { token }   the studio passcode (secret STUDIO_PASSCODE) for a 30-day pass
 //   GET  /api/studio/data    Bearer token → one snapshot of Airtable: classes, leads, members, payments, campaigns
+//   GET  /api/studio/member  ?id=rec…  → one customer in full: plans, payments with receipts, every class and enquiry
 //   POST /api/studio/act     Bearer token → one of three small edits: lead status, waitlist "contacted", attendance
 //
 // The hub reads member names, phones and emails, so every call needs the pass and nothing here is cached.
 // Health & Consent and Trainer Check-ins are never read: medical details stay in Airtable, Orit only.
-import { ATTENDANCE, LEAD_STATUSES, type StBooking, type StMeta, type StudioAction, type StudioData, type StudioReply } from "../src/lib/studioTypes";
+import type { ReceiptData } from "../src/lib/receipt";
+import { ATTENDANCE, LEAD_STATUSES, type StBooking, type StEvent, type StMember, type StMeta, type StPayment, type StPlan, type StudioAction, type StudioData, type StudioMember, type StudioReply } from "../src/lib/studioTypes";
 import { Airtable, AirtableError, F, T, type AirRecord } from "./airtable";
+import { receiptLink } from "./notify";
 
 declare global {
   interface Env {
@@ -33,6 +36,17 @@ const X = {
   leadFirstResponse: "fldGdvxcAvHvxtnFn",
   paymentPaidOn: "fld00nCxSiz7LZD1V",
   membershipSessionsLeft: "fldytuDwYaazHUijV",
+  membershipType: "fldhgUSxfIMQ0VfAT",
+  paymentReceiptNo: "fldtWKdPAjQZbt9RJ",
+  memberNotes: "fldx6pFCdAuQIbU6q",
+  memberSince: "fldD4ztlrfOzlqdMj",
+  memberSpent: "fldxf07CZABvSgJ7J",
+  memberNoShows: "fldOR0kEM3lyPgg9C",
+  memberLateCancels: "fld7QncutCVhxRf2f",
+  memberHealthSigned: "fldgFbgj6G3YIrKQr",
+  memberBookings: "fldUq9AGWE2REsefs",
+  memberPayments: "fldGLowOhww5j2sAn",
+  memberInquiries: "fldhG1V8SkmDsdOqQ",
   campaignName: "fldB939T4RLkbyYjf",
   campaignChannel: "fldkoAsOSIn3wnIlW",
   campaignStart: "fldGKv0dgWbWPEw64",
@@ -43,7 +57,7 @@ const X = {
   chatAsked: "fldWUzkgoirKEXiT2",
 } as const;
 
-const reply = (body: StudioReply | StudioData, status = 200) =>
+const reply = (body: StudioReply | StudioData | StudioMember, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", "Cache-Control": "no-store" } });
 
 // ---------- the pass ----------
@@ -121,24 +135,93 @@ async function metaAds(env: Env): Promise<StMeta | null> {
   }
 }
 
+// ---------- rows → what the hub shows ----------
+
+const M = F.members, P = F.payments, S = F.memberships;
+const MEMBER_FIELDS = [M.fullName, M.phone, M.email, M.status, M.source, M.language, X.memberAdded, X.memberPlanStatus, X.memberRenews, X.memberClassesLeft, X.memberLastClass, X.memberAttended];
+const PAYMENT_FIELDS = [P.name, P.for, P.amount, P.method, P.status, P.member, X.paymentPaidOn, X.paymentReceiptNo];
+const PLAN_FIELDS = [S.name, S.status, S.start, S.renews, S.autoRenew, S.pricePaid, S.member, X.membershipSessionsLeft, X.membershipType];
+
+const toMember = (r: AirRecord): StMember => ({
+  id: r.id,
+  name: str(r.fields[M.fullName]),
+  phone: str(r.fields[M.phone]),
+  email: str(r.fields[M.email]),
+  status: str(r.fields[M.status]),
+  source: str(r.fields[M.source]),
+  added: str(r.fields[X.memberAdded]) || (r.createdTime ?? ""),
+  plan: list(r.fields[X.memberPlanStatus]).includes("Active") ? "Active" : str(r.fields[X.memberPlanStatus]),
+  renews: day(r.fields[X.memberRenews]),
+  classesLeft: num(r.fields[X.memberClassesLeft]),
+  lastClass: day(r.fields[X.memberLastClass]),
+  attended: num(r.fields[X.memberAttended]) ?? 0,
+});
+
+const toPlan = (r: AirRecord): StPlan => ({
+  id: r.id,
+  name: str(r.fields[S.name]),
+  status: str(r.fields[S.status]),
+  type: str(r.fields[X.membershipType]),
+  start: day(r.fields[S.start]),
+  renews: day(r.fields[S.renews]),
+  autoRenew: r.fields[S.autoRenew] === true,
+  price: num(r.fields[S.pricePaid]),
+  sessionsLeft: num(r.fields[X.membershipSessionsLeft]),
+  memberId: list(r.fields[S.member])[0] ?? "",
+});
+
+const RECEIPT_NO = /RS-\d{6}-[A-Z2-9]{4}/;
+
+/**
+ * A payment row, with a link to its printable receipt. The receipt is rebuilt from the row as it is now
+ * (so it says "paid" once Orit has confirmed it); payments typed in by hand without a receipt number get no link.
+ */
+async function toPayment(r: AirRecord, who: Map<string, AirRecord>, env: Env, origin: string): Promise<StPayment> {
+  const name = str(r.fields[P.name]);
+  const no = str(r.fields[X.paymentReceiptNo]).match(RECEIPT_NO)?.[0] ?? name.match(RECEIPT_NO)?.[0] ?? "";
+  const memberId = list(r.fields[P.member])[0] ?? "";
+  const m = who.get(memberId);
+  const parts = name.split(" · ").filter((x) => x && x !== no);
+  const customer = str(m?.fields[M.fullName]) || (parts.length > 1 ? parts[0] : "");
+  const amount = num(r.fields[P.amount]) ?? 0;
+  const status = str(r.fields[P.status]);
+  const paidOn = str(r.fields[X.paymentPaidOn]);
+  const method = str(r.fields[P.method]);
+  let receipt = "";
+  if (no) {
+    const data: ReceiptData = {
+      no,
+      issuedAt: paidOn || r.createdTime || new Date().toISOString(),
+      lang: str(m?.fields[M.language]) === "English" ? "en" : "he",
+      customer: { name: customer, phone: str(m?.fields[M.phone]), email: str(m?.fields[M.email]) || undefined },
+      lines: [{ label: parts.filter((x) => x !== customer).join(" · ") || str(r.fields[P.for]), amount }],
+      total: amount,
+      ...(method === "Bit" ? { method: "bit" as const } : method === "Credit card" ? { method: "card" as const } : {}),
+      paid: status === "Paid",
+    };
+    receipt = (await receiptLink(env, origin, data)) ?? "";
+  }
+  return { id: r.id, name, what: str(r.fields[P.for]), amount, method, status, paidOn, created: r.createdTime ?? "", no, memberId, member: customer, receipt };
+}
+
 // ---------- the snapshot ----------
 
-export async function snapshot(at: Airtable, env: Env, now = new Date()): Promise<StudioData> {
+export async function snapshot(at: Airtable, env: Env, origin: string, now = new Date()): Promise<StudioData> {
   const today = todayIL(now);
   const from = studioMidnight(today);
   const to = from + 8 * 86400; // today and the next 7 days
-  const M = F.members, C = F.classes, B = F.bookings, L = F.leads, W = F.launchWaitlist, P = F.payments, S = F.memberships;
+  const C = F.classes, B = F.bookings, L = F.leads, W = F.launchWaitlist;
   const status = (f: string, ...names: string[]) => `OR(${names.map((n) => `{${f}}='${n}'`).join(", ")})`;
 
   const [members, classes, bookings, leads, waitlist, pending, paid, plans, campaigns, chat] = await inBatches([
-    () => at.list(T.members, { fields: [M.fullName, M.phone, M.email, M.status, M.source, X.memberAdded, X.memberPlanStatus, X.memberRenews, X.memberClassesLeft, X.memberLastClass, X.memberAttended], sort: [X.memberAdded, "desc"], max: MAX_MEMBERS }),
+    () => at.list(T.members, { fields: MEMBER_FIELDS, sort: [X.memberAdded, "desc"], max: MAX_MEMBERS }),
     () => at.list(T.classes, { formula: `AND({${C.startUnix}}>=${from}, {${C.startUnix}}<${to}, {${C.status}}!='Cancelled')`, fields: [C.type, C.when, C.capacity, C.status, C.onWaitlist], sort: [C.when, "asc"], max: 200 }),
     () => at.list(T.bookings, { formula: `AND({${B.classStartUnix}}>=${from}, {${B.classStartUnix}}<${to}, ${status(B.status, "Booked", "Held", "Attended", "No-show")})`, fields: [B.bed, B.status, B.member, B.class], max: 500 }),
     () => at.list(T.leads, { fields: [L.person, L.phone, L.email, L.channel, L.interested, L.message, L.prefTime, L.heard, L.status, X.leadReceived], sort: [X.leadReceived, "desc"], max: 200 }),
     () => at.list(T.launchWaitlist, { fields: [W.name, W.phone, W.wanted, W.slot, W.contacted, W.submitted], sort: [W.submitted, "desc"], max: 200 }),
-    () => at.list(T.payments, { formula: `{${P.status}}='Pending'`, fields: [P.name, P.for, P.amount, P.method, P.status], max: 100 }),
-    () => at.list(T.payments, { formula: `AND({${P.status}}='Paid', IS_AFTER({${X.paymentPaidOn}}, DATEADD(NOW(), -60, 'days')))`, fields: [P.name, P.for, P.amount, P.method, P.status, X.paymentPaidOn], sort: [X.paymentPaidOn, "desc"], max: 300 }),
-    () => at.list(T.memberships, { formula: `{${S.status}}='Active'`, fields: [S.name, S.renews, S.autoRenew, X.membershipSessionsLeft], sort: [S.renews, "asc"], max: 300 }),
+    () => at.list(T.payments, { formula: `{${P.status}}='Pending'`, fields: PAYMENT_FIELDS, max: 100 }),
+    () => at.list(T.payments, { formula: `AND({${P.status}}='Paid', IS_AFTER({${X.paymentPaidOn}}, DATEADD(NOW(), -90, 'days')))`, fields: PAYMENT_FIELDS, sort: [X.paymentPaidOn, "desc"], max: 300 }),
+    () => at.list(T.memberships, { fields: PLAN_FIELDS, sort: [S.start, "desc"], max: 300 }),
     () => at.list(T.campaigns, { fields: [X.campaignName, X.campaignChannel, X.campaignStart, X.campaignEnd, X.campaignOffer, X.campaignBudget, X.campaignLeads], sort: [X.campaignStart, "desc"], max: 50 }),
     () => at.list(T.chat, { formula: `{${F.chat.handedToOrit}}`, fields: [F.chat.question, X.chatAsked], sort: [X.chatAsked, "desc"], max: 30 }),
   ]);
@@ -147,10 +230,10 @@ export async function snapshot(at: Airtable, env: Env, now = new Date()): Promis
   const byClass = new Map<string, StBooking[]>();
   for (const b of bookings.records) {
     const m = who.get(list(b.fields[B.member])[0] ?? "");
-    const row: StBooking = { id: b.id, name: str(m?.fields[M.fullName]), phone: str(m?.fields[M.phone]), bed: str(b.fields[B.bed]), status: str(b.fields[B.status]) };
+    const row: StBooking = { id: b.id, memberId: m?.id ?? "", name: str(m?.fields[M.fullName]), phone: str(m?.fields[M.phone]), bed: str(b.fields[B.bed]), status: str(b.fields[B.status]) };
     for (const c of list(b.fields[B.class])) byClass.set(c, [...(byClass.get(c) ?? []), row]);
   }
-  const pay = (r: AirRecord) => ({ id: r.id, name: str(r.fields[P.name]), what: str(r.fields[P.for]), amount: num(r.fields[P.amount]) ?? 0, method: str(r.fields[P.method]), status: str(r.fields[P.status]), paidOn: str(r.fields[X.paymentPaidOn]) });
+  const pay = (rows: AirRecord[]) => Promise.all(rows.map((r) => toPayment(r, who, env, origin)));
 
   return {
     ok: true,
@@ -181,24 +264,11 @@ export async function snapshot(at: Airtable, env: Env, now = new Date()): Promis
       received: str(r.fields[X.leadReceived]),
     })),
     waitlist: waitlist.records.map((r) => ({ id: r.id, name: str(r.fields[W.name]), phone: str(r.fields[W.phone]), wanted: str(r.fields[W.wanted]), slot: str(r.fields[W.slot]), contacted: r.fields[W.contacted] === true, submitted: str(r.fields[W.submitted]) })),
-    members: members.records.map((r) => ({
-      id: r.id,
-      name: str(r.fields[M.fullName]),
-      phone: str(r.fields[M.phone]),
-      email: str(r.fields[M.email]),
-      status: str(r.fields[M.status]),
-      source: str(r.fields[M.source]),
-      added: str(r.fields[X.memberAdded]),
-      plan: list(r.fields[X.memberPlanStatus]).includes("Active") ? "Active" : str(r.fields[X.memberPlanStatus]),
-      renews: day(r.fields[X.memberRenews]),
-      classesLeft: num(r.fields[X.memberClassesLeft]),
-      lastClass: day(r.fields[X.memberLastClass]),
-      attended: num(r.fields[X.memberAttended]) ?? 0,
-    })),
+    members: members.records.map(toMember),
     membersCapped: members.more,
-    pending: pending.records.map(pay),
-    paid: paid.records.map(pay),
-    plans: plans.records.map((r) => ({ id: r.id, name: str(r.fields[S.name]), renews: day(r.fields[S.renews]), autoRenew: r.fields[S.autoRenew] === true, sessionsLeft: num(r.fields[X.membershipSessionsLeft]) })),
+    pending: await pay(pending.records),
+    paid: await pay(paid.records),
+    plans: plans.records.map(toPlan),
     campaigns: campaigns.records.map((r) => ({
       id: r.id,
       name: str(r.fields[X.campaignName]),
@@ -211,6 +281,59 @@ export async function snapshot(at: Airtable, env: Env, now = new Date()): Promis
     })),
     chat: chat.records.map((r) => ({ id: r.id, question: str(r.fields[F.chat.question]), asked: str(r.fields[X.chatAsked]) })),
     meta: await metaAds(env),
+  };
+}
+
+// ---------- one customer in full ----------
+
+const anyOf = (ids: string[]) => `OR(${ids.map((id) => `RECORD_ID()='${id}'`).join(",")})`;
+const HISTORY_CLASSES = 100;
+
+export async function memberDetail(at: Airtable, env: Env, origin: string, id: string): Promise<StudioMember> {
+  const m = await at.get(T.members, id);
+  const B = F.bookings, L = F.leads;
+  const allBookings = list(m.fields[X.memberBookings]);
+  const ids = { plans: list(m.fields[M.memberships]), payments: list(m.fields[X.memberPayments]), bookings: allBookings.slice(-HISTORY_CLASSES), inquiries: list(m.fields[X.memberInquiries]).slice(-50) };
+  const none = { records: [] as AirRecord[], more: false };
+  const [plans, payments, bookings, inquiries] = await inBatches([
+    () => (ids.plans.length ? at.list(T.memberships, { formula: anyOf(ids.plans.slice(-50)), fields: PLAN_FIELDS, max: 50 }) : Promise.resolve(none)),
+    () => (ids.payments.length ? at.list(T.payments, { formula: anyOf(ids.payments.slice(-100)), fields: PAYMENT_FIELDS, max: 100 }) : Promise.resolve(none)),
+    () => (ids.bookings.length ? at.list(T.bookings, { formula: anyOf(ids.bookings), fields: [B.name, B.status, B.classStartUnix], max: HISTORY_CLASSES }) : Promise.resolve(none)),
+    () => (ids.inquiries.length ? at.list(T.leads, { formula: anyOf(ids.inquiries), fields: [L.message, L.channel, L.status, L.interested, X.leadReceived], max: 50 }) : Promise.resolve(none)),
+  ]);
+  const who = new Map([[m.id, m]]);
+  const name = str(m.fields[M.fullName]);
+  const pays = (await Promise.all(payments.records.map((r) => toPayment(r, who, env, origin)))).sort((a, b) => (b.paidOn || b.created).localeCompare(a.paidOn || a.created));
+  const planRows = plans.records.map(toPlan).sort((a, b) => b.start.localeCompare(a.start));
+  const short = (title: string) => title.split(" · ").filter((x) => x && x !== name).join(" · ") || title;
+
+  const history: StEvent[] = [
+    ...bookings.records.map((r): StEvent => {
+      const unix = num(r.fields[B.classStartUnix]);
+      return { when: unix ? new Date(unix * 1000).toISOString() : (r.createdTime ?? ""), kind: "class", title: short(str(r.fields[B.name])), status: str(r.fields[B.status]) };
+    }),
+    ...pays.map((p): StEvent => ({ when: p.paidOn || p.created, kind: "payment", title: short(p.name.replace(p.no, "")), status: p.status, amount: p.amount, receipt: p.receipt })),
+    ...planRows.map((p): StEvent => ({ when: p.start, kind: "plan", title: short(p.name), status: p.status })),
+    ...inquiries.records.map((r): StEvent => ({ when: str(r.fields[X.leadReceived]) || (r.createdTime ?? ""), kind: "inquiry", title: str(r.fields[L.message]).slice(0, 300) || list(r.fields[L.interested]).join(", ") || str(r.fields[L.channel]), status: str(r.fields[L.status]) })),
+    { when: str(m.fields[X.memberAdded]) || (m.createdTime ?? ""), kind: "joined" as const, title: str(m.fields[M.source]), status: "" },
+  ]
+    .filter((e) => e.when)
+    .sort((a, b) => Date.parse(b.when) - Date.parse(a.when));
+
+  return {
+    ok: true,
+    member: toMember(m),
+    language: str(m.fields[M.language]),
+    notes: str(m.fields[X.memberNotes]),
+    memberSince: day(m.fields[X.memberSince]),
+    spent: num(m.fields[X.memberSpent]) ?? 0,
+    noShows: num(m.fields[X.memberNoShows]) ?? 0,
+    lateCancels: num(m.fields[X.memberLateCancels]) ?? 0,
+    health: ([] as unknown[]).concat(m.fields[X.memberHealthSigned] ?? []).includes(true),
+    plans: planRows,
+    payments: pays,
+    history,
+    capped: allBookings.length > HISTORY_CLASSES,
   };
 }
 
@@ -262,7 +385,12 @@ export async function studio(req: Request, env: Env, url: URL, sameOrigin: boole
   if (!(await validPass(passcode, bearer))) return reply({ ok: false, error: "auth" }, 401);
   const at = new Airtable(env.AIRTABLE_TOKEN, env.AIRTABLE_BASE);
   try {
-    if (route === "data" && req.method === "GET") return reply(await snapshot(at, env));
+    const origin = url.hostname === "localhost" ? url.origin : `https://${url.host}`;
+    if (route === "data" && req.method === "GET") return reply(await snapshot(at, env, origin));
+    if (route === "member" && req.method === "GET") {
+      const id = url.searchParams.get("id") ?? "";
+      return REC.test(id) ? reply(await memberDetail(at, env, origin, id)) : reply({ ok: false, error: "bad request" }, 400);
+    }
     if (route === "act" && req.method === "POST") {
       if (!sameOrigin) return reply({ ok: false, error: "origin" }, 403);
       const done = await act(at, (await req.json().catch(() => null)) as StudioAction);

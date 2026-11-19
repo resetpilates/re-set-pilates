@@ -6,17 +6,18 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { siteConfig } from "../config/site";
 import { studioCopy, type StudioCopy, type TabId } from "../content/studio";
 import { useI18n } from "../lib/i18n";
-import { forgetPass, hasPass, loadStudio, sendAction, signIn, waDigits } from "../lib/studio";
-import { LEAD_STATUSES, type Attendance, type LeadStatus, type StClass, type StLead, type StMember, type StudioAction, type StudioData } from "../lib/studioTypes";
+import { forgetPass, hasPass, loadMember, loadStudio, sendAction, signIn, waDigits } from "../lib/studio";
+import { LEAD_STATUSES, type Attendance, type LeadStatus, type StClass, type StLead, type StMember, type StPayment, type StPlan, type StudioAction, type StudioData, type StudioMember } from "../lib/studioTypes";
 import "../styles/studio.css";
 
 const TZ = "Asia/Jerusalem";
-const TABS: TabId[] = ["today", "leads", "schedule", "members", "marketing", "help"];
+const TABS: TabId[] = ["today", "leads", "schedule", "members", "money", "marketing", "help"];
 const ICONS: Record<TabId, string> = {
   today: "M4 11.5 12 5l8 6.5V20h-5v-5H9v5H4z",
   leads: "M4 6h16v10H9l-5 4z",
   schedule: "M5 6h14v14H5zM5 10h14M9 3v5M15 3v5",
   members: "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21c0-4 3.6-6 8-6s8 2 8 6",
+  money: "M4 7h16v11H4zM4 11h16M8 15h3",
   marketing: "M5 20V11M12 20V4M19 20v-6",
   help: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM9.5 9.5a2.5 2.5 0 1 1 3.6 2.2c-.7.4-1.1 1-1.1 1.8M12 17h.01",
 };
@@ -139,7 +140,7 @@ function Gate({ c, onOpen }: { c: StudioCopy; onOpen: () => void }) {
 
 // ---------- classes ----------
 
-function ClassCard({ c, f, cls, open, onToggle, onMark }: { c: StudioCopy; f: Fmt; cls: StClass; open: boolean; onToggle: () => void; onMark?: (id: string, from: string, to: Attendance) => void }) {
+function ClassCard({ c, f, cls, open, onToggle, onMark, who }: { c: StudioCopy; f: Fmt; cls: StClass; open: boolean; onToggle: () => void; onMark?: (id: string, from: string, to: Attendance) => void; who: (id: string) => string }) {
   const n = cls.bookings.length;
   return (
     <article className={`st-card st-class${open ? " is-open" : ""}`}>
@@ -165,7 +166,13 @@ function ClassCard({ c, f, cls, open, onToggle, onMark }: { c: StudioCopy; f: Fm
           {cls.bookings.map((b) => (
             <li key={b.id}>
               <span className="st-people__name">
-                <b>{b.name || "—"}</b>
+                {b.memberId ? (
+                  <Link className="st-name" to={who(b.memberId)}>
+                    {b.name || "—"}
+                  </Link>
+                ) : (
+                  <b>{b.name || "—"}</b>
+                )}
                 <small>
                   {b.bed ? `${c.cls.bed} ${b.bed}` : ""}
                   {b.status === "Held" ? `${b.bed ? " · " : ""}${c.cls.held}` : ""}
@@ -202,18 +209,21 @@ interface ScreenProps {
   go: (t: TabId) => void;
   act: (a: StudioAction, apply: (d: StudioData) => StudioData) => void;
   air: (table: keyof StudioData["tables"], id: string) => string;
+  /** Link to one customer's page. */
+  who: (id: string) => string;
 }
 
-function Today({ c, f, d, go, act, air }: ScreenProps) {
+function Today({ c, f, d, go, act, air, who }: ScreenProps) {
   const [open, setOpen] = useState<string | null>(null);
   const hour = Number(new Intl.DateTimeFormat("en-GB", { timeZone: TZ, hour: "2-digit", hour12: false }).format(new Date()));
   const todays = d.classes.filter((x) => dayKey(x.when) === d.today);
   const newLeads = d.leads.filter((l) => l.status === "New").length;
   const waiting = d.waitlist.filter((w) => !w.contacted).length;
-  const ending = d.plans.filter((p) => p.renews && daysBetween(d.today, p.renews) >= 0 && daysBetween(d.today, p.renews) <= 7);
+  const active = d.plans.filter((p) => p.status === "Active");
+  const ending = active.filter((p) => p.renews && daysBetween(d.today, p.renews) >= 0 && daysBetween(d.today, p.renews) <= 7);
   const needs: [number, string, (() => void) | string][] = [
     [newLeads, c.today.newLeads, () => go("leads")],
-    [d.pending.length, c.today.payments, "#st-payments"],
+    [d.pending.length, c.today.payments, () => go("money")],
     [waiting, c.today.waitlist, () => go("leads")],
     [ending.length, c.today.renewals, "#st-renewals"],
     [d.chat.length, c.today.chat, "#st-chat"],
@@ -223,7 +233,7 @@ function Today({ c, f, d, go, act, air }: ScreenProps) {
   const stats: [string, string][] = [
     [String(d.leads.filter((l) => l.received && dayKey(l.received) >= since(7)).length), c.today.leads7],
     [String(d.classes.reduce((n, x) => n + x.bookings.length, 0)), c.today.booked7],
-    [String(d.plans.length), c.today.active],
+    [String(active.length), c.today.active],
     [money(d.paid.filter((p) => p.paidOn && dayKey(p.paidOn) >= since(30)).reduce((n, p) => n + p.amount, 0)), c.today.money30],
   ];
   // Undoing a tap puts back what the booking was before (Booked, or Held when it is not paid yet).
@@ -265,7 +275,7 @@ function Today({ c, f, d, go, act, air }: ScreenProps) {
 
       <section className="st-sec">
         <h2 className="st-h2">{c.today.classes}</h2>
-        {todays.length === 0 ? <Empty>{c.today.noClasses}</Empty> : todays.map((x) => <ClassCard key={x.id} c={c} f={f} cls={x} open={open === x.id} onToggle={() => setOpen(open === x.id ? null : x.id)} onMark={mark} />)}
+        {todays.length === 0 ? <Empty>{c.today.noClasses}</Empty> : todays.map((x) => <ClassCard key={x.id} c={c} f={f} cls={x} open={open === x.id} onToggle={() => setOpen(open === x.id ? null : x.id)} onMark={mark} who={who} />)}
       </section>
 
       <section className="st-sec">
@@ -280,39 +290,19 @@ function Today({ c, f, d, go, act, air }: ScreenProps) {
         </div>
       </section>
 
-      {d.pending.length > 0 && (
-        <section className="st-sec" id="st-payments">
-          <h2 className="st-h2">{c.today.paymentsTitle}</h2>
-          <p className="st-muted st-sec__note">{c.today.paymentsHelp}</p>
-          <ul className="st-card st-rows">
-            {d.pending.map((p) => (
-              <li key={p.id}>
-                <a href={air("payments", p.id)} target="_blank" rel="noreferrer">
-                  <span>
-                    <b dir="auto">{p.name}</b>
-                    <small>{p.method}</small>
-                  </span>
-                  <strong>{money(p.amount)}</strong>
-                </a>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
       {ending.length > 0 && (
         <section className="st-sec" id="st-renewals">
           <h2 className="st-h2">{c.today.renewalsTitle}</h2>
           <ul className="st-card st-rows">
             {ending.map((p) => (
               <li key={p.id}>
-                <a href={air("memberships", p.id)} target="_blank" rel="noreferrer">
+                <Link to={p.memberId ? who(p.memberId) : "#"}>
                   <span>
                     <b dir="auto">{p.name}</b>
                     <small>{[p.autoRenew ? c.today.autoRenew : "", p.sessionsLeft != null ? c.today.left(p.sessionsLeft) : ""].filter(Boolean).join(" · ")}</small>
                   </span>
                   <strong>{f.date(p.renews)}</strong>
-                </a>
+                </Link>
               </li>
             ))}
           </ul>
@@ -432,7 +422,7 @@ function Leads({ c, f, d, act, air }: ScreenProps) {
   );
 }
 
-function Schedule({ c, f, d }: ScreenProps) {
+function Schedule({ c, f, d, who }: ScreenProps) {
   const [open, setOpen] = useState<string | null>(null);
   const days = useMemo(() => {
     const by = new Map<string, StClass[]>();
@@ -449,7 +439,7 @@ function Schedule({ c, f, d }: ScreenProps) {
           <section key={key} className="st-sec">
             <h2 className="st-h2">{f.dayName(key)}</h2>
             {list.map((x) => (
-              <ClassCard key={x.id} c={c} f={f} cls={x} open={open === x.id} onToggle={() => setOpen(open === x.id ? null : x.id)} />
+              <ClassCard key={x.id} c={c} f={f} cls={x} open={open === x.id} onToggle={() => setOpen(open === x.id ? null : x.id)} who={who} />
             ))}
           </section>
         ))
@@ -461,10 +451,9 @@ function Schedule({ c, f, d }: ScreenProps) {
 
 const QUIET = new Set(["Lapsed", "Lost", "Paused"]);
 
-function Members({ c, f, d, air }: ScreenProps) {
+function Members({ c, f, d, who }: ScreenProps) {
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<"all" | "active" | "leads" | "quiet">("all");
-  const [open, setOpen] = useState<string | null>(null);
   const is = (m: StMember, g: typeof filter) => g === "all" || (g === "active" ? m.plan === "Active" : g === "quiet" ? QUIET.has(m.status) : m.plan !== "Active" && !QUIET.has(m.status));
   const needle = q.trim().toLowerCase();
   const digits = needle.replace(/\D/g, "");
@@ -480,48 +469,265 @@ function Members({ c, f, d, air }: ScreenProps) {
       ) : (
         <ul className="st-card st-members">
           {shown.slice(0, 150).map((m) => (
-            <li key={m.id} className={open === m.id ? "is-open" : ""}>
-              <button type="button" className="st-member" onClick={() => setOpen(open === m.id ? null : m.id)} aria-expanded={open === m.id}>
-                <span className="st-avatar" aria-hidden>
-                  {(m.name.trim()[0] ?? "·").toUpperCase()}
-                </span>
-                <span className="st-member__main">
-                  <b>{m.name || m.phone || "—"}</b>
-                  <small>{m.plan === "Active" ? [m.classesLeft != null && m.classesLeft > 0 ? c.members.classesLeft(m.classesLeft) : "", m.renews ? `${c.members.renews} ${f.date(m.renews)}` : ""].filter(Boolean).join(" · ") : m.lastClass ? `${c.members.last} ${f.date(m.lastClass)}` : c.members.never}</small>
-                </span>
-                {m.status && <span className={`st-tag${m.plan === "Active" ? " st-tag--on" : ""}`}>{c.members.status[m.status] ?? m.status}</span>}
-              </button>
-              {open === m.id && (
-                <div className="st-member__more">
-                  <dl className="st-facts">
-                    {(
-                      [
-                        [c.common.call, m.phone],
-                        [c.common.email, m.email],
-                        [c.members.last, m.lastClass ? `${f.date(m.lastClass)} · ${c.members.attended(m.attended)}` : ""],
-                        [c.leads.heard, m.source],
-                        [c.members.joined, m.added ? f.date(dayKey(m.added)) : ""],
-                      ] as [string, string][]
-                    )
-                      .filter(([, v]) => v)
-                      .map(([k, v]) => (
-                        <div key={k}>
-                          <dt>{k}</dt>
-                          <dd dir="auto">{v}</dd>
-                        </div>
-                      ))}
-                  </dl>
-                  <Reach c={c} phone={m.phone} email={m.email} />
-                  <a className="st-link" href={air("members", m.id)} target="_blank" rel="noreferrer">
-                    {c.common.airtable}
-                  </a>
-                </div>
-              )}
+            <li key={m.id}>
+              <Link className="st-member" to={who(m.id)}>
+                <MemberLine c={c} f={f} m={m} />
+              </Link>
             </li>
           ))}
         </ul>
       )}
       {d.membersCapped && <p className="st-muted st-foot">{c.members.capped}</p>}
+    </>
+  );
+}
+
+function MemberLine({ c, f, m }: { c: StudioCopy; f: Fmt; m: StMember }) {
+  return (
+    <>
+      <span className="st-avatar" aria-hidden>
+        {(m.name.trim()[0] ?? "·").toUpperCase()}
+      </span>
+      <span className="st-member__main">
+        <b>{m.name || m.phone || "—"}</b>
+        <small>{m.plan === "Active" ? [m.classesLeft != null && m.classesLeft > 0 ? c.members.classesLeft(m.classesLeft) : "", m.renews ? `${c.members.renews} ${f.date(m.renews)}` : ""].filter(Boolean).join(" · ") : m.lastClass ? `${c.members.last} ${f.date(m.lastClass)}` : c.members.never}</small>
+      </span>
+      {m.status && <span className={`st-tag${m.plan === "Active" ? " st-tag--on" : ""}`}>{c.members.status[m.status] ?? m.status}</span>}
+    </>
+  );
+}
+
+// ---------- money: payments, receipts, memberships ----------
+
+function PaymentRow({ c, f, p, who, link }: { c: StudioCopy; f: Fmt; p: StPayment; who?: (id: string) => string; link: string }) {
+  const title = p.name.replace(p.no, "").split(" · ").filter((x) => x && x !== p.member).join(" · ") || p.what;
+  return (
+    <li className="st-pay">
+      <div className="st-pay__top">
+        <span>
+          {who && p.memberId ? (
+            <Link className="st-name" to={who(p.memberId)}>
+              {p.member || "—"}
+            </Link>
+          ) : (
+            <b dir="auto">{who ? p.member || p.name : title}</b>
+          )}
+          <small dir="auto">{[who ? title : "", p.method, f.date(dayKey(p.paidOn || p.created || new Date()))].filter(Boolean).join(" · ")}</small>
+        </span>
+        <strong>{money(p.amount)}</strong>
+      </div>
+      <div className="st-pay__foot">
+        <span className={`st-tag${p.status === "Paid" ? " st-tag--on" : ""}`}>{c.money.pay[p.status] ?? p.status}</span>
+        {p.no && <small className="st-pay__no">{p.no}</small>}
+        {p.receipt ? (
+          <a className="st-link" href={p.receipt} target="_blank" rel="noreferrer">
+            {c.money.receipt}
+          </a>
+        ) : (
+          <small className="st-muted">{c.money.noReceipt}</small>
+        )}
+        <a className="st-link" href={link} target="_blank" rel="noreferrer">
+          {c.common.airtable}
+        </a>
+      </div>
+    </li>
+  );
+}
+
+const planGroup = (p: StPlan) => (p.status === "Active" || p.status === "Paused" ? "active" : p.status === "" ? "waiting" : "ended");
+
+function PlanRow({ c, f, p, name, link }: { c: StudioCopy; f: Fmt; p: StPlan; name: ReactNode; link: string }) {
+  return (
+    <li className="st-pay">
+      <div className="st-pay__top">
+        <span>
+          {name}
+          <small>{[p.start ? `${c.money.from}${c.money.from.endsWith("-") ? "" : " "}${f.date(p.start)}` : "", p.renews ? `${c.money.until} ${f.date(p.renews)}` : "", p.sessionsLeft != null ? c.today.left(p.sessionsLeft) : "", p.autoRenew ? c.today.autoRenew : ""].filter(Boolean).join(" · ")}</small>
+        </span>
+        {p.price != null && <strong>{money(p.price)}</strong>}
+      </div>
+      <div className="st-pay__foot">
+        <span className={`st-tag${p.status === "Active" ? " st-tag--on" : ""}`}>{c.money.plan[p.status] ?? p.status}</span>
+        <a className="st-link" href={link} target="_blank" rel="noreferrer">
+          {c.common.airtable}
+        </a>
+      </div>
+    </li>
+  );
+}
+
+function Money({ c, f, d, air, who }: ScreenProps) {
+  const [tab, setTab] = useState<"pending" | "paid" | "plans">(d.pending.length ? "pending" : "paid");
+  const [group, setGroup] = useState<"active" | "waiting" | "ended">("active");
+  const rows = tab === "pending" ? d.pending : d.paid;
+  const plans = d.plans.filter((p) => planGroup(p) === group);
+  const count = (g: string) => d.plans.filter((p) => planGroup(p) === g).length;
+  return (
+    <>
+      <h1 className="st-h1">{c.tabs.money}</h1>
+      <Chips value={tab} onPick={setTab} options={[["pending", c.money.filters.pending, d.pending.length], ["paid", c.money.filters.paid], ["plans", c.money.filters.plans, count("active")]]} />
+      {tab !== "plans" ? (
+        <>
+          <p className="st-muted st-sec__note">{tab === "pending" ? c.money.pendingHelp : c.money.paidHelp}</p>
+          {rows.length === 0 ? (
+            <Empty>{c.money.empty}</Empty>
+          ) : (
+            <>
+              <div className="st-card st-total">
+                <span>{c.money.total}</span>
+                <b>{money(rows.reduce((n, p) => n + p.amount, 0))}</b>
+              </div>
+              <ul className="st-card st-pays">
+                {rows.map((p) => (
+                  <PaymentRow key={p.id} c={c} f={f} p={p} who={who} link={air("payments", p.id)} />
+                ))}
+              </ul>
+            </>
+          )}
+        </>
+      ) : (
+        <>
+          <Chips value={group} onPick={setGroup} options={[["active", c.money.planFilters.active, count("active")], ["waiting", c.money.planFilters.waiting, count("waiting")], ["ended", c.money.planFilters.ended]]} />
+          {plans.length === 0 ? (
+            <Empty>{c.money.empty}</Empty>
+          ) : (
+            <ul className="st-card st-pays">
+              {plans.map((p) => (
+                <PlanRow key={p.id} c={c} f={f} p={p} link={air("memberships", p.id)} name={p.memberId ? <Link className="st-name" to={who(p.memberId)} dir="auto">{p.name}</Link> : <b dir="auto">{p.name}</b>} />
+              ))}
+            </ul>
+          )}
+        </>
+      )}
+    </>
+  );
+}
+
+// ---------- one customer ----------
+
+function Profile({ c, f, id, air, back, stamp }: { c: StudioCopy; f: Fmt; id: string; air: ScreenProps["air"]; back: string; stamp: string }) {
+  const [p, setP] = useState<StudioMember | null>(null);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    let live = true;
+    void loadMember(id).then((r) => live && (r.ok ? (setP(r), setFailed(false)) : setFailed(true)));
+    return () => void (live = false);
+  }, [id, stamp]); // read again whenever the hub refreshes
+  const backLink = (
+    <Link className="st-back" to={back}>
+      <Icon d="M15 6l-6 6 6 6" className="st-ico st-ico--sm st-ico--flip" />
+      {c.profile.back}
+    </Link>
+  );
+  if (!p) return <>{backLink}<Empty>{failed ? c.profile.failed : c.common.loading}</Empty></>;
+  const m = p.member;
+  const k = c.profile.facts;
+  const facts: [string, string][] = [
+    [k.phone, m.phone],
+    [k.email, m.email],
+    [k.source, m.source],
+    [k.added, m.added ? f.date(dayKey(m.added)) : ""],
+    [k.since, f.date(p.memberSince)],
+    [k.language, p.language],
+    [k.health, p.health ? c.profile.yes : c.profile.no],
+  ];
+  const stats: [string, string][] = [
+    [money(p.spent), k.spent],
+    [String(m.attended), k.classes],
+    [String(p.noShows), k.missed],
+    [String(p.lateCancels), k.late],
+  ];
+  return (
+    <>
+      {backLink}
+      <header className="st-who">
+        <span className="st-avatar st-avatar--lg" aria-hidden>
+          {(m.name.trim()[0] ?? "·").toUpperCase()}
+        </span>
+        <div>
+          <h1 className="st-h1" dir="auto">{m.name || m.phone || "—"}</h1>
+          {m.status && <span className={`st-tag${m.plan === "Active" ? " st-tag--on" : ""}`}>{c.members.status[m.status] ?? m.status}</span>}
+        </div>
+      </header>
+      <Reach c={c} phone={m.phone} email={m.email} />
+      <div className="st-stats">
+        {stats.map(([n, label]) => (
+          <div key={label} className="st-card st-stat">
+            <b>{n}</b>
+            <span>{label}</span>
+          </div>
+        ))}
+      </div>
+      <dl className="st-card st-facts st-facts--card">
+        {facts
+          .filter(([, v]) => v)
+          .map(([key, v]) => (
+            <div key={key}>
+              <dt>{key}</dt>
+              <dd dir="auto">{v}</dd>
+            </div>
+          ))}
+      </dl>
+      {p.notes && (
+        <section className="st-sec">
+          <h2 className="st-h2">{c.profile.notes}</h2>
+          <p className="st-card st-note st-pre" dir="auto">{p.notes}</p>
+        </section>
+      )}
+
+      <section className="st-sec">
+        <h2 className="st-h2">{c.profile.plans}</h2>
+        {p.plans.length === 0 ? (
+          <Empty>{c.profile.nothing}</Empty>
+        ) : (
+          <ul className="st-card st-pays">
+            {p.plans.map((x) => (
+              <PlanRow key={x.id} c={c} f={f} p={x} link={air("memberships", x.id)} name={<b dir="auto">{x.name.split(" · ").filter((t) => t !== m.name).join(" · ") || x.name}</b>} />
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="st-sec">
+        <h2 className="st-h2">{c.profile.payments}</h2>
+        {p.payments.length === 0 ? (
+          <Empty>{c.profile.nothing}</Empty>
+        ) : (
+          <ul className="st-card st-pays">
+            {p.payments.map((x) => (
+              <PaymentRow key={x.id} c={c} f={f} p={x} link={air("payments", x.id)} />
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="st-sec">
+        <h2 className="st-h2">{c.profile.history}</h2>
+        {p.history.length === 0 ? (
+          <Empty>{c.profile.nothing}</Empty>
+        ) : (
+          <ol className="st-card st-line">
+            {p.history.map((e, i) => (
+              <li key={i} className={`st-line__item st-line__item--${e.kind}`}>
+                <time>{f.date(dayKey(e.when.length === 10 ? `${e.when}T12:00:00Z` : e.when))}</time>
+                <div>
+                  <b>
+                    {c.profile.kinds[e.kind]}
+                    {e.status && <span className="st-line__status">{(e.kind === "class" ? c.profile.booking[e.status] : e.kind === "payment" ? c.money.pay[e.status] : e.kind === "plan" ? c.money.plan[e.status] : c.leads.status[e.status]) ?? e.status}</span>}
+                  </b>
+                  {e.title && <p dir="auto">{e.title}</p>}
+                  {e.kind === "plan" && !e.status && <span className="st-line__status">{c.money.plan[""]}</span>}
+                </div>
+                {e.amount != null && <strong>{money(e.amount)}</strong>}
+              </li>
+            ))}
+          </ol>
+        )}
+        {p.capped && <p className="st-muted st-foot">{c.profile.capped}</p>}
+      </section>
+      <a className="st-link" href={air("members", m.id)} target="_blank" rel="noreferrer">
+        {c.common.airtable}
+      </a>
     </>
   );
 }
@@ -683,8 +889,9 @@ export default function Studio() {
   const { lang } = useI18n();
   const c = studioCopy[lang];
   const nav = useNavigate();
-  const param = useParams().tab as TabId;
-  const tab: TabId = TABS.includes(param) ? param : "today";
+  const params = useParams();
+  const tab: TabId = TABS.includes(params.tab as TabId) ? (params.tab as TabId) : "today";
+  const personId = tab === "members" && /^rec[A-Za-z0-9]{14}$/.test(params.id ?? "") ? params.id! : "";
   const [signedIn, setSignedIn] = useState(hasPass);
   const [data, setData] = useState<StudioData | null>(null);
   const [state, setState] = useState<"loading" | "ready" | "failed">("loading");
@@ -731,13 +938,15 @@ export default function Studio() {
     },
     [data, c],
   );
+  const who = useCallback((id: string) => `/${lang}/studio/members/${id}`, [lang]);
   const air = useCallback((table: keyof StudioData["tables"], id: string) => (data ? `https://airtable.com/${data.base}/${data.tables[table]}/${id}` : "#"), [data]);
 
   if (!signedIn) return <div className="st"><Gate c={c} onOpen={() => setSignedIn(true)} /></div>;
 
   const mins = data ? Math.floor((Date.now() - Date.parse(data.at)) / 60000) : 0;
   const badge: Partial<Record<TabId, number>> = data ? { leads: data.leads.filter((l) => l.status === "New").length + data.waitlist.filter((w) => !w.contacted).length } : {};
-  const props = data && { c, f, d: data, go, act, air };
+  const here = `/studio${tab === "today" ? "" : `/${tab}`}${personId ? `/${personId}` : ""}`;
+  const props = data && { c, f, d: data, go, act, air, who };
   return (
     <div className="st">
       <nav className="st-nav" aria-label={c.sub}>
@@ -755,7 +964,7 @@ export default function Studio() {
           ))}
         </div>
         <div className="st-nav__foot">
-          <Link className="st-link" to={`/${lang === "he" ? "en" : "he"}/studio${tab === "today" ? "" : `/${tab}`}`}>
+          <Link className="st-link" to={`/${lang === "he" ? "en" : "he"}${here}`}>
             {lang === "he" ? "English" : "עברית"}
           </Link>
           <button type="button" className="st-link" onClick={() => (forgetPass(), setSignedIn(false), setData(null))}>
@@ -773,7 +982,7 @@ export default function Studio() {
           <button type="button" className="st-btn st-btn--sm" onClick={() => void refresh()}>
             {c.common.refresh}
           </button>
-          <Link className="st-top__lang" to={`/${lang === "he" ? "en" : "he"}/studio${tab === "today" ? "" : `/${tab}`}`}>
+          <Link className="st-top__lang" to={`/${lang === "he" ? "en" : "he"}${here}`}>
             {lang === "he" ? "EN" : "עב"}
           </Link>
         </header>
@@ -782,6 +991,10 @@ export default function Studio() {
             <Help c={c} />
           ) : !props ? (
             <Empty>{state === "failed" ? c.common.failed : c.common.loading}</Empty>
+          ) : personId ? (
+            <Profile c={c} f={f} id={personId} air={air} back={`/${lang}/studio/members`} stamp={props.d.at} />
+          ) : tab === "money" ? (
+            <Money {...props} />
           ) : tab === "leads" ? (
             <Leads {...props} />
           ) : tab === "schedule" ? (

@@ -13,7 +13,7 @@ html[lang="he"] .st { font-family: "Heebo", "Inter", system-ui, sans-serif; }
 :where(.st) *, :where(.st) *::before, :where(.st) *::after { box-sizing: border-box; }
 :where(.st) button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-align: start; }
 :where(.st) a { color: inherit; text-decoration: none; }
-:where(.st) :is(ul, dl, dd, p, h1, h2, h3) { margin: 0; padding: 0; list-style: none; }
+:where(.st) :is(ul, ol, dl, dd, p, h1, h2, h3) { margin: 0; padding: 0; list-style: none; }
 .st :focus-visible { outline: 2px solid var(--hy-sage-deep); outline-offset: 2px; border-radius: 8px; }
 
 /* The resets above carry no weight (:where), so every st- rule below wins over them. */
@@ -46,9 +46,9 @@ html[lang="he"] .st-eyebrow { letter-spacing: 0.04em; font-size: 13px; }
 /* Tabs: bottom bar on phones */
 .st-nav { position: fixed; inset-inline: 0; bottom: 0; z-index: 6; background: var(--hy-card); border-top: 1px solid var(--st-line); padding-bottom: env(safe-area-inset-bottom, 0px); }
 .st-nav__brand, .st-nav__foot { display: none; }
-.st-nav__tabs { display: grid; grid-template-columns: repeat(6, 1fr); height: var(--st-tabs); }
-.st .st-tab { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 10.5px; font-weight: 600; color: var(--st-faint); text-align: center; min-width: 0; }
-html[lang="he"] .st .st-tab { font-size: 11px; }
+.st-nav__tabs { display: grid; grid-template-columns: repeat(7, 1fr); height: var(--st-tabs); }
+.st .st-tab { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 10px; font-weight: 600; color: var(--st-faint); text-align: center; min-width: 0; }
+html[lang="he"] .st .st-tab { font-size: 10.5px; }
 .st-tab span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-inline: 2px; }
 .st-tab.is-on { color: var(--hy-ink); }
 .st-tab.is-on::before { content: ""; position: absolute; top: 0; inset-inline: 22%; height: 3px; border-radius: 0 0 3px 3px; background: var(--hy-blush-deep); }
@@ -147,6 +147,38 @@ html[lang="he"] .st .st-tab { font-size: 11px; }
 .st-tag { flex: none; padding: 4px 10px; border-radius: 999px; background: var(--hy-ivory); border: 1px solid var(--st-line); font-size: 12px; font-weight: 600; color: var(--st-soft); }
 .st-tag--on { background: var(--hy-sage-soft); border-color: transparent; color: var(--hy-sage-deep); }
 .st-member__more { padding: 4px 14px 16px; display: flex; flex-direction: column; gap: 12px; }
+
+.st .st-member { color: inherit; }
+.st-name { font-weight: 600; text-decoration: underline; text-decoration-color: var(--hy-blush); text-underline-offset: 4px; }
+.st-avatar--lg { width: 60px; height: 60px; font-size: 24px; }
+.st-who { display: flex; align-items: center; gap: 14px; }
+.st-who > div { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.st-back { display: inline-flex; align-items: center; gap: 4px; min-height: 40px; font-weight: 600; color: var(--hy-blush-deep); align-self: flex-start; }
+[dir="rtl"] .st-ico--flip { transform: scaleX(-1); }
+.st-facts--card { padding: 14px 16px; gap: 8px; }
+.st-pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* Money: payments, receipts, memberships */
+.st-total { display: flex; align-items: baseline; justify-content: space-between; padding: 14px 16px; background: var(--hy-sage-soft); border-color: transparent; color: var(--hy-sage-deep); font-weight: 600; }
+.st-total b { font-family: "Cormorant Garamond", Georgia, serif; font-size: 30px; font-weight: 600; line-height: 1; font-variant-numeric: lining-nums tabular-nums; color: var(--hy-ink); direction: ltr; }
+.st-pay { padding: 12px 16px; display: flex; flex-direction: column; gap: 8px; }
+.st-pay + .st-pay { border-top: 1px solid var(--st-line); }
+.st-pay__top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.st-pay__top > span { min-width: 0; display: flex; flex-direction: column; overflow-wrap: anywhere; }
+.st-pay__top small { color: var(--st-soft); font-size: 13px; }
+.st-pay__top strong { font-size: 17px; font-variant-numeric: tabular-nums; white-space: nowrap; direction: ltr; }
+.st-pay__foot { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; }
+.st-pay__no { color: var(--st-faint); font-size: 12px; font-variant-numeric: tabular-nums; direction: ltr; }
+
+/* A customer's history */
+.st-line__item { display: grid; grid-template-columns: 58px 1fr auto; gap: 10px; padding: 12px 16px; align-items: start; }
+.st-line__item + .st-line__item { border-top: 1px solid var(--st-line); }
+.st-line time { color: var(--st-soft); font-size: 13px; font-variant-numeric: tabular-nums; padding-top: 2px; }
+.st-line b { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-weight: 600; }
+.st-line p { color: var(--st-soft); font-size: 14px; overflow-wrap: anywhere; }
+.st-line strong { font-variant-numeric: tabular-nums; direction: ltr; }
+.st-line__status { padding: 2px 9px; border-radius: 999px; background: var(--hy-ivory); border: 1px solid var(--st-line); font-size: 12px; font-weight: 600; color: var(--st-soft); }
+.st-line__item--payment b, .st-line__item--plan b { color: var(--hy-sage-deep); }
 
 /* Marketing */
 .st-bars { padding: 8px 16px; }

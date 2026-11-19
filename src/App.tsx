@@ -61,7 +61,7 @@ export default function App() {
           <BrowserRouter>
             <Routes>
               <Route path="/" element={<Navigate to={`/${preferredLang()}/`} replace />} />
-              <Route path="/:lang/studio/:tab?" element={<StudioRoot />} />
+              <Route path="/:lang/studio/:tab?/:id?" element={<StudioRoot />} />
               <Route path="/:lang" element={<LangRoot />}>
                 <Route index element={<Home />} />
                 <Route path="schedule" element={<Schedule />} />

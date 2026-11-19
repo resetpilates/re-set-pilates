@@ -42,7 +42,8 @@ beforeEach(() => {
       Object.assign(r.fields, body.fields);
       return new Response(JSON.stringify(r));
     }
-    return new Response(JSON.stringify(id ? rows.find((x) => x.id === id) : { records: rows }));
+    const stamp = (r?: Rec) => r && { ...r, createdTime: "2026-11-19T08:00:00.000Z" }; // Airtable sends this with every row
+    return new Response(JSON.stringify(id ? stamp(rows.find((x) => x.id === id)) : { records: rows.map(stamp) }));
   }) as typeof fetch;
 });
 
@@ -72,7 +73,7 @@ test("wrong passcode is refused, the right one opens the data", async () => {
   expect(res.status).toBe(200);
   expect(res.headers.get("Cache-Control")).toBe("no-store");
   const d = (await res.json()) as StudioData;
-  expect(d.classes[0].bookings).toEqual([{ id: BOOKING, name: "Maya Levi", phone: "050-123-4567", bed: "2", status: "Booked" }]);
+  expect(d.classes[0].bookings).toEqual([{ id: BOOKING, memberId: MAYA, name: "Maya Levi", phone: "050-123-4567", bed: "2", status: "Booked" }]);
   expect(d.members[0]).toMatchObject({ name: "Maya Levi", plan: "Active", classesLeft: 6 });
   expect(d.leads[0]).toMatchObject({ name: "Noa", status: "New", interested: ["Reformer"] });
   expect(d.meta).toBeNull();
@@ -99,4 +100,37 @@ test("edits: lead status, attendance, and nothing else", async () => {
   expect((await post({ kind: "lead", id: "not-a-record", status: "Contacted" })).status).toBe(400);
   expect((await post({ kind: "member", id: MAYA, status: "Lost" })).status).toBe(400);
   expect((await hit("act", { method: "POST", body: JSON.stringify({ kind: "lead", id: LEAD, status: "New" }) })).status).toBe(401);
+});
+
+test("payments carry a receipt that opens, and one customer's page has her whole history", async () => {
+  const PAY = "recPAYxxxxxxxxxxx";
+  const PLAN = "recPLANxxxxxxxxxx";
+  db[T.payments] = [{ id: PAY, fields: { [F.payments.name]: "RS-261119-A2B3 · Maya Levi · 10 sessions", [F.payments.for]: "Pass", [F.payments.amount]: 550, [F.payments.method]: "Bit", [F.payments.status]: "Pending", [F.payments.member]: [MAYA] } }];
+  db[T.memberships] = [{ id: PLAN, fields: { [F.memberships.name]: "Maya Levi · 10 sessions · Nov 2026", [F.memberships.start]: "2026-11-19", [F.memberships.renews]: "2027-01-19", [F.memberships.pricePaid]: 550, [F.memberships.member]: [MAYA] } }];
+  Object.assign(db[T.members][0].fields, { [F.members.memberships]: [PLAN], fldGLowOhww5j2sAn: [PAY], fldUq9AGWE2REsefs: [BOOKING], fldxf07CZABvSgJ7J: 0, fldgFbgj6G3YIrKQr: [true] });
+  Object.assign(db[T.bookings][0].fields, { [F.bookings.name]: "Maya Levi · Reformer · Thu 19 Nov · 18:00", [F.bookings.classStartUnix]: Math.floor(soon.getTime() / 1000) });
+  const e = env({ TURNSTILE_SECRET: "s3cret" } as Partial<Env>);
+  const token = await issuePass(PASSCODE);
+
+  const d = (await (await hit("data", { token }, e)).json()) as StudioData;
+  const p = d.pending[0];
+  expect(p).toMatchObject({ no: "RS-261119-A2B3", member: "Maya Levi", memberId: MAYA, amount: 550, status: "Pending" });
+  expect(p.receipt.startsWith(`${ORIGIN}/r/`)).toBe(true);
+  const page = await worker.fetch(new Request(p.receipt) as never, e, ectx);
+  const html = await page.text();
+  expect(page.status).toBe(200);
+  expect(html).toContain("RS-261119-A2B3");
+  expect(html).toContain("Maya Levi");
+  expect(d.plans[0]).toMatchObject({ status: "", price: 550, memberId: MAYA }); // bought, waiting for payment
+
+  const one = (await (await hit(`member?id=${MAYA}`, { token }, e)).json()) as import("../src/lib/studioTypes").StudioMember;
+  expect(one.health).toBe(true);
+  expect(one.plans.length).toBe(1);
+  expect(one.payments[0].receipt).toContain("/r/");
+  expect(one.history.map((h) => h.kind).sort()).toEqual(["class", "joined", "payment", "plan"]);
+  expect(one.history.find((h) => h.kind === "class")).toMatchObject({ title: "Reformer · Thu 19 Nov · 18:00", status: "Booked" });
+
+  expect((await hit("member?id=nope", { token }, e)).status).toBe(400);
+  expect((await hit(`member?id=${MAYA}`, {}, e)).status).toBe(401);
+  expect(calls.some((c) => c.table === T.health)).toBe(false);
 });
