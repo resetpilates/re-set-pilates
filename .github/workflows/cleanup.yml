@@ -10,9 +10,10 @@ jobs:
     steps:
       - name: Delete superseded preview version
         run: |
-          curl -sf -X DELETE \
+          curl -s -X DELETE \
             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
             -H "Content-Type: application/json" \
+            -w "\nHTTP %{http_code}\n" \
             "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/re-set-pilates/versions/e6bfcd64-96e4-4e4f-8f85-eca5d1e32e1e"
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
