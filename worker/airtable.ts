@@ -231,6 +231,30 @@ export class Airtable {
     const r = (await this.call("GET", `${table}?${q}`)) as { records: AirRecord[] };
     return r.records;
   }
+
+  /**
+   * Many records, following Airtable's pages (100 rows each) up to `max`. Only the listed fields are read.
+   * `more` is true when rows were left behind. Used by the Studio hub (worker/studio.ts).
+   */
+  async list(table: string, o: { formula?: string; fields: string[]; sort?: [field: string, dir: "asc" | "desc"]; max?: number }): Promise<{ records: AirRecord[]; more: boolean }> {
+    const max = o.max ?? 100;
+    const records: AirRecord[] = [];
+    let offset: string | undefined;
+    do {
+      const p = new URLSearchParams({ returnFieldsByFieldId: "true", pageSize: String(Math.min(100, max - records.length)) });
+      if (o.formula) p.set("filterByFormula", o.formula);
+      for (const f of o.fields) p.append("fields[]", f);
+      if (o.sort) {
+        p.set("sort[0][field]", o.sort[0]);
+        p.set("sort[0][direction]", o.sort[1]);
+      }
+      if (offset) p.set("offset", offset);
+      const r = (await this.call("GET", `${table}?${p}`)) as { records: AirRecord[]; offset?: string };
+      records.push(...r.records);
+      offset = r.offset;
+    } while (offset && records.length < max);
+    return { records, more: Boolean(offset) };
+  }
 }
 
 /** Quote a value for use inside an Airtable formula string. */
