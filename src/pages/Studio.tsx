@@ -4,10 +4,10 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { siteConfig } from "../config/site";
-import { studioCopy, type StudioCopy, type TabId } from "../content/studio";
+import { studioCopy, type StudioCopy, type TabId, type WikiArticle } from "../content/studio";
 import { useI18n } from "../lib/i18n";
-import { forgetPass, hasPass, loadMember, loadStudio, sendAction, signIn, waDigits } from "../lib/studio";
-import { LEAD_STATUSES, type Attendance, type LeadStatus, type StClass, type StLead, type StMember, type StPayment, type StPlan, type StudioAction, type StudioData, type StudioMember } from "../lib/studioTypes";
+import { forgetPass, hasPass, loadDocs, loadMember, loadStudio, sendAction, signIn, waDigits } from "../lib/studio";
+import { LEAD_STATUSES, type Attendance, type LeadStatus, type StClass, type StDoc, type StLead, type StMember, type StPayment, type StPlan, type StudioAction, type StudioData, type StudioDocs, type StudioMember } from "../lib/studioTypes";
 import "../styles/studio.css";
 
 const TZ = "Asia/Jerusalem";
@@ -19,7 +19,7 @@ const ICONS: Record<TabId, string> = {
   members: "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21c0-4 3.6-6 8-6s8 2 8 6",
   money: "M4 7h16v11H4zM4 11h16M8 15h3",
   marketing: "M5 20V11M12 20V4M19 20v-6",
-  help: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM9.5 9.5a2.5 2.5 0 1 1 3.6 2.2c-.7.4-1.1 1-1.1 1.8M12 17h.01",
+  help: "M5 4h10a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3zM5 17a3 3 0 0 1 3-3h10M9 8h5",
 };
 
 const dayKey = (d: Date | string) => new Intl.DateTimeFormat("en-CA", { timeZone: TZ }).format(typeof d === "string" ? new Date(d) : d);
@@ -892,44 +892,159 @@ function Marketing({ c, f, d, air }: ScreenProps) {
   );
 }
 
-function Help({ c, other, onSignOut }: { c: StudioCopy; other: { to: string; label: string }; onSignOut: () => void }) {
+// ---------- the wiki: routines, studio rules, how-tos and the documents in Google Drive ----------
+
+function Articles({ items, forceOpen }: { items: WikiArticle[]; forceOpen?: boolean }) {
   const { href } = useI18n();
-  const [q, setQ] = useState("");
   const [open, setOpen] = useState<string | null>(null);
+  return (
+    <div className="st-card st-wiki">
+      {items.map((w) => {
+        const on = open === w.id || (forceOpen === true && items.length === 1);
+        return (
+          <section key={w.id} className={on ? "is-open" : ""}>
+            <button type="button" onClick={() => setOpen(on ? null : w.id)} aria-expanded={on}>
+              <span>{w.q}</span>
+              <Icon d="M6 9l6 6 6-6" className="st-ico st-ico--sm" />
+            </button>
+            {on && (
+              <div className="st-wiki__body">
+                {w.a.map((p) => (p.startsWith("• ") ? <p key={p} className="st-step">{p.slice(2)}</p> : <p key={p}>{p}</p>))}
+                {w.link && (
+                  <Link className="st-link" to={href(w.link.to)}>
+                    {w.link.label}
+                  </Link>
+                )}
+              </div>
+            )}
+          </section>
+        );
+      })}
+    </div>
+  );
+}
+
+const DOC_ICON: Record<StDoc["kind"], string> = {
+  folder: "M3 6h6l2 2h10v11H3z",
+  pdf: "M6 3h9l4 4v14H6zM15 3v4h4M9 13h6M9 17h6",
+  doc: "M6 3h9l4 4v14H6zM15 3v4h4M9 13h6M9 17h4",
+  sheet: "M4 5h16v14H4zM4 10h16M4 14h16M10 5v14",
+  image: "M4 5h16v14H4zM4 16l5-5 4 4 3-3 4 4",
+  file: "M6 3h9l4 4v14H6zM15 3v4h4",
+};
+
+function DocList({ f, items, onFolder }: { f: Fmt; items: StDoc[]; onFolder: (id: string) => void }) {
+  const row = (d: StDoc) => (
+    <>
+      <Icon d={DOC_ICON[d.kind]} />
+      <span className="st-doc__main">
+        <b>
+          <bdi>{d.name}</bdi>
+        </b>
+        {d.kind !== "folder" && <small>{[d.modified ? f.date(dayKey(d.modified)) : "", d.size ? (d.size > 1048576 ? `${(d.size / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(d.size / 1024))} KB`) : ""].filter(Boolean).join(" · ")}</small>}
+      </span>
+    </>
+  );
+  return (
+    <ul className="st-card st-docs">
+      {items.map((d) => (
+        <li key={d.id}>
+          {d.kind === "folder" ? (
+            <button type="button" className="st-doc st-doc--folder" onClick={() => onFolder(d.id)}>
+              {row(d)}
+            </button>
+          ) : (
+            <a className="st-doc" href={d.link} target="_blank" rel="noreferrer">
+              {row(d)}
+            </a>
+          )}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+type WikiSection = "routines" | "rules" | "howto" | "docs";
+
+function Wiki({ c, f, other, onSignOut }: { c: StudioCopy; f: Fmt; other: { to: string; label: string }; onSignOut: () => void }) {
+  const { t } = useI18n();
+  const [sec, setSec] = useState<WikiSection>("routines");
+  const [q, setQ] = useState("");
+  const [folder, setFolder] = useState<string | undefined>();
+  const [docs, setDocs] = useState<StudioDocs | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  // The studio terms customers accept are the studio's rules: same wording as the website, never a second copy.
+  const rules = useMemo<WikiArticle[]>(() => t.terms.sections.map((x, i) => ({ id: `rule${i}`, q: x.h, a: x.items.map((line) => `• ${line}`) })), [t]);
+  const groups: Record<Exclude<WikiSection, "docs">, WikiArticle[]> = { routines: c.help.routines, rules, howto: c.help.wiki };
   const words = q.toLowerCase().split(/\s+/).filter(Boolean);
-  const shown = c.help.wiki.filter((w) => words.every((x) => `${w.q} ${w.a.join(" ")}`.toLowerCase().includes(x)));
+  const searching = words.length > 0;
+  const found = searching ? [...groups.routines, ...groups.howto, ...groups.rules].filter((w) => words.every((x) => `${w.q} ${w.a.join(" ")}`.toLowerCase().includes(x))) : [];
+
+  // Documents come from Google Drive: the open folder, or (while searching) every document that mentions the words.
+  const term = q.trim();
+  const wanted = searching ? (term.length >= 2 ? { q: term } : null) : sec === "docs" ? { folder } : null;
+  const key = wanted ? JSON.stringify(wanted) : "";
+  useEffect(() => {
+    if (!key) return;
+    let live = true;
+    const timer = setTimeout(
+      () => void loadDocs(JSON.parse(key)).then((r) => live && (r.ok ? (setDocs(r), setFailed(false)) : (setDocs(null), setFailed(true)))),
+      searching ? 450 : 0, // wait for a pause in typing
+    );
+    return () => ((live = false), clearTimeout(timer));
+  }, [key, searching]);
+
+  const d = c.help.docs;
   return (
     <>
       <h1 className="st-h1">{c.help.title}</h1>
       <p className="st-muted">{c.help.lede}</p>
       <input className="st-search" type="search" placeholder={c.help.search} value={q} onChange={(e) => setQ(e.target.value)} aria-label={c.help.search} />
-      {shown.length === 0 ? (
-        <Empty>{c.help.empty}</Empty>
+
+      {searching ? (
+        <>
+          {found.length > 0 && <Articles items={found} forceOpen />}
+          {docs?.connected && docs.items.length > 0 && term.length >= 2 && (
+            <section className="st-sec">
+              <h2 className="st-h2">{d.found}</h2>
+              <DocList f={f} items={docs.items} onFolder={() => undefined} />
+            </section>
+          )}
+          {found.length === 0 && !(docs?.connected && docs.items.length > 0) && <Empty>{c.help.empty}</Empty>}
+        </>
       ) : (
-        <div className="st-card st-wiki">
-          {shown.map((w) => {
-            const on = open === w.id || (words.length > 0 && shown.length === 1);
-            return (
-              <section key={w.id} className={on ? "is-open" : ""}>
-                <button type="button" onClick={() => setOpen(on ? null : w.id)} aria-expanded={on}>
-                  <span>{w.q}</span>
-                  <Icon d="M6 9l6 6 6-6" className="st-ico st-ico--sm" />
-                </button>
-                {on && (
-                  <div className="st-wiki__body">
-                    {w.a.map((p) => (p.startsWith("• ") ? <p key={p} className="st-step">{p.slice(2)}</p> : <p key={p}>{p}</p>))}
-                    {w.link && (
-                      <Link className="st-link" to={href(w.link.to)}>
-                        {w.link.label}
-                      </Link>
-                    )}
-                  </div>
-                )}
-              </section>
-            );
-          })}
-        </div>
+        <>
+          <Chips value={sec} onPick={setSec} options={[["routines", c.help.sections.routines], ["rules", c.help.sections.rules], ["howto", c.help.sections.howto], ["docs", c.help.sections.docs]]} />
+          {sec !== "docs" ? (
+            <>
+              {sec === "rules" && <p className="st-muted st-sec__note">{c.help.rulesNote}</p>}
+              <Articles key={sec} items={groups[sec]} />
+            </>
+          ) : failed ? (
+            <Empty>{d.failed}</Empty>
+          ) : !docs ? (
+            <Empty>{c.common.loading}</Empty>
+          ) : !docs.connected ? (
+            <p className="st-card st-note">{d.off}</p>
+          ) : (
+            <>
+              {docs.path.length > 1 && (
+                <nav className="st-crumbs" aria-label={d.home}>
+                  {docs.path.map((x, i) => (
+                    <button key={x.id} type="button" className="st-link" disabled={i === docs.path.length - 1} onClick={() => setFolder(i === 0 ? undefined : x.id)}>
+                      {i === 0 ? d.home : <bdi>{x.name}</bdi>}
+                    </button>
+                  ))}
+                </nav>
+              )}
+              {docs.items.length === 0 ? <Empty>{d.empty}</Empty> : <DocList f={f} items={docs.items} onFolder={setFolder} />}
+              <p className="st-muted st-foot">{d.add}</p>
+            </>
+          )}
+        </>
       )}
+
       <div className="st-reach st-help__foot">
         <Link className="st-btn" to={other.to}>
           {other.label}
@@ -1051,7 +1166,7 @@ export default function Studio() {
         </header>
         <main className="st-main">
           {tab === "help" ? (
-            <Help c={c} other={{ to: `/${lang === "he" ? "en" : "he"}${here}`, label: lang === "he" ? "English" : "עברית" }} onSignOut={signOut} />
+            <Wiki c={c} f={f} other={{ to: `/${lang === "he" ? "en" : "he"}${here}`, label: lang === "he" ? "English" : "עברית" }} onSignOut={signOut} />
           ) : !props ? (
             <Empty>{state === "failed" ? c.common.failed : c.common.loading}</Empty>
           ) : personId ? (

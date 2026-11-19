@@ -3,6 +3,7 @@
 // worker/index.ts runs for /api/* (forms → Airtable relay), /go/* (short links for flyers and QR codes)
 // and the pages themselves (adds link-preview tags; files under /assets, /media, /icons are served directly).
 // Secrets are not in this file: set AIRTABLE_TOKEN and TURNSTILE_SECRET in the dashboard (encrypted) or with `bunx wrangler secret put`.
+// GOOGLE_SERVICE_ACCOUNT (secret: a service account's JSON key) + WIKI_FOLDER_ID (the Drive folder's id) connect the wiki's Documents (worker/drive.ts).
 // STUDIO_PASSCODE (8+ characters) opens Orit's command center at /he/studio; META_ADS_TOKEN + META_AD_ACCOUNT are optional (ads numbers there).
 {
   "$schema": "./node_modules/wrangler/config-schema.json",

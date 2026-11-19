@@ -1,5 +1,5 @@
 // Browser side of the Studio hub: the passcode pass kept on this phone, and the three calls to /api/studio/.
-import type { StudioAction, StudioData, StudioMember, StudioReply } from "./studioTypes";
+import type { StudioAction, StudioData, StudioDocs, StudioMember, StudioReply } from "./studioTypes";
 
 const KEY = "reset.studio.pass";
 type Fail = Extract<StudioReply, { ok: false }>["error"] | "offline";
@@ -48,6 +48,8 @@ export async function signIn(code: string): Promise<Fail | null> {
 }
 
 export const loadStudio = () => call<StudioData>("data");
+/** The wiki's documents: one folder, or a search across all of them. */
+export const loadDocs = (o: { folder?: string; q?: string }) => call<StudioDocs>(`docs?${new URLSearchParams(o.q ? { q: o.q } : o.folder ? { folder: o.folder } : {})}`);
 export const loadMember = (id: string) => call<StudioMember>(`member?id=${encodeURIComponent(id)}`);
 
 /** Sends one edit. `status` is what a booking ended up as (an undo may give back "Held"). */

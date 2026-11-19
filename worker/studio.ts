@@ -3,13 +3,16 @@
 //   POST /api/studio/login   { code }  → { token }   the studio passcode (secret STUDIO_PASSCODE) for a 30-day pass
 //   GET  /api/studio/data    Bearer token → one snapshot of Airtable: classes, leads, members, payments, campaigns
 //   GET  /api/studio/member  ?id=rec…  → one customer in full: plans, payments with receipts, every class and enquiry
+//   GET  /api/studio/docs    ?folder= | ?q=  → the wiki's Documents: one Google Drive folder (worker/drive.ts)
+//   GET  /api/studio/file/<id>?e=&s=  → one of those files; the link is signed and lasts a few hours
 //   POST /api/studio/act     Bearer token → one of three small edits: lead status, waitlist "contacted", attendance
 //
 // The hub reads member names, phones and emails, so every call needs the pass and nothing here is cached.
 // Health & Consent and Trainer Check-ins are never read: medical details stay in Airtable, Orit only.
 import type { ReceiptData } from "../src/lib/receipt";
-import { ATTENDANCE, LEAD_STATUSES, type StBooking, type StEvent, type StMember, type StMeta, type StPayment, type StPlan, type StudioAction, type StudioData, type StudioMember, type StudioReply } from "../src/lib/studioTypes";
+import { ATTENDANCE, LEAD_STATUSES, type StBooking, type StEvent, type StMember, type StMeta, type StPayment, type StPlan, type StudioAction, type StudioData, type StudioDocs, type StudioMember, type StudioReply } from "../src/lib/studioTypes";
 import { Airtable, AirtableError, F, T, type AirRecord } from "./airtable";
+import { listDocs, openDoc } from "./drive";
 import { receiptLink } from "./notify";
 
 declare global {
@@ -23,6 +26,7 @@ declare global {
 const TZ = "Asia/Jerusalem";
 const PASS_DAYS = 30;
 const MAX_MEMBERS = 500;
+const DOC_LINK_HOURS = 6;
 /** Gap between the hub's Airtable requests: 4 a second, under Airtable's limit of 5 with room for the public site. Tests set it to 0. */
 export const pacing = { ms: 250 };
 
@@ -60,7 +64,7 @@ const X = {
   chatAsked: "fldWUzkgoirKEXiT2",
 } as const;
 
-const reply = (body: StudioReply | StudioData | StudioMember, status = 200) =>
+const reply = (body: StudioReply | StudioData | StudioMember | StudioDocs, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", "Cache-Control": "no-store" } });
 
 // ---------- the pass ----------
@@ -416,12 +420,33 @@ export async function studio(req: Request, env: Env, url: URL, sameOrigin: boole
     return reply({ ok: true, token: await issuePass(passcode) });
   }
 
+  // A document link carries its own short-lived signature, so it can open in a new tab (which sends no pass).
+  if (route.startsWith("file/") && req.method === "GET") {
+    const id = route.slice(5);
+    const exp = url.searchParams.get("e") ?? "";
+    const good = /^\d{13}$/.test(exp) && Number(exp) > Date.now() && url.searchParams.get("s") === (await hmacHex(passcode, `file.${id}.${exp}`));
+    if (!good) return new Response("This link has expired. Open the document again from the Studio page.", { status: 403 });
+    try {
+      return await openDoc(env, id);
+    } catch (e) {
+      console.error(JSON.stringify({ msg: "studio file failed", detail: String(e) }));
+      return new Response("Could not open this document.", { status: 502 });
+    }
+  }
+
   const bearer = req.headers.get("Authorization")?.replace(/^Bearer /, "") ?? null;
   if (!(await validPass(passcode, bearer))) return reply({ ok: false, error: "auth" }, 401);
   const at = new Airtable(env.AIRTABLE_TOKEN, env.AIRTABLE_BASE, pacing.ms);
   try {
     const origin = url.hostname === "localhost" ? url.origin : `https://${url.host}`;
     if (route === "data" && req.method === "GET") return reply(await snapshot(at, env, origin));
+    if (route === "docs" && req.method === "GET") {
+      const link = async (id: string) => {
+        const exp = Date.now() + DOC_LINK_HOURS * 3600e3;
+        return `${origin}/api/studio/file/${id}?e=${exp}&s=${await hmacHex(passcode, `file.${id}.${exp}`)}`;
+      };
+      return reply(await listDocs(env, { folder: url.searchParams.get("folder") ?? undefined, q: (url.searchParams.get("q") ?? "").trim() || undefined }, link));
+    }
     if (route === "member" && req.method === "GET") {
       const id = url.searchParams.get("id") ?? "";
       return REC.test(id) ? reply(await memberDetail(at, env, origin, id)) : reply({ ok: false, error: "bad request" }, 400);

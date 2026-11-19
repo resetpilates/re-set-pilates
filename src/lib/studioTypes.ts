@@ -158,6 +158,22 @@ export interface StudioMember {
   capped: boolean; // true when only the latest 100 classes are listed
 }
 
+/** One file or folder in the wiki's Documents section (Google Drive). */
+export interface StDoc {
+  id: string;
+  name: string;
+  kind: "folder" | "pdf" | "image" | "sheet" | "doc" | "file";
+  modified: string;
+  size: number;
+  link: string; // opens the file; "" for a folder. Good for a few hours.
+}
+export interface StudioDocs {
+  ok: true;
+  connected: boolean; // false until the Google Drive folder is connected in Cloudflare
+  path: { id: string; name: string }[]; // from the wiki folder down to the one shown
+  items: StDoc[];
+}
+
 export type StudioAction =
   | { kind: "lead"; id: string; status: LeadStatus }
   | { kind: "wait"; id: string; contacted: boolean }
