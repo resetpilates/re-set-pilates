@@ -1,6 +1,7 @@
 // Cloudflare Worker for re:set pilates. Static files are served by Cloudflare directly; this script runs for
 //   POST /api/<event>  form relay → Airtable (the token lives only here, secret AIRTABLE_TOKEN; TURNSTILE_SECRET guards the lead form)
 //   GET  /api/health   which secrets are set
+//   /api/studio/*      Orit's command center (worker/studio.ts): passcode sign-in, one Airtable snapshot, three small edits
 //   /go/<slug>         short links for flyers and QR codes
 //   pages              link-preview and search tags per language and page (see run_worker_first in wrangler.jsonc)
 import { planById, priceFor } from "../src/config/pricing";
@@ -33,6 +34,7 @@ import { Airtable, AirtableError, F, T, q, type AirRecord, type Fields } from ".
 import { isReceiptNumber, type ReceiptData } from "../src/lib/receipt";
 import { CLEARANCE_QUESTIONS, HEALTH_VALID_MONTHS, HEALTH_VERSION, PREGNANCY, clearanceReasons, guardianMissing, type HealthAnswers } from "../src/lib/health";
 import { channelsFor, receiptLink, sendReceipt, serveReceipt } from "./notify";
+import { studio } from "./studio";
 
 declare global {
   interface Env {
@@ -973,8 +975,9 @@ export default {
     if (url.pathname.startsWith("/go/")) return go(url.pathname.slice(4).replace(/\/$/, ""), url);
     if (url.pathname.startsWith("/r/")) return serveReceipt(env, url);
     if (url.pathname === "/api/roster" && req.method === "GET") return roster(env, url, ectx);
+    if (url.pathname.startsWith("/api/studio/")) return studio(req, env, url, sameOrigin(req)); // Orit's command center (passcode)
     if (url.pathname === "/api/health") {
-      return json({ ok: true, airtable: Boolean(env.AIRTABLE_TOKEN), turnstile: Boolean(env.TURNSTILE_SECRET) } as RelayReply);
+      return json({ ok: true, airtable: Boolean(env.AIRTABLE_TOKEN), turnstile: Boolean(env.TURNSTILE_SECRET), studio: (env.STUDIO_PASSCODE ?? "").length >= 8 } as RelayReply);
     }
     // Pages: add link-preview and search tags for the language and page being served.
     if (!url.pathname.startsWith("/api/")) return withPreview(await env.ASSETS.fetch(req), url);

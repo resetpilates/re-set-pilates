@@ -59,6 +59,19 @@ Gift cards sell the three Reformer passes (₪300 / ₪550 / ₪750) or a custom
 - Name, phone and email typed at checkout are not saved or sent anywhere.
 - No receipt or confirmation message is sent.
 
+## Studio hub (Orit's command center, 19 Nov 2026)
+
+One private page, `resetpilates.org/he/studio` (English: `/en/studio`), that shows everything the website sends to Airtable: what is waiting for Orit, today's classes with attendance, leads with WhatsApp / call buttons, the next 7 days, every member with their plan, where people come from, and a help wiki.
+
+- [ ] **Set the passcode:** Cloudflare > Workers > re-set-pilates > Settings > Variables and Secrets > add secret `STUDIO_PASSCODE` (8 characters or more; a short phrase is best), or `bunx wrangler secret put STUDIO_PASSCODE`. Until it is set the page answers "not switched on yet". Changing it signs every phone out.
+- [ ] **Check the Airtable token** (`AIRTABLE_TOKEN`) can read Classes, Campaigns and Chat Questions and edit Leads, Bookings and Launch Waitlist (it already writes to them for the website).
+- [ ] **Orit adds it to her home screen** (Help > "How do I put this on my phone's home screen?") and reads the Hebrew wording once: it was written with the page and has not been reviewed by her.
+- [ ] **Meta ads numbers (optional):** add secrets `META_ADS_TOKEN` (Marketing API token with `ads_read`) and `META_AD_ACCOUNT` (the ad account number, digits only). Not tested against a real ad account yet. Without them Marketing says "Not connected yet".
+- [ ] **Google Sheet feed:** the sheet "re:set pilates – Studio records" has a tab per kind of record with the columns ready, and no rows yet. To fill it: Airtable > Automations > connect a Google Sheets account that can edit the sheet, then one "record created → append row" automation per tab.
+- **Money and customer pages (19 Nov 2026):** Money lists payments to confirm, payments received (90 days) and every membership. Tapping a name anywhere opens that customer's page: details, memberships, every payment with its receipt, and a full history of classes, purchases and enquiries. A receipt opened from the hub is rebuilt from the Airtable payment row as it is now (it says "paid" once confirmed), so it can differ slightly from the one sent at checkout (no carry-over line). Receipt links need `RECEIPT_SECRET` or `TURNSTILE_SECRET` set, as for customer receipts; a payment typed into Airtable without an RS- number has no receipt.
+- What Orit can change from the hub: a lead's status, "I contacted them" on the waiting list, and came / didn't come on a booking. Confirming a payment and activating a plan are still done in Airtable (each row links straight to the record).
+- Not in the hub on purpose: health declarations and trainer check-ins (Airtable only).
+
 ## Health declaration (הצהרת בריאות)
 
 - **Health declaration + studio terms, one step, once a year (11 Nov 2026):** before a first payment (and before booking a class) the member fills the health declaration and ticks the studio terms on the same page. Both last 12 months. From 30 days before the end the app says "Please renew by …" (profile and next-step card); after it, the member is asked again before paying or booking. The terms tick is saved on the same Health & Consent row (*Terms & cancellation policy accepted* + *Terms accepted on*) and on Members > *Terms accepted on*.

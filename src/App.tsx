@@ -1,4 +1,5 @@
 import { MotionConfig } from "motion/react";
+import { Suspense, lazy } from "react";
 import { BrowserRouter, Navigate, Route, Routes, useParams } from "react-router-dom";
 import { Shell } from "./components/Shell";
 import { Welcome } from "./components/Welcome";
@@ -27,6 +28,20 @@ import Terms from "./pages/Terms";
 import Health from "./pages/Health";
 import { ServiceDetail, Services } from "./pages/Services";
 
+// Orit's command center. Its own screen (no site header or tab bar), loaded only when someone opens it.
+const Studio = lazy(() => import("./pages/Studio"));
+function StudioRoot() {
+  const { lang } = useParams();
+  if (!siteConfig.locale.supported.includes(lang as Lang)) return <Navigate to={`/${preferredLang()}/studio`} replace />;
+  return (
+    <I18nProvider lang={lang as Lang}>
+      <Suspense fallback={null}>
+        <Studio />
+      </Suspense>
+    </I18nProvider>
+  );
+}
+
 function LangRoot() {
   const { lang } = useParams();
   if (!siteConfig.locale.supported.includes(lang as Lang)) return <Navigate to={`/${preferredLang()}/`} replace />;
@@ -46,6 +61,7 @@ export default function App() {
           <BrowserRouter>
             <Routes>
               <Route path="/" element={<Navigate to={`/${preferredLang()}/`} replace />} />
+              <Route path="/:lang/studio/:tab?/:id?" element={<StudioRoot />} />
               <Route path="/:lang" element={<LangRoot />}>
                 <Route index element={<Home />} />
                 <Route path="schedule" element={<Schedule />} />
