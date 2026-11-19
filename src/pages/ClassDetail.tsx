@@ -143,10 +143,10 @@ export default function ClassDetail() {
   return (
     <div className="page tone-dark has-tabbar">
       <div className="wrap wrap--app stack gap-24 screen" style={{ paddingBlock: "16px 40px" }}>
-        <div className="media" style={{ height: 220 }}>
+        <div className="media media--page">
           <img src={svc.image} alt="" style={{ objectPosition: svc.pos }} />
           <div className="scrim" />
-          <div className="stack gap-4" style={{ position: "absolute", inset: "auto 20px 18px 20px", color: "var(--ivory)" }}>
+          <div className="media__cap stack gap-4">
             <span className="eyebrow">{fmtDate(day)}</span>
             <h1 className="display d-md">{copy.name}</h1>
           </div>

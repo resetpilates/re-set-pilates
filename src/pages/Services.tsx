@@ -1,5 +1,6 @@
 import { Link, useParams } from "react-router-dom";
 import { PageHead, Packages, TeensPlan, pricesVisible, serviceTarget } from "../components/blocks";
+import { Reveal } from "../components/ui";
 import { classPrices, teensPlan } from "../config/pricing";
 
 /** Group classes that can also be bought one at a time (shows "Single class: ₪60", Mat ₪55, teens ₪50). */
@@ -19,10 +20,10 @@ export function Services() {
       <section id="classes" className="section--tight">
         <div className="wrap">
           <div>
-            {services.map((s) => {
+            {services.map((s, i) => {
               const c = t.services.items[s.id];
               return (
-                <div key={s.id} className="reveal is-in">
+                <Reveal key={s.id} delay={i * 80}>
                   <Link to={href(`services/${s.slug}`)} className="flow-row ccard" onClick={() => track("service_view", { service: s.id })}>
                     <span className="ccard__media" aria-hidden>
                       <img src={s.image} alt="" style={{ objectPosition: s.pos }} loading="eager" decoding="async" />
@@ -37,7 +38,7 @@ export function Services() {
                       </span>
                     </span>
                   </Link>
-                </div>
+                </Reveal>
               );
             })}
           </div>

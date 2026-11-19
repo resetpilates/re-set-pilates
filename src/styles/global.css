@@ -2944,3 +2944,9 @@ html[lang="he"] .welcome--c .welcome__eyebrow { font-size: 13px; letter-spacing:
    from just under the ceiling track down to the front reformer, so the arches and the props wall stay in frame. */
 .phero > img.phero__room { object-position: 46% 50%; }
 @media (min-width: 760px) { .phero > img.phero__room { object-position: 50% 20%; } }
+
+/* ───────── shane/ui-polish · page media heroes: the overlay title always fits, at any viewport ───────── */
+/* Replaces fixed pixel heights (220/240) that clipped two-line display titles on desktop. */
+.media--page { height: clamp(240px, 30vw, 340px); }
+.media__cap { position: absolute; inset-block-end: 18px; inset-inline: 20px; color: var(--ivory); }
+.media--page .media__cap .display { font-size: clamp(24px, 2.8vw, 34px); line-height: 1.08; }
