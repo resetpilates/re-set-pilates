@@ -8,13 +8,12 @@ jobs:
   delete-old-preview:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
       - name: Delete superseded preview version
-        run: |
-          curl -s -X DELETE \
-            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
-            -H "Content-Type: application/json" \
-            -w "\nHTTP %{http_code}\n" \
-            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/re-set-pilates/versions/e6bfcd64-96e4-4e4f-8f85-eca5d1e32e1e"
+        run: bunx wrangler versions delete e6bfcd64-96e4-4e4f-8f85-eca5d1e32e1e --yes
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: f222c8199b93f18eaf125283bb472012
