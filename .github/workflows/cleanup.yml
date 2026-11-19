@@ -1,0 +1,19 @@
+name: cleanup
+on:
+  push:
+    branches: [preview-shane-ui-polish]
+  workflow_dispatch:
+
+jobs:
+  delete-old-preview:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete superseded preview version
+        run: |
+          curl -sf -X DELETE \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            -H "Content-Type: application/json" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/re-set-pilates/versions/e6bfcd64-96e4-4e4f-8f85-eca5d1e32e1e"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: f222c8199b93f18eaf125283bb472012
