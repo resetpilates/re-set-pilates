@@ -1,7 +1,7 @@
 // Studio hub: Orit's command center. One private page (passcode) that shows everything the website sends to
 // Airtable: who needs an answer, who is coming today, the week's schedule, every member, where people come from,
 // and a small help wiki. Data and edits go through worker/studio.ts; copy lives in src/content/studio.ts.
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { siteConfig } from "../config/site";
 import { studioCopy, type StudioCopy, type TabId } from "../content/studio";
@@ -207,7 +207,8 @@ interface ScreenProps {
   f: Fmt;
   d: StudioData;
   go: (t: TabId) => void;
-  act: (a: StudioAction, apply: (d: StudioData) => StudioData) => void;
+  /** Shows the change at once (`set(false)`), sends it, and on failure puts back just that row (`set(true)`). */
+  act: (a: StudioAction, set: (undo: boolean, serverStatus?: string) => (d: StudioData) => StudioData) => void;
   air: (table: keyof StudioData["tables"], id: string) => string;
   /** Link to one customer's page. */
   who: (id: string) => string;
@@ -234,14 +235,12 @@ function Today({ c, f, d, go, act, air, who }: ScreenProps) {
     [String(d.leads.filter((l) => l.received && dayKey(l.received) >= since(7)).length), c.today.leads7],
     [String(d.classes.reduce((n, x) => n + x.bookings.length, 0)), c.today.booked7],
     [String(active.length), c.today.active],
-    [money(d.paid.filter((p) => p.paidOn && dayKey(p.paidOn) >= since(30)).reduce((n, p) => n + p.amount, 0)), c.today.money30],
+    [money(d.paid.filter((p) => (p.paidOn || p.created) && dayKey(p.paidOn || p.created) >= since(30)).reduce((n, p) => n + p.amount, 0)), c.today.money30],
   ];
-  // Undoing a tap puts back what the booking was before (Booked, or Held when it is not paid yet).
-  const was = useRef(new Map<string, Attendance>());
+  // "Booked" here means "undo my tap": the server decides whether the place goes back to Booked or to Held (not paid yet).
   const mark = (id: string, from: string, to: Attendance) => {
-    if (from === "Booked" || from === "Held") was.current.set(id, from);
-    const next = to === "Booked" ? (was.current.get(id) ?? "Booked") : to;
-    act({ kind: "booking", id, status: next }, (x) => ({ ...x, classes: x.classes.map((k) => ({ ...k, bookings: k.bookings.map((b) => (b.id === id ? { ...b, status: next } : b)) })) }));
+    const put = (status: string) => (x: StudioData) => ({ ...x, classes: x.classes.map((k) => ({ ...k, bookings: k.bookings.map((b) => (b.id === id ? { ...b, status } : b)) })) });
+    act({ kind: "booking", id, status: to }, (undo, server) => put(undo ? from : (server ?? to)));
   };
   return (
     <>
@@ -386,7 +385,7 @@ function Leads({ c, f, d, act, air }: ScreenProps) {
         shown.length === 0 ? (
           <Empty>{c.leads.empty}</Empty>
         ) : (
-          shown.map((l) => <LeadCard key={l.id} c={c} f={f} lead={l} link={air("leads", l.id)} onStatus={(status) => act({ kind: "lead", id: l.id, status }, (x) => ({ ...x, leads: x.leads.map((k) => (k.id === l.id ? { ...k, status } : k)) }))} />)
+          shown.map((l) => <LeadCard key={l.id} c={c} f={f} lead={l} link={air("leads", l.id)} onStatus={(status) => act({ kind: "lead", id: l.id, status }, (undo) => (x) => ({ ...x, leads: x.leads.map((k) => (k.id === l.id ? { ...k, status: undo ? l.status : status } : k)) }))} />)
         )
       ) : (
         <>
@@ -410,7 +409,10 @@ function Leads({ c, f, d, act, air }: ScreenProps) {
                 )}
                 <Reach c={c} phone={w.phone} />
                 <label className="st-tick">
-                  <input type="checkbox" checked={w.contacted} onChange={(e) => act({ kind: "wait", id: w.id, contacted: e.target.checked }, (x) => ({ ...x, waitlist: x.waitlist.map((k) => (k.id === w.id ? { ...k, contacted: e.target.checked } : k)) }))} />
+                  <input type="checkbox" checked={w.contacted} onChange={(e) => {
+                    const contacted = e.target.checked;
+                    act({ kind: "wait", id: w.id, contacted }, (undo) => (x) => ({ ...x, waitlist: x.waitlist.map((k) => (k.id === w.id ? { ...k, contacted: undo ? !contacted : contacted } : k)) }));
+                  }} />
                   <span>{c.leads.contacted}</span>
                 </label>
               </article>
@@ -454,6 +456,7 @@ const QUIET = new Set(["Lapsed", "Lost", "Paused"]);
 function Members({ c, f, d, who }: ScreenProps) {
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<"all" | "active" | "leads" | "quiet">("all");
+  const [limit, setLimit] = useState(100);
   const is = (m: StMember, g: typeof filter) => g === "all" || (g === "active" ? m.plan === "Active" : g === "quiet" ? QUIET.has(m.status) : m.plan !== "Active" && !QUIET.has(m.status));
   const needle = q.trim().toLowerCase();
   const digits = needle.replace(/\D/g, "");
@@ -468,7 +471,7 @@ function Members({ c, f, d, who }: ScreenProps) {
         <Empty>{c.members.empty}</Empty>
       ) : (
         <ul className="st-card st-members">
-          {shown.slice(0, 150).map((m) => (
+          {shown.slice(0, limit).map((m) => (
             <li key={m.id}>
               <Link className="st-member" to={who(m.id)}>
                 <MemberLine c={c} f={f} m={m} />
@@ -476,6 +479,11 @@ function Members({ c, f, d, who }: ScreenProps) {
             </li>
           ))}
         </ul>
+      )}
+      {shown.length > limit && (
+        <button type="button" className="st-btn st-btn--block" onClick={() => setLimit(limit + 100)}>
+          {c.members.more(shown.length - limit)}
+        </button>
       )}
       {d.membersCapped && <p className="st-muted st-foot">{c.members.capped}</p>}
     </>
@@ -610,7 +618,7 @@ function Profile({ c, f, id, air, back, stamp }: { c: StudioCopy; f: Fmt; id: st
   const [failed, setFailed] = useState(false);
   useEffect(() => {
     let live = true;
-    void loadMember(id).then((r) => live && (r.ok ? (setP(r), setFailed(false)) : setFailed(true)));
+    void loadMember(id).then((r) => live && (r.ok ? (setP(r), setFailed(false)) : (setFailed(true), setP((old) => (old?.member.id === id ? old : null)))));
     return () => void (live = false);
   }, [id, stamp]); // read again whenever the hub refreshes
   const backLink = (
@@ -926,17 +934,17 @@ export default function Studio() {
     return () => clearTimeout(t);
   }, [toast]);
 
-  // Show the change at once; put it back if Airtable did not take it.
-  const act = useCallback(
-    (a: StudioAction, apply: (d: StudioData) => StudioData) => {
-      const before = data;
-      setData((d) => (d ? apply(d) : d));
-      void sendAction(a).then((ok) => {
-        if (!ok) setData(before);
-        setToast(ok ? c.common.saved : c.common.notSaved);
+  // Show the change at once; if Airtable did not take it, put back that one row and nothing else.
+  const act = useCallback<ScreenProps["act"]>(
+    (a, set) => {
+      setData((d) => (d ? set(false)(d) : d));
+      void sendAction(a).then((r) => {
+        if (!r.ok) setData((d) => (d ? set(true)(d) : d));
+        else if (r.status) setData((d) => (d ? set(false, r.status)(d) : d));
+        setToast(r.ok ? c.common.saved : c.common.notSaved);
       });
     },
-    [data, c],
+    [c],
   );
   const who = useCallback((id: string) => `/${lang}/studio/members/${id}`, [lang]);
   const air = useCallback((table: keyof StudioData["tables"], id: string) => (data ? `https://airtable.com/${data.base}/${data.tables[table]}/${id}` : "#"), [data]);
@@ -992,7 +1000,7 @@ export default function Studio() {
           ) : !props ? (
             <Empty>{state === "failed" ? c.common.failed : c.common.loading}</Empty>
           ) : personId ? (
-            <Profile c={c} f={f} id={personId} air={air} back={`/${lang}/studio/members`} stamp={props.d.at} />
+            <Profile key={personId} c={c} f={f} id={personId} air={air} back={`/${lang}/studio/members`} stamp={props.d.at} />
           ) : tab === "money" ? (
             <Money {...props} />
           ) : tab === "leads" ? (

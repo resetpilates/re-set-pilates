@@ -50,8 +50,10 @@ export async function signIn(code: string): Promise<Fail | null> {
 export const loadStudio = () => call<StudioData>("data");
 export const loadMember = (id: string) => call<StudioMember>(`member?id=${encodeURIComponent(id)}`);
 
-export async function sendAction(a: StudioAction): Promise<boolean> {
-  return (await call<StudioReply>("act", { method: "POST", body: JSON.stringify(a) })).ok;
+/** Sends one edit. `status` is what a booking ended up as (an undo may give back "Held"). */
+export async function sendAction(a: StudioAction): Promise<{ ok: boolean; status?: string }> {
+  const r = await call<StudioReply>("act", { method: "POST", body: JSON.stringify(a) });
+  return r.ok ? { ok: true, status: r.status } : { ok: false };
 }
 
 /** Israeli number as typed ("050-123-4567") → digits for wa.me ("972501234567"). */

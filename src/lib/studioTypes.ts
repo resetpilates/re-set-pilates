@@ -163,4 +163,4 @@ export type StudioAction =
   | { kind: "wait"; id: string; contacted: boolean }
   | { kind: "booking"; id: string; status: Attendance };
 
-export type StudioReply = { ok: true; token?: string } | { ok: false; error: "code" | "setup" | "auth" | "slow down" | "bad request" | "unavailable" | "origin" };
+export type StudioReply = { ok: true; token?: string; status?: string } | { ok: false; error: "code" | "setup" | "auth" | "slow down" | "bad request" | "unavailable" | "origin" };

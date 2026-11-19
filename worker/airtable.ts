@@ -197,12 +197,27 @@ export class AirtableError extends Error {
 
 /** One instance per request: holds the token and base for that request only. */
 export class Airtable {
+  /**
+   * `paceMs` spaces this instance's requests out, one at a time. Airtable allows 5 requests a second per base and
+   * answers a burst with 30 seconds of refusals for everyone, the public site included. The Studio hub reads a lot
+   * at once, so it paces itself; the relay (a few calls per form) does not need to.
+   */
   constructor(
     private readonly token: string,
     private readonly base: string,
+    private readonly paceMs = 0,
   ) {}
 
+  private gate: Promise<void> = Promise.resolve();
+  private async turn(): Promise<void> {
+    if (!this.paceMs) return;
+    const mine = this.gate;
+    this.gate = mine.then(() => new Promise((ok) => setTimeout(ok, this.paceMs)));
+    await mine;
+  }
+
   private async call(method: string, path: string, body?: unknown): Promise<unknown> {
+    await this.turn();
     const res = await fetch(`https://api.airtable.com/v0/${this.base}/${path}`, {
       method,
       headers: { Authorization: `Bearer ${this.token}`, "Content-Type": "application/json" },

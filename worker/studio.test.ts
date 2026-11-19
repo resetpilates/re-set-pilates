@@ -2,7 +2,9 @@
 import { beforeEach, expect, test } from "bun:test";
 import worker from "./index";
 import { F, T } from "./airtable";
-import { issuePass, validPass } from "./studio";
+import { issuePass, pacing, validPass } from "./studio";
+
+pacing.ms = 0; // the stand-in has no rate limit
 import type { StudioData } from "../src/lib/studioTypes";
 
 type Rec = { id: string; fields: Record<string, unknown> };
@@ -26,7 +28,7 @@ beforeEach(() => {
   calls = [];
   db = {
     [T.members]: [{ id: MAYA, fields: { [F.members.fullName]: "Maya Levi", [F.members.phone]: "050-123-4567", [F.members.status]: "Active member", fldl2W4id3WcEAB1v: ["Expired", "Active"], fldkaD5FRdCbIqdfe: 6 } }],
-    [T.classes]: [{ id: CLASS, fields: { [F.classes.type]: "Reformer", [F.classes.when]: soon.toISOString(), [F.classes.capacity]: 5 } }],
+    [T.classes]: [{ id: CLASS, fields: { [F.classes.type]: "Reformer", [F.classes.when]: soon.toISOString(), [F.classes.capacity]: 5, fldiMbO6i5pgM73vK: [BOOKING] } }],
     [T.bookings]: [{ id: BOOKING, fields: { [F.bookings.bed]: "2", [F.bookings.status]: "Booked", [F.bookings.member]: [MAYA], [F.bookings.class]: [CLASS] } }],
     [T.leads]: [{ id: LEAD, fields: { [F.leads.person]: "Noa", [F.leads.phone]: "052-000-0000", [F.leads.status]: "New", [F.leads.interested]: ["Reformer"] } }],
   };
@@ -43,6 +45,8 @@ beforeEach(() => {
       return new Response(JSON.stringify(r));
     }
     const stamp = (r?: Rec) => r && { ...r, createdTime: "2026-11-19T08:00:00.000Z" }; // Airtable sends this with every row
+    const wanted = [...(url.searchParams.get("filterByFormula") ?? "").matchAll(/RECORD_ID\(\)='(rec\w+)'/g)].map((m) => m[1]);
+    if (!id && wanted.length) return new Response(JSON.stringify({ records: rows.filter((x) => wanted.includes(x.id)).map(stamp) }));
     return new Response(JSON.stringify(id ? stamp(rows.find((x) => x.id === id)) : { records: rows.map(stamp) }));
   }) as typeof fetch;
 });
@@ -133,4 +137,66 @@ test("payments carry a receipt that opens, and one customer's page has her whole
   expect((await hit("member?id=nope", { token }, e)).status).toBe(400);
   expect((await hit(`member?id=${MAYA}`, {}, e)).status).toBe(401);
   expect(calls.some((c) => c.table === T.health)).toBe(false);
+});
+
+test("someone in today's class who is not among the newest 500 members still shows by name", async () => {
+  const OLD = "recOLDxxxxxxxxxxx";
+  const B2 = "recBOOK2xxxxxxxxx";
+  db["hidden"] = [{ id: OLD, fields: { [F.members.fullName]: "Ruth Even", [F.members.phone]: "050-999-8888" } }];
+  db[T.bookings].push({ id: B2, fields: { [F.bookings.bed]: "3", [F.bookings.status]: "Booked", [F.bookings.member]: [OLD], [F.bookings.class]: [CLASS] } });
+  db[T.classes][0].fields.fldiMbO6i5pgM73vK = [BOOKING, B2];
+  // The members table answers the "newest members" read without her, and the by-id read with her.
+  const real = globalThis.fetch;
+  globalThis.fetch = (async (input: RequestInfo, init?: RequestInit) => {
+    const url = new URL(String(input));
+    if (url.pathname.split("/")[3] === T.members && (url.searchParams.get("filterByFormula") ?? "").includes(OLD)) return new Response(JSON.stringify({ records: db["hidden"] }));
+    return real(input as never, init);
+  }) as typeof fetch;
+  const d = (await (await hit("data", { token: await issuePass(PASSCODE) })).json()) as StudioData;
+  expect(d.classes[0].bookings.map((b) => b.name)).toEqual(["Maya Levi", "Ruth Even"]);
+  expect(d.members.some((m) => m.name === "Ruth Even")).toBe(false);
+});
+
+test("attendance: a cancelled booking is left alone, and undo gives an unpaid place back as Held", async () => {
+  const token = await issuePass(PASSCODE);
+  const post = (body: unknown) => hit("act", { method: "POST", token, body: JSON.stringify(body) });
+  const row = db[T.bookings][0].fields;
+
+  row[F.bookings.status] = "Cancelled on time";
+  expect((await post({ kind: "booking", id: BOOKING, status: "No-show" })).status).toBe(400);
+  expect(row[F.bookings.status]).toBe("Cancelled on time");
+
+  Object.assign(row, { [F.bookings.status]: "Held", [F.bookings.via]: "Checkout (payment pending)" });
+  expect(((await (await post({ kind: "booking", id: BOOKING, status: "Attended" })).json()) as { status: string }).status).toBe("Attended");
+  expect(((await (await post({ kind: "booking", id: BOOKING, status: "Booked" })).json()) as { status: string }).status).toBe("Held");
+  expect(row[F.bookings.status]).toBe("Held");
+
+  // Once the plan it was bought with is Active, the same undo gives a normal booking.
+  db[T.memberships] = [{ id: "recPLANxxxxxxxxxx", fields: { [F.memberships.status]: "Active" } }];
+  row[F.bookings.membership] = ["recPLANxxxxxxxxxx"];
+  await post({ kind: "booking", id: BOOKING, status: "Attended" });
+  expect(((await (await post({ kind: "booking", id: BOOKING, status: "Booked" })).json()) as { status: string }).status).toBe("Booked");
+});
+
+test("a signed-in phone is never rate limited; passcode attempts are", async () => {
+  const strict = env({ FORM_LIMIT: { limit: async () => ({ success: false }) } } as unknown as Partial<Env>);
+  expect((await hit("login", { method: "POST", body: JSON.stringify({ code: PASSCODE }) }, strict)).status).toBe(429);
+  expect((await hit("data", { token: await issuePass(PASSCODE) }, strict)).status).toBe(200);
+});
+
+test("a confirmed payment with no \"Paid on\" date is still listed, dated by when it was ordered", async () => {
+  db[T.payments] = [{ id: "recPAY2xxxxxxxxxx", fields: { [F.payments.name]: "RS-261119-C4D5 · Maya Levi · 10 sessions", [F.payments.amount]: 550, [F.payments.status]: "Paid", [F.payments.member]: [MAYA] } }];
+  const d = (await (await hit("data", { token: await issuePass(PASSCODE) })).json()) as StudioData;
+  expect(d.paid[0]).toMatchObject({ amount: 550, paidOn: "", created: "2026-11-19T08:00:00.000Z" });
+  expect(calls.some((c) => c.table === T.payments)).toBe(true);
+});
+
+test("a paced Airtable client sends its requests one at a time, spaced out", async () => {
+  const { Airtable } = await import("./airtable");
+  const starts: number[] = [];
+  globalThis.fetch = (async () => (starts.push(Date.now()), new Response(JSON.stringify({ records: [] })))) as unknown as typeof fetch;
+  const at = new Airtable("t", "appX", 40);
+  await Promise.all([1, 2, 3, 4].map(() => at.find("tblX", "TRUE()")));
+  const gaps = starts.slice(1).map((t, i) => t - starts[i]);
+  expect(gaps.every((g) => g >= 35)).toBe(true);
 });

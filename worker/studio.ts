@@ -23,6 +23,8 @@ declare global {
 const TZ = "Asia/Jerusalem";
 const PASS_DAYS = 30;
 const MAX_MEMBERS = 500;
+/** Gap between the hub's Airtable requests: 4 a second, under Airtable's limit of 5 with room for the public site. Tests set it to 0. */
+export const pacing = { ms: 250 };
 
 // Fields the relay never needed (worker/airtable.ts has the rest).
 const X = {
@@ -38,6 +40,7 @@ const X = {
   membershipSessionsLeft: "fldytuDwYaazHUijV",
   membershipType: "fldhgUSxfIMQ0VfAT",
   paymentReceiptNo: "fldtWKdPAjQZbt9RJ",
+  classBookings: "fldiMbO6i5pgM73vK",
   memberNotes: "fldx6pFCdAuQIbU6q",
   memberSince: "fldD4ztlrfOzlqdMj",
   memberSpent: "fldxf07CZABvSgJ7J",
@@ -104,10 +107,17 @@ function studioMidnight(date: string): number {
   return Date.parse(`${date}T00:00:00${off || "+00:00"}`) / 1000;
 }
 
-/** Runs the reads a few at a time: Airtable allows 5 requests a second per base. */
-async function inBatches<T>(jobs: (() => Promise<T>)[], size = 4): Promise<T[]> {
-  const out: T[] = [];
-  for (let i = 0; i < jobs.length; i += size) out.push(...(await Promise.all(jobs.slice(i, i + size).map((j) => j()))));
+/** Starts every read; the Airtable client itself lets them through one at a time, paced (see `pacing`). */
+const inBatches = <T>(jobs: (() => Promise<T>)[]): Promise<T[]> => Promise.all(jobs.map((j) => j()));
+
+const anyOf = (ids: string[]) => `OR(${ids.map((id) => `RECORD_ID()='${id}'`).join(",")})`;
+/** Rows by record id, 50 ids per request so the address never gets too long. */
+async function byIds(at: Airtable, table: string, ids: string[], fields: string[], and = ""): Promise<AirRecord[]> {
+  const out: AirRecord[] = [];
+  for (let i = 0; i < ids.length; i += 50) {
+    const pick = anyOf(ids.slice(i, i + 50));
+    out.push(...(await at.list(table, { formula: and ? `AND(${pick}, ${and})` : pick, fields, max: 50 })).records);
+  }
   return out;
 }
 
@@ -213,22 +223,27 @@ export async function snapshot(at: Airtable, env: Env, origin: string, now = new
   const C = F.classes, B = F.bookings, L = F.leads, W = F.launchWaitlist;
   const status = (f: string, ...names: string[]) => `OR(${names.map((n) => `{${f}}='${n}'`).join(", ")})`;
 
-  const [members, classes, bookings, leads, waitlist, pending, paid, plans, campaigns, chat] = await inBatches([
+  const [members, classes, leads, waitlist, pending, paid, plans, campaigns, chat] = await inBatches([
     () => at.list(T.members, { fields: MEMBER_FIELDS, sort: [X.memberAdded, "desc"], max: MAX_MEMBERS }),
-    () => at.list(T.classes, { formula: `AND({${C.startUnix}}>=${from}, {${C.startUnix}}<${to}, {${C.status}}!='Cancelled')`, fields: [C.type, C.when, C.capacity, C.status, C.onWaitlist], sort: [C.when, "asc"], max: 200 }),
-    () => at.list(T.bookings, { formula: `AND({${B.classStartUnix}}>=${from}, {${B.classStartUnix}}<${to}, ${status(B.status, "Booked", "Held", "Attended", "No-show")})`, fields: [B.bed, B.status, B.member, B.class], max: 500 }),
+    () => at.list(T.classes, { formula: `AND({${C.startUnix}}>=${from}, {${C.startUnix}}<${to}, {${C.status}}!='Cancelled')`, fields: [C.type, C.when, C.capacity, C.status, C.onWaitlist, X.classBookings], sort: [C.when, "asc"], max: 200 }),
     () => at.list(T.leads, { fields: [L.person, L.phone, L.email, L.channel, L.interested, L.message, L.prefTime, L.heard, L.status, X.leadReceived], sort: [X.leadReceived, "desc"], max: 200 }),
     () => at.list(T.launchWaitlist, { fields: [W.name, W.phone, W.wanted, W.slot, W.contacted, W.submitted], sort: [W.submitted, "desc"], max: 200 }),
     () => at.list(T.payments, { formula: `{${P.status}}='Pending'`, fields: PAYMENT_FIELDS, max: 100 }),
-    () => at.list(T.payments, { formula: `AND({${P.status}}='Paid', IS_AFTER({${X.paymentPaidOn}}, DATEADD(NOW(), -90, 'days')))`, fields: PAYMENT_FIELDS, sort: [X.paymentPaidOn, "desc"], max: 300 }),
+    // "Paid on" is often left empty when Orit confirms a payment: such a row counts from the day the order was placed.
+    () => at.list(T.payments, { formula: `AND({${P.status}}='Paid', IS_AFTER(IF({${X.paymentPaidOn}}, {${X.paymentPaidOn}}, CREATED_TIME()), DATEADD(NOW(), -90, 'days')))`, fields: PAYMENT_FIELDS, max: 300 }),
     () => at.list(T.memberships, { fields: PLAN_FIELDS, sort: [S.start, "desc"], max: 300 }),
     () => at.list(T.campaigns, { fields: [X.campaignName, X.campaignChannel, X.campaignStart, X.campaignEnd, X.campaignOffer, X.campaignBudget, X.campaignLeads], sort: [X.campaignStart, "desc"], max: 50 }),
     () => at.list(T.chat, { formula: `{${F.chat.handedToOrit}}`, fields: [F.chat.question, X.chatAsked], sort: [X.chatAsked, "desc"], max: 30 }),
   ]);
 
+  // The week's bookings, found through the classes themselves (their linked bookings), cancelled ones left out.
+  const bookings = await byIds(at, T.bookings, [...new Set(classes.records.flatMap((r) => list(r.fields[X.classBookings])))].slice(0, 500), [B.bed, B.status, B.member, B.class], status(B.status, "Booked", "Held", "Attended", "No-show"));
+  // Names for anyone in a class or on a payment who is not among the newest members loaded above.
   const who = new Map(members.records.map((r) => [r.id, r]));
+  const strangers = [...new Set([...bookings.map((b) => list(b.fields[B.member])[0]), ...[...pending.records, ...paid.records].map((p) => list(p.fields[P.member])[0])])].filter((id): id is string => Boolean(id) && !who.has(id));
+  for (const r of await byIds(at, T.members, strangers.slice(0, 200), MEMBER_FIELDS)) who.set(r.id, r);
   const byClass = new Map<string, StBooking[]>();
-  for (const b of bookings.records) {
+  for (const b of bookings) {
     const m = who.get(list(b.fields[B.member])[0] ?? "");
     const row: StBooking = { id: b.id, memberId: m?.id ?? "", name: str(m?.fields[M.fullName]), phone: str(m?.fields[M.phone]), bed: str(b.fields[B.bed]), status: str(b.fields[B.status]) };
     for (const c of list(b.fields[B.class])) byClass.set(c, [...(byClass.get(c) ?? []), row]);
@@ -267,7 +282,7 @@ export async function snapshot(at: Airtable, env: Env, origin: string, now = new
     members: members.records.map(toMember),
     membersCapped: members.more,
     pending: await pay(pending.records),
-    paid: await pay(paid.records),
+    paid: (await pay(paid.records)).sort((a, b) => (b.paidOn || b.created).localeCompare(a.paidOn || a.created)),
     plans: plans.records.map(toPlan),
     campaigns: campaigns.records.map((r) => ({
       id: r.id,
@@ -286,7 +301,6 @@ export async function snapshot(at: Airtable, env: Env, origin: string, now = new
 
 // ---------- one customer in full ----------
 
-const anyOf = (ids: string[]) => `OR(${ids.map((id) => `RECORD_ID()='${id}'`).join(",")})`;
 const HISTORY_CLASSES = 100;
 
 export async function memberDetail(at: Airtable, env: Env, origin: string, id: string): Promise<StudioMember> {
@@ -296,10 +310,10 @@ export async function memberDetail(at: Airtable, env: Env, origin: string, id: s
   const ids = { plans: list(m.fields[M.memberships]), payments: list(m.fields[X.memberPayments]), bookings: allBookings.slice(-HISTORY_CLASSES), inquiries: list(m.fields[X.memberInquiries]).slice(-50) };
   const none = { records: [] as AirRecord[], more: false };
   const [plans, payments, bookings, inquiries] = await inBatches([
-    () => (ids.plans.length ? at.list(T.memberships, { formula: anyOf(ids.plans.slice(-50)), fields: PLAN_FIELDS, max: 50 }) : Promise.resolve(none)),
-    () => (ids.payments.length ? at.list(T.payments, { formula: anyOf(ids.payments.slice(-100)), fields: PAYMENT_FIELDS, max: 100 }) : Promise.resolve(none)),
-    () => (ids.bookings.length ? at.list(T.bookings, { formula: anyOf(ids.bookings), fields: [B.name, B.status, B.classStartUnix], max: HISTORY_CLASSES }) : Promise.resolve(none)),
-    () => (ids.inquiries.length ? at.list(T.leads, { formula: anyOf(ids.inquiries), fields: [L.message, L.channel, L.status, L.interested, X.leadReceived], max: 50 }) : Promise.resolve(none)),
+    async () => ({ ...none, records: await byIds(at, T.memberships, ids.plans.slice(-50), PLAN_FIELDS) }),
+    async () => ({ ...none, records: await byIds(at, T.payments, ids.payments.slice(-100), PAYMENT_FIELDS) }),
+    async () => ({ ...none, records: await byIds(at, T.bookings, ids.bookings, [B.name, B.status, B.classStartUnix]) }),
+    async () => ({ ...none, records: await byIds(at, T.leads, ids.inquiries, [L.message, L.channel, L.status, L.interested, X.leadReceived]) }),
   ]);
   const who = new Map([[m.id, m]]);
   const name = str(m.fields[M.fullName]);
@@ -341,7 +355,11 @@ export async function memberDetail(at: Airtable, env: Env, origin: string, id: s
 
 const REC = /^rec[A-Za-z0-9]{14}$/;
 
-export async function act(at: Airtable, a: StudioAction, now = new Date()): Promise<boolean> {
+/** Statuses of a booking that still holds its place; only these may be marked or un-marked from the hub. */
+const MARKABLE = ["Booked", "Held", "Attended", "No-show"];
+
+/** Returns false for a request that makes no sense; for a booking, the status it ended up with. */
+export async function act(at: Airtable, a: StudioAction, now = new Date()): Promise<boolean | string> {
   if (!a || typeof a !== "object" || !REC.test(String(a.id))) return false;
   if (a.kind === "lead") {
     if (!LEAD_STATUSES.includes(a.status)) return false;
@@ -357,8 +375,19 @@ export async function act(at: Airtable, a: StudioAction, now = new Date()): Prom
   }
   if (a.kind === "booking") {
     if (!ATTENDANCE.includes(a.status)) return false;
-    await at.update(T.bookings, a.id, { [F.bookings.status]: a.status });
-    return true;
+    const B = F.bookings;
+    const row = await at.get(T.bookings, a.id);
+    // A booking the member cancelled in the meantime is left alone: marking it would count a class against her plan.
+    if (!MARKABLE.includes(str(row.fields[B.status]))) return false;
+    let next: string = a.status;
+    if (next === "Booked" || next === "Held") {
+      // Undoing a mark. The place goes back to "Held" when it was taken at checkout and its plan is still not paid.
+      const plan = list(row.fields[B.membership])[0];
+      const unpaid = str(row.fields[B.via]) === "Checkout (payment pending)" && (!plan || str((await at.get(T.memberships, plan)).fields[F.memberships.status]) !== "Active");
+      next = unpaid ? "Held" : "Booked";
+    }
+    await at.update(T.bookings, a.id, { [B.status]: next });
+    return next;
   }
   return false;
 }
@@ -369,11 +398,13 @@ export async function studio(req: Request, env: Env, url: URL, sameOrigin: boole
   const route = url.pathname.slice("/api/studio/".length);
   const passcode = passcodeOf(env);
   if (!passcode || !env.AIRTABLE_TOKEN) return reply({ ok: false, error: "setup" }, 503);
-  const { success } = await env.FORM_LIMIT.limit({ key: `studio:${req.headers.get("CF-Connecting-IP") ?? "unknown"}` });
-  if (!success) return reply({ ok: false, error: "slow down" }, 429);
 
   if (route === "login" && req.method === "POST") {
     if (!sameOrigin) return reply({ ok: false, error: "origin" }, 403);
+    // Only passcode attempts are counted. A signed-in phone is never slowed down, and a call without a valid pass
+    // is turned away below before it reaches Airtable.
+    const { success } = await env.FORM_LIMIT.limit({ key: `studio:${req.headers.get("CF-Connecting-IP") ?? "unknown"}` });
+    if (!success) return reply({ ok: false, error: "slow down" }, 429);
     const body = (await req.json().catch(() => ({}))) as { code?: unknown };
     const code = typeof body.code === "string" ? body.code.trim().slice(0, 200) : "";
     // Compare digests, not the strings, so the answer takes the same time whatever was typed.
@@ -383,7 +414,7 @@ export async function studio(req: Request, env: Env, url: URL, sameOrigin: boole
 
   const bearer = req.headers.get("Authorization")?.replace(/^Bearer /, "") ?? null;
   if (!(await validPass(passcode, bearer))) return reply({ ok: false, error: "auth" }, 401);
-  const at = new Airtable(env.AIRTABLE_TOKEN, env.AIRTABLE_BASE);
+  const at = new Airtable(env.AIRTABLE_TOKEN, env.AIRTABLE_BASE, pacing.ms);
   try {
     const origin = url.hostname === "localhost" ? url.origin : `https://${url.host}`;
     if (route === "data" && req.method === "GET") return reply(await snapshot(at, env, origin));
@@ -394,7 +425,7 @@ export async function studio(req: Request, env: Env, url: URL, sameOrigin: boole
     if (route === "act" && req.method === "POST") {
       if (!sameOrigin) return reply({ ok: false, error: "origin" }, 403);
       const done = await act(at, (await req.json().catch(() => null)) as StudioAction);
-      return done ? reply({ ok: true }) : reply({ ok: false, error: "bad request" }, 400);
+      return done === false ? reply({ ok: false, error: "bad request" }, 400) : reply({ ok: true, ...(typeof done === "string" ? { status: done } : {}) });
     }
   } catch (e) {
     console.error(JSON.stringify({ msg: "studio failed", route, status: e instanceof AirtableError ? e.status : undefined, detail: e instanceof AirtableError ? e.body : String(e) }));
