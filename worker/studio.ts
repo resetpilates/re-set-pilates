@@ -80,7 +80,11 @@ export async function validPass(passcode: string, pass: string | null, now = Dat
   if (!/^\d{13}$/.test(exp ?? "") || Number(exp) < now || !sig) return false;
   return sig === (await hmacHex(passcode, `studio.${exp}`));
 }
-const passcodeOf = (env: Env) => ((env.STUDIO_PASSCODE ?? "").length >= 8 ? env.STUDIO_PASSCODE! : "");
+/** A space or line break pasted around the passcode in Cloudflare is ignored, as it is on the sign-in screen. */
+const passcodeOf = (env: Env) => {
+  const p = (env.STUDIO_PASSCODE ?? "").trim();
+  return p.length >= 8 ? p : "";
+};
 
 // ---------- reading Airtable values ----------
 

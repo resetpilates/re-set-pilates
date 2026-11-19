@@ -13,6 +13,8 @@ export interface WikiArticle {
 }
 
 const en = {
+  // Words that come straight from Airtable (sources, payment methods…). English shows them as they are.
+  values: {} as Record<string, string>,
   title: "Studio",
   sub: "Command center",
   gate: {
@@ -28,6 +30,7 @@ const en = {
   tabs: { today: "Today", leads: "Leads", schedule: "Classes", members: "Members", money: "Money", marketing: "Marketing", help: "Help" } as Record<TabId, string>,
   common: {
     refresh: "Refresh",
+    refreshing: "Refreshing…",
     updated: "Updated",
     justNow: "just now",
     minAgo: (n: number) => `${n} min ago`,
@@ -189,6 +192,15 @@ const en = {
 type Copy = typeof en;
 
 const he: Copy = {
+  values: {
+    Instagram: "אינסטגרם", TikTok: "טיקטוק", Facebook: "פייסבוק", Google: "גוגל", "Google Maps": "גוגל מפות", Website: "האתר", Referral: "המלצה", "Walk-in": "עברה במקום", WhatsApp: "וואטסאפ", Event: "אירוע", "Gift card": "שובר מתנה", Other: "אחר",
+    "WhatsApp broadcast": "הודעת וואטסאפ", Email: "מייל", Flyers: "פליירים",
+    Bit: "ביט", "Credit card": "כרטיס אשראי", Cash: "מזומן", "Bank transfer": "העברה בנקאית",
+    Hebrew: "עברית", English: "אנגלית",
+    Morning: "בוקר", Midday: "צהריים", Evening: "ערב", Mornings: "בוקר", Evenings: "ערב", "Adult morning": "בוקר", "Teen evening": "ערב (נוער)",
+    Reformer: "רפורמר", Mat: "מזרן", "Private 1:1": "שיעור פרטי", Duo: "זוגי", Teens: "נוער", "Women-only": "נשים בלבד", "Trial class": "שיעור ניסיון", "Private group": "קבוצה פרטית",
+    Membership: "מנוי", Pass: "כרטיסייה", Private: "שיעור פרטי", "Late-cancel fee": "דמי ביטול מאוחר", Retail: "חנות",
+  },
   title: "הסטודיו",
   sub: "מרכז הבקרה",
   gate: {
@@ -204,6 +216,7 @@ const he: Copy = {
   tabs: { today: "היום", leads: "פניות", schedule: "שיעורים", members: "מתאמנות", money: "כספים", marketing: "שיווק", help: "עזרה" },
   common: {
     refresh: "רענון",
+    refreshing: "מרענן…",
     updated: "עודכן",
     justNow: "עכשיו",
     minAgo: (n) => `לפני ${n} דק׳`,

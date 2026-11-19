@@ -977,7 +977,7 @@ export default {
     if (url.pathname === "/api/roster" && req.method === "GET") return roster(env, url, ectx);
     if (url.pathname.startsWith("/api/studio/")) return studio(req, env, url, sameOrigin(req)); // Orit's command center (passcode)
     if (url.pathname === "/api/health") {
-      return json({ ok: true, airtable: Boolean(env.AIRTABLE_TOKEN), turnstile: Boolean(env.TURNSTILE_SECRET), studio: (env.STUDIO_PASSCODE ?? "").length >= 8 } as RelayReply);
+      return json({ ok: true, airtable: Boolean(env.AIRTABLE_TOKEN), turnstile: Boolean(env.TURNSTILE_SECRET), studio: (env.STUDIO_PASSCODE ?? "").trim().length >= 8 } as RelayReply);
     }
     // Pages: add link-preview and search tags for the language and page being served.
     if (!url.pathname.startsWith("/api/")) return withPreview(await env.ASSETS.fetch(req), url);

@@ -9,6 +9,8 @@
   "name": "re-set-pilates",
   "main": "worker/index.ts",
   "compatibility_date": "2026-10-13",
+  // Publishing keeps variables that were added in the Cloudflare dashboard (a passcode saved as "Text" is no longer wiped).
+  "keep_vars": true,
   "upload_source_maps": true,
   "assets": {
     "directory": "./dist",

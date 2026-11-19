@@ -26,6 +26,8 @@ const dayKey = (d: Date | string) => new Intl.DateTimeFormat("en-CA", { timeZone
 const addDays = (key: string, n: number) => new Date(Date.parse(`${key}T12:00:00Z`) + n * 864e5).toISOString().slice(0, 10);
 const daysBetween = (a: string, b: string) => Math.round((Date.parse(`${b}T12:00:00Z`) - Date.parse(`${a}T12:00:00Z`)) / 864e5);
 const money = (n: number) => `₪${Math.round(n).toLocaleString("en-US")}`;
+/** A word from Airtable (a source, a payment method…) in the page's language when we know it. */
+const val = (c: StudioCopy, s: string) => c.values[s] ?? s;
 
 function useFmt(c: StudioCopy, lang: string, today: string) {
   return useMemo(() => {
@@ -82,15 +84,46 @@ function Reach({ c, phone, email }: { c: StudioCopy; phone: string; email?: stri
   );
 }
 
+/**
+ * "Maya Levi · 2× per week · Nov 2026": each piece keeps its own direction, so English plan names inside
+ * Hebrew stay in the order they were written. `drop` leaves a piece out (the customer's own name on her page).
+ */
+function Parts({ text, drop, or = "" }: { text: string; drop?: string; or?: string }) {
+  const parts = text.split(" · ").map((x) => x.trim()).filter((x) => x && x !== drop);
+  if (!parts.length) return <>{or}</>;
+  return (
+    <>
+      {parts.map((x, i) => (
+        <span key={i}>
+          {i > 0 && " · "}
+          <bdi>{x}</bdi>
+        </span>
+      ))}
+    </>
+  );
+}
+
+/** A big number. The shekel sign is set in the text font: the display serif draws it oddly. */
+function Num({ v }: { v: string }) {
+  return v.startsWith("₪") ? (
+    <b>
+      <i className="st-cur">₪</i>
+      {v.slice(1)}
+    </b>
+  ) : (
+    <b>{v}</b>
+  );
+}
+
 function Empty({ children }: { children: ReactNode }) {
   return <p className="st-empty">{children}</p>;
 }
 
 function Chips<T extends string>({ value, options, onPick }: { value: T; options: [T, string, number?][]; onPick: (v: T) => void }) {
   return (
-    <div className="st-chips" role="tablist">
+    <div className="st-chips">
       {options.map(([id, label, n]) => (
-        <button key={id} type="button" role="tab" aria-selected={value === id} className={`st-chip${value === id ? " is-on" : ""}`} onClick={() => onPick(id)}>
+        <button key={id} type="button" aria-pressed={value === id} className={`st-chip${value === id ? " is-on" : ""}`} onClick={() => onPick(id)}>
           {label}
           {n ? <b>{n}</b> : null}
         </button>
@@ -282,7 +315,7 @@ function Today({ c, f, d, go, act, air, who }: ScreenProps) {
         <div className="st-stats">
           {stats.map(([n, label]) => (
             <div key={label} className="st-card st-stat">
-              <b>{n}</b>
+              <Num v={n} />
               <span>{label}</span>
             </div>
           ))}
@@ -297,7 +330,9 @@ function Today({ c, f, d, go, act, air, who }: ScreenProps) {
               <li key={p.id}>
                 <Link to={p.memberId ? who(p.memberId) : "#"}>
                   <span>
-                    <b dir="auto">{p.name}</b>
+                    <b>
+                      <Parts text={p.name} />
+                    </b>
                     <small>{[p.autoRenew ? c.today.autoRenew : "", p.sessionsLeft != null ? c.today.left(p.sessionsLeft) : ""].filter(Boolean).join(" · ")}</small>
                   </span>
                   <strong>{f.date(p.renews)}</strong>
@@ -333,9 +368,9 @@ const LEAD_GROUP: Record<string, "open" | "progress" | "done"> = { New: "open", 
 
 function LeadCard({ c, f, lead, onStatus, link }: { c: StudioCopy; f: Fmt; lead: StLead; onStatus: (s: LeadStatus) => void; link: string }) {
   const facts: [string, string][] = [
-    [c.leads.wants, lead.interested.join(", ")],
-    [c.leads.time, lead.prefTime],
-    [c.leads.heard, lead.heard],
+    [c.leads.wants, lead.interested.map((x) => val(c, x)).join(", ")],
+    [c.leads.time, val(c, lead.prefTime)],
+    [c.leads.heard, val(c, lead.heard)],
   ];
   return (
     <article className="st-card st-lead">
@@ -507,8 +542,9 @@ function MemberLine({ c, f, m }: { c: StudioCopy; f: Fmt; m: StMember }) {
 
 // ---------- money: payments, receipts, memberships ----------
 
-function PaymentRow({ c, f, p, who, link }: { c: StudioCopy; f: Fmt; p: StPayment; who?: (id: string) => string; link: string }) {
-  const title = p.name.replace(p.no, "").split(" · ").filter((x) => x && x !== p.member).join(" · ") || p.what;
+function PaymentRow({ c, f, p, who, link }: { c: StudioCopy; f: Fmt; p: StPayment; who?: (id: string) => string; link?: string }) {
+  const title = p.name.replace(p.no, "");
+  const what = <Parts text={title} drop={p.member} or={val(c, p.what)} />;
   return (
     <li className="st-pay">
       <div className="st-pay__top">
@@ -518,15 +554,17 @@ function PaymentRow({ c, f, p, who, link }: { c: StudioCopy; f: Fmt; p: StPaymen
               {p.member || "—"}
             </Link>
           ) : (
-            <b dir="auto">{who ? p.member || p.name : title}</b>
+            <b>{who ? p.member || <Parts text={title} /> : what}</b>
           )}
-          <small dir="auto">{[who ? title : "", p.method, f.date(dayKey(p.paidOn || p.created || new Date()))].filter(Boolean).join(" · ")}</small>
+          <small>
+            {who && <>{what} · </>}
+            {[val(c, p.method), f.date(dayKey(p.paidOn || p.created || new Date()))].filter(Boolean).join(" · ")}
+          </small>
         </span>
         <strong>{money(p.amount)}</strong>
       </div>
       <div className="st-pay__foot">
         <span className={`st-tag${p.status === "Paid" ? " st-tag--on" : ""}`}>{c.money.pay[p.status] ?? p.status}</span>
-        {p.no && <small className="st-pay__no">{p.no}</small>}
         {p.receipt ? (
           <a className="st-link" href={p.receipt} target="_blank" rel="noreferrer">
             {c.money.receipt}
@@ -534,9 +572,12 @@ function PaymentRow({ c, f, p, who, link }: { c: StudioCopy; f: Fmt; p: StPaymen
         ) : (
           <small className="st-muted">{c.money.noReceipt}</small>
         )}
-        <a className="st-link" href={link} target="_blank" rel="noreferrer">
-          {c.common.airtable}
-        </a>
+        {p.no && <small className="st-pay__no">{p.no}</small>}
+        {link && (
+          <a className="st-link st-link--end" href={link} target="_blank" rel="noreferrer">
+            {c.common.airtable}
+          </a>
+        )}
       </div>
     </li>
   );
@@ -544,7 +585,7 @@ function PaymentRow({ c, f, p, who, link }: { c: StudioCopy; f: Fmt; p: StPaymen
 
 const planGroup = (p: StPlan) => (p.status === "Active" || p.status === "Paused" ? "active" : p.status === "" ? "waiting" : "ended");
 
-function PlanRow({ c, f, p, name, link }: { c: StudioCopy; f: Fmt; p: StPlan; name: ReactNode; link: string }) {
+function PlanRow({ c, f, p, name, link }: { c: StudioCopy; f: Fmt; p: StPlan; name: ReactNode; link?: string }) {
   return (
     <li className="st-pay">
       <div className="st-pay__top">
@@ -556,9 +597,11 @@ function PlanRow({ c, f, p, name, link }: { c: StudioCopy; f: Fmt; p: StPlan; na
       </div>
       <div className="st-pay__foot">
         <span className={`st-tag${p.status === "Active" ? " st-tag--on" : ""}`}>{c.money.plan[p.status] ?? p.status}</span>
-        <a className="st-link" href={link} target="_blank" rel="noreferrer">
-          {c.common.airtable}
-        </a>
+        {link && (
+          <a className="st-link st-link--end" href={link} target="_blank" rel="noreferrer">
+            {c.common.airtable}
+          </a>
+        )}
       </div>
     </li>
   );
@@ -583,11 +626,11 @@ function Money({ c, f, d, air, who }: ScreenProps) {
             <>
               <div className="st-card st-total">
                 <span>{c.money.total}</span>
-                <b>{money(rows.reduce((n, p) => n + p.amount, 0))}</b>
+                <Num v={money(rows.reduce((n, p) => n + p.amount, 0))} />
               </div>
               <ul className="st-card st-pays">
                 {rows.map((p) => (
-                  <PaymentRow key={p.id} c={c} f={f} p={p} who={who} link={air("payments", p.id)} />
+                  <PaymentRow key={p.id} c={c} f={f} p={p} who={who} link={tab === "pending" ? air("payments", p.id) : undefined} />
                 ))}
               </ul>
             </>
@@ -601,7 +644,7 @@ function Money({ c, f, d, air, who }: ScreenProps) {
           ) : (
             <ul className="st-card st-pays">
               {plans.map((p) => (
-                <PlanRow key={p.id} c={c} f={f} p={p} link={air("memberships", p.id)} name={p.memberId ? <Link className="st-name" to={who(p.memberId)} dir="auto">{p.name}</Link> : <b dir="auto">{p.name}</b>} />
+                <PlanRow key={p.id} c={c} f={f} p={p} link={group === "waiting" ? air("memberships", p.id) : undefined} name={p.memberId ? <Link className="st-name" to={who(p.memberId)}><Parts text={p.name} /></Link> : <b><Parts text={p.name} /></b>} />
               ))}
             </ul>
           )}
@@ -633,10 +676,10 @@ function Profile({ c, f, id, air, back, stamp }: { c: StudioCopy; f: Fmt; id: st
   const facts: [string, string][] = [
     [k.phone, m.phone],
     [k.email, m.email],
-    [k.source, m.source],
+    [k.source, val(c, m.source)],
     [k.added, m.added ? f.date(dayKey(m.added)) : ""],
     [k.since, f.date(p.memberSince)],
-    [k.language, p.language],
+    [k.language, val(c, p.language)],
     [k.health, p.health ? c.profile.yes : c.profile.no],
   ];
   const stats: [string, string][] = [
@@ -661,7 +704,7 @@ function Profile({ c, f, id, air, back, stamp }: { c: StudioCopy; f: Fmt; id: st
       <div className="st-stats">
         {stats.map(([n, label]) => (
           <div key={label} className="st-card st-stat">
-            <b>{n}</b>
+            <Num v={n} />
             <span>{label}</span>
           </div>
         ))}
@@ -690,7 +733,7 @@ function Profile({ c, f, id, air, back, stamp }: { c: StudioCopy; f: Fmt; id: st
         ) : (
           <ul className="st-card st-pays">
             {p.plans.map((x) => (
-              <PlanRow key={x.id} c={c} f={f} p={x} link={air("memberships", x.id)} name={<b dir="auto">{x.name.split(" · ").filter((t) => t !== m.name).join(" · ") || x.name}</b>} />
+              <PlanRow key={x.id} c={c} f={f} p={x} link={air("memberships", x.id)} name={<b><Parts text={x.name} drop={m.name} or={x.name} /></b>} />
             ))}
           </ul>
         )}
@@ -723,7 +766,7 @@ function Profile({ c, f, id, air, back, stamp }: { c: StudioCopy; f: Fmt; id: st
                     {c.profile.kinds[e.kind]}
                     {e.status && <span className="st-line__status">{(e.kind === "class" ? c.profile.booking[e.status] : e.kind === "payment" ? c.money.pay[e.status] : e.kind === "plan" ? c.money.plan[e.status] : c.leads.status[e.status]) ?? e.status}</span>}
                   </b>
-                  {e.title && <p dir="auto">{e.title}</p>}
+                  {e.title && <p>{e.kind === "inquiry" ? <bdi>{e.title}</bdi> : e.kind === "joined" ? val(c, e.title) : <Parts text={e.title} />}</p>}
                   {e.kind === "plan" && !e.status && <span className="st-line__status">{c.money.plan[""]}</span>}
                 </div>
                 {e.amount != null && <strong>{money(e.amount)}</strong>}
@@ -762,7 +805,7 @@ function Marketing({ c, f, d, air }: ScreenProps) {
           <ul className="st-card st-bars">
             {sources.map(([name, n]) => (
               <li key={name}>
-                <span>{name}</span>
+                <span>{val(c, name)}</span>
                 <i style={{ inlineSize: `${Math.max(6, (n / top) * 100)}%` }} />
                 <b>{n}</b>
               </li>
@@ -789,7 +832,7 @@ function Marketing({ c, f, d, air }: ScreenProps) {
               ] as [string, string][]
             ).map(([n, label]) => (
               <div key={label} className="st-card st-stat">
-                <b>{n}</b>
+                <Num v={n} />
                 <span>{label}</span>
               </div>
             ))}
@@ -806,7 +849,7 @@ function Marketing({ c, f, d, air }: ScreenProps) {
             <a key={k.id} className="st-card st-camp" href={air("campaigns", k.id)} target="_blank" rel="noreferrer">
               <header>
                 <h3>{k.name}</h3>
-                <small>{[k.channels.join(", "), [f.date(k.start), f.date(k.end)].filter(Boolean).join(" – ")].filter(Boolean).join(" · ")}</small>
+                <small>{[k.channels.map((x) => val(c, x)).join(", "), [f.date(k.start), f.date(k.end)].filter(Boolean).join(" – ")].filter(Boolean).join(" · ")}</small>
               </header>
               {k.offer && <p className="st-muted">{k.offer}</p>}
               <dl className="st-trio">
@@ -849,7 +892,7 @@ function Marketing({ c, f, d, air }: ScreenProps) {
   );
 }
 
-function Help({ c }: { c: StudioCopy }) {
+function Help({ c, other, onSignOut }: { c: StudioCopy; other: { to: string; label: string }; onSignOut: () => void }) {
   const { href } = useI18n();
   const [q, setQ] = useState("");
   const [open, setOpen] = useState<string | null>(null);
@@ -887,6 +930,14 @@ function Help({ c }: { c: StudioCopy }) {
           })}
         </div>
       )}
+      <div className="st-reach st-help__foot">
+        <Link className="st-btn" to={other.to}>
+          {other.label}
+        </Link>
+        <button type="button" className="st-btn" onClick={onSignOut}>
+          {c.common.signOut}
+        </button>
+      </div>
     </>
   );
 }
@@ -904,13 +955,16 @@ export default function Studio() {
   const [data, setData] = useState<StudioData | null>(null);
   const [state, setState] = useState<"loading" | "ready" | "failed">("loading");
   const [toast, setToast] = useState("");
+  const [busy, setBusy] = useState(false);
   const [, tick] = useState(0);
   const f = useFmt(c, lang, data?.today ?? dayKey(new Date()));
   const go = useCallback((t: TabId) => (nav(`/${lang}/studio${t === "today" ? "" : `/${t}`}`), window.scrollTo(0, 0)), [nav, lang]);
 
   const refresh = useCallback(async () => {
     setState((s) => (s === "ready" ? s : "loading"));
+    setBusy(true);
     const r = await loadStudio();
+    setBusy(false);
     if (r.ok) return setData(r), setState("ready");
     if (r.error === "auth") return forgetPass(), setSignedIn(false);
     setState((s) => (s === "ready" ? s : "failed"));
@@ -951,6 +1005,7 @@ export default function Studio() {
 
   if (!signedIn) return <div className="st"><Gate c={c} onOpen={() => setSignedIn(true)} /></div>;
 
+  const signOut = () => (forgetPass(), setSignedIn(false), setData(null));
   const mins = data ? Math.floor((Date.now() - Date.parse(data.at)) / 60000) : 0;
   const badge: Partial<Record<TabId, number>> = data ? { leads: data.leads.filter((l) => l.status === "New").length + data.waitlist.filter((w) => !w.contacted).length } : {};
   const here = `/studio${tab === "today" ? "" : `/${tab}`}${personId ? `/${personId}` : ""}`;
@@ -975,7 +1030,7 @@ export default function Studio() {
           <Link className="st-link" to={`/${lang === "he" ? "en" : "he"}${here}`}>
             {lang === "he" ? "English" : "עברית"}
           </Link>
-          <button type="button" className="st-link" onClick={() => (forgetPass(), setSignedIn(false), setData(null))}>
+          <button type="button" className="st-link" onClick={signOut}>
             {c.common.signOut}
           </button>
         </div>
@@ -987,8 +1042,8 @@ export default function Studio() {
             <img src={siteConfig.studioMedia.wordmark} alt="re:set pilates" />
           </Link>
           <span className="st-top__time">{data ? `${c.common.updated} ${mins < 1 ? c.common.justNow : c.common.minAgo(mins)}` : ""}</span>
-          <button type="button" className="st-btn st-btn--sm" onClick={() => void refresh()}>
-            {c.common.refresh}
+          <button type="button" className="st-btn st-btn--sm" disabled={busy} onClick={() => void refresh()}>
+            {busy ? c.common.refreshing : c.common.refresh}
           </button>
           <Link className="st-top__lang" to={`/${lang === "he" ? "en" : "he"}${here}`}>
             {lang === "he" ? "EN" : "עב"}
@@ -996,7 +1051,7 @@ export default function Studio() {
         </header>
         <main className="st-main">
           {tab === "help" ? (
-            <Help c={c} />
+            <Help c={c} other={{ to: `/${lang === "he" ? "en" : "he"}${here}`, label: lang === "he" ? "English" : "עברית" }} onSignOut={signOut} />
           ) : !props ? (
             <Empty>{state === "failed" ? c.common.failed : c.common.loading}</Empty>
           ) : personId ? (
