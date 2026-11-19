@@ -22,6 +22,14 @@ beforeEach(() => {
       return new Response(JSON.stringify({ success: token === "good", "error-codes": token === "good" ? [] : ["invalid-input-response"] }), { status: 200 });
     }
     if (airtableDown && init?.method === "POST") return new Response(JSON.stringify({ error: { type: "DOWN" } }), { status: 500 });
+    // Attachment upload stand-in: content.airtable.com/v0/<base>/<record>/<field>/uploadAttachment adds one file to the cell
+    if (url.hostname === "content.airtable.com") {
+      const [, , , recId, field] = url.pathname.split("/");
+      const rec = Object.values(db).flat().find((x) => x.id === recId)!;
+      const file = JSON.parse(String(init!.body));
+      rec.fields[field] = [...((rec.fields[field] as unknown[]) ?? []), { filename: file.filename, type: file.contentType, size: file.file.length }];
+      return new Response(JSON.stringify({ id: recId }), { status: 200 });
+    }
     const [, , , table, id] = url.pathname.split("/");
     const rows = (db[table] ??= []);
     const method = init?.method ?? "GET";
@@ -521,4 +529,40 @@ test("before payment one held class per person: a second held class is refused, 
   third.fields[F.bookings.slotId] = "reformer_2020-01-01_0800";
   member.fields[F.members.bookings] = [first.id, third.id];
   expect((await hold(`${Y}-10-24`, 0)).status).toBe(200);
+});
+
+test("member-photo saves one photo on the member's row, replaces it, removes it, and never touches someone else's", async () => {
+  const P = F.members.photo;
+  const jpeg = `/9j/${"A".repeat(4000)}`; // base64 of a JPEG starts with /9j/
+  const send = (body: unknown) => call("member-photo", body);
+
+  // Signing up with a photo: no member yet, so one is created (a lead) with the photo on it
+  expect((await send({ lang: "he", contact: maya, image: jpeg })).status).toBe(200);
+  expect(db[T.members].length).toBe(1);
+  const member = db[T.members][0];
+  expect(member.fields[F.members.status]).toBe("Lead");
+  expect(member.fields[P]).toEqual([{ filename: "Maya Test.jpg", type: "image/jpeg", size: jpeg.length }]);
+
+  // A new photo replaces the old one: still one file
+  await send({ lang: "he", contact: maya, image: `${jpeg}BBBB` });
+  expect((member.fields[P] as unknown[]).length).toBe(1);
+  expect((member.fields[P] as { size: number }[])[0].size).toBe(jpeg.length + 4);
+
+  // Same phone with another last name: answers ok like any other, changes nothing
+  const other = await send({ lang: "he", contact: { ...maya, lastName: "Someone" }, image: null });
+  expect(await other.json()).toEqual({ ok: true });
+  expect((member.fields[P] as unknown[]).length).toBe(1);
+
+  // Removing it clears the cell; removing for a phone the studio has never seen creates nobody
+  await send({ lang: "he", contact: maya, image: null });
+  expect(member.fields[P]).toEqual([]);
+  await send({ lang: "he", contact: { ...maya, phone: "050-999-9999" }, image: null });
+  expect(db[T.members].length).toBe(1);
+
+  // Only a JPEG of a sane size gets through
+  expect((await send({ lang: "he", contact: maya, image: "PHN2Zz48L3N2Zz4=" })).status).toBe(400);
+  expect((await send({ lang: "he", contact: maya, image: `/9j/${"A".repeat(500 * 1024)}` })).status).toBe(413);
+  expect(member.fields[P]).toEqual([]);
+  // Other forms keep their small limit
+  expect((await call("lead", { lang: "he", contact: maya, interest: "reformer", consent: false, note: "x".repeat(9000) })).status).toBe(413);
 });

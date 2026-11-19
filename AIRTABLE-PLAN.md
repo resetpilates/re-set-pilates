@@ -68,6 +68,7 @@ One row per person, from the first enquiry onward. Everything else links back he
 | Source detail | Text | campaign name, referrer's name, post, etc. |
 | Referred by | Link → Members | for referral rewards |
 | Signed up on | Date | first time they appeared |
+| Photo | Attachment | optional photo the member added to their membership card in the app (one image; the app replaces or clears it). For recognising people in class; never shown on the public schedule |
 | First class date | Rollup (Bookings) | earliest attended booking |
 | Last class date | Rollup (Bookings) | latest attended booking |
 | Days since last class | Formula | drives "we miss you" follow-ups |

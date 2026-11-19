@@ -41,11 +41,13 @@ function writeOutbox(items: Queued[]) {
 }
 
 async function post<E extends RelayEvent>(event: E, body: RelayMap[E] | unknown): Promise<RelayReply> {
+  const payload = JSON.stringify(body);
   const res = await fetch(`/api/${event}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-    keepalive: true,
+    body: payload,
+    // keepalive lets a form finish sending while the page changes, but browsers refuse it above 64 KB (the card photo)
+    keepalive: payload.length < 60_000,
   });
   const reply = (await res.json().catch(() => ({ ok: false }))) as RelayReply;
   // Other 4xx means the message itself is wrong; retrying will not help.
