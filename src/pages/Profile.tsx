@@ -6,6 +6,7 @@ import { ContactFields, readContact, termsAccepted, termsRenewBy, TermsField } f
 import { daysUntil, fmtValid, healthStatus, RENEW_NOTICE_DAYS } from "../lib/health";
 import { LangToggle, Logo } from "../components/Shell";
 import { Sheet, Switch } from "../components/ui";
+import { CameraIcon, PhotoField } from "../components/Photo";
 import { planById } from "../config/pricing";
 import { addressLine, siteConfig } from "../config/site";
 import { useI18n } from "../lib/i18n";
@@ -25,6 +26,11 @@ export default function Profile() {
   const store = useStore();
   const [hint, setHint] = useState(false);
   const [signIn, setSignIn] = useState(false);
+  const [photoSheet, setPhotoSheet] = useState(false);
+  const [newPhoto, setNewPhoto] = useState<string>(); // picked in the sign-in sheet, kept once the details are saved
+  // The optional card photo: kept on this device, and the studio's record follows (see syncPhoto in the store)
+  const photo = store.profile.photo;
+  const setPhoto = (p: string | null) => store.saveProfile({ photo: p ?? undefined, photoPending: true });
   // "Signed in" on this prototype = we know who you are (details saved on this device) or you hold a plan.
   const raw = store.profile.firstName.trim();
   const known = raw ? raw[0].toUpperCase() + raw.slice(1) : "";
@@ -35,7 +41,8 @@ export default function Profile() {
     const c = readContact(f);
     // Registration: the studio terms must be accepted here (a checkbox, no signature)
     const terms = f.get("terms") === "on" ? { termsAcceptedAt: new Date().toISOString(), termsVersion: siteConfig.policies.termsVersion } : {};
-    store.saveProfile({ firstName: c.firstName, lastName: c.lastName, phone: c.phone, email: c.email ?? "", ...terms });
+    store.saveProfile({ firstName: c.firstName, lastName: c.lastName, phone: c.phone, email: c.email ?? "", ...terms, ...(newPhoto ? { photo: newPhoto, photoPending: true } : {}) });
+    setNewPhoto(undefined);
     setSignIn(false);
   };
   const plan = store.planId ? planById(store.planId) : undefined;
@@ -60,9 +67,24 @@ export default function Profile() {
     <div className="page page--app tone-dark has-tabbar">
       <div className="wrap wrap--app stack gap-24 screen">
         <div className="row gap-16 profile-hello">
-          <span className="avatar avatar--brand" aria-hidden>
-            <Logo />
-          </span>
+          {signedIn ? (
+            <button type="button" className={`avatar-btn${photo ? " avatar-btn--photo" : ""}`} onClick={() => setPhotoSheet(true)} aria-label={t.profile.photoEdit}>
+              {photo ? (
+                <img src={photo} alt="" />
+              ) : (
+                <span className="avatar avatar--brand" aria-hidden>
+                  <Logo />
+                </span>
+              )}
+              <span className="avatar-btn__edit" aria-hidden>
+                <CameraIcon size={12} />
+              </span>
+            </button>
+          ) : (
+            <span className="avatar avatar--brand" aria-hidden>
+              <Logo />
+            </span>
+          )}
           <span className="stack gap-4">
             <h1 className="display d-md">{known ? `${t.profile.hello} ${known}` : store.isMember ? t.profile.name : t.profile.guest}</h1>
             <span className="small muted">
@@ -110,6 +132,12 @@ export default function Profile() {
                 </span>
               </div>
               <div className="stack gap-8">
+                {photo && (
+                  <span className="mcard__who">
+                    <img className="mcard__photo" src={photo} alt="" />
+                    <b>{`${store.profile.firstName} ${store.profile.lastName}`.trim()}</b>
+                  </span>
+                )}
                 <span className="mcard__name">{planName(plan, t, store.planKind)}</span>
                 <span className="mcard__usage">
                   {usage.cap === null ? (
@@ -281,9 +309,20 @@ export default function Profile() {
             <h2 className="display d-md">{t.profile.signInTitle}</h2>
             <p className="small muted">{t.profile.signInSub}</p>
             <ContactFields id="signin" profile={store.profile} />
+            <PhotoField value={newPhoto} onChange={(p) => setNewPhoto(p ?? undefined)} />
             <TermsField profile={store.profile} />
             <button className="btn btn--primary btn--block">{t.profile.signInCta}</button>
           </form>
+        </Sheet>
+
+        <Sheet open={photoSheet} onClose={() => setPhotoSheet(false)} label={t.profile.photoTitle}>
+          <div className="stack gap-16">
+            <h2 className="display d-md">{t.profile.photoTitle}</h2>
+            <PhotoField value={photo} onChange={setPhoto} />
+            <button type="button" className="btn btn--primary btn--block" onClick={() => setPhotoSheet(false)}>
+              {t.profile.photoDone}
+            </button>
+          </div>
         </Sheet>
       </div>
     </div>

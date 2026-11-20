@@ -1,4 +1,5 @@
-import type { ShowAs } from "./relayTypes";
+import { normalizePhone, type ShowAs } from "./relayTypes";
+import { photoBase64 } from "./photo";
 import type { HealthRecord } from "./health";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { planById, type ClassKind } from "../config/pricing";
@@ -6,7 +7,7 @@ import { siteConfig } from "../config/site";
 import { fromISO, israelNow, slotStart, type ClassSlot } from "./booking";
 import { heldClass, planCovers, planUsage } from "./plan";
 import type { ReceiptData } from "./receipt";
-import { RELAY_REPLY, relay, type RelayReplyDetail } from "./relay";
+import { RELAY_REPLY, ask, relay, type RelayReplyDetail } from "./relay";
 
 export interface Booking {
   id: string;
@@ -36,6 +37,8 @@ export interface Profile {
   termsAcceptedAt?: string; // ISO: when the studio terms were accepted on this device
   termsVersion?: string; // which version (siteConfig.policies.termsVersion) was accepted
   health?: HealthRecord; // the latest health declaration made on this device
+  photo?: string; // optional photo on the membership card: a small square JPEG data URL (src/lib/photo.ts)
+  photoPending?: boolean; // the photo was added, changed or removed here and the studio's record has not caught up yet
 }
 
 /** In-app notification (the bell on the profile). Purchases add one that opens the receipt. */
@@ -233,6 +236,33 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setS((p) => ({ ...p, bookings: p.bookings.map((b) => (b.id === bookingId ? { ...b, remoteId } : b)) })),
     [],
   );
+  // The card photo is kept on the device first; the studio's Airtable row follows as soon as we know who this is
+  // (name and phone) and the relay can be reached. Retried on the next visit and when the phone is back online.
+  const photoBusy = useRef(false);
+  const syncPhoto = useCallback(async () => {
+    const pr = latest.current.profile;
+    if (!pr.photoPending || photoBusy.current || !pr.firstName.trim() || !pr.lastName.trim() || !normalizePhone(pr.phone)) return;
+    photoBusy.current = true;
+    const sent = pr.photo;
+    const reply = await ask("member-photo", {
+      lang: document.documentElement.lang === "en" ? "en" : "he",
+      contact: { firstName: pr.firstName, lastName: pr.lastName, phone: pr.phone, ...(pr.email ? { email: pr.email } : {}) },
+      image: sent ? photoBase64(sent) : null,
+    });
+    photoBusy.current = false;
+    if (latest.current.profile.photo !== sent) return void syncPhoto(); // changed again while this one was on its way
+    // Any answer settles it (a refusal will not change by asking again); no answer means try again later.
+    if (reply) setS((p) => (p.profile.photo === sent ? { ...p, profile: { ...p.profile, photoPending: false } } : p));
+  }, []);
+  useEffect(() => {
+    if (s.profile.photoPending) void syncPhoto();
+  }, [s.profile.photoPending, s.profile.photo, s.profile.firstName, s.profile.lastName, s.profile.phone, syncPhoto]);
+  useEffect(() => {
+    const again = () => void syncPhoto();
+    addEventListener("online", again);
+    return () => removeEventListener("online", again);
+  }, [syncPhoto]);
+
   const markWelcomeSeen = useCallback(() => setS((p) => (p.seenWelcome ? p : { ...p, seenWelcome: true })), []);
 
   // A booking that waited in the outbox gets its Airtable id when it is finally sent.

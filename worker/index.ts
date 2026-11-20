@@ -18,6 +18,7 @@ import type {
   HeardFrom,
   LaunchWaitlistMsg,
   LeadMsg,
+  MemberPhotoMsg,
   QuizContactMsg,
   QuizMsg,
   RelayEvent,
@@ -45,6 +46,8 @@ declare global {
 const TZ = "Asia/Jerusalem";
 const CANCEL_HOURS = siteConfig.policies.cancelHours; // same policy the site shows
 const MAX_BODY = 8 * 1024;
+const MAX_PHOTO = 400 * 1024; // base64 characters of the membership-card photo (the app sends about 60 KB)
+const MAX_PHOTO_BODY = MAX_PHOTO + MAX_BODY;
 
 class BadRequest extends Error {}
 /** The request is fine but would duplicate something that exists (e.g. the same membership is still running). */
@@ -114,6 +117,12 @@ function phoneDigits(raw: unknown): string {
   return d;
 }
 const phonePretty = (d: string) => (d.length === 10 ? `${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6)}` : `${d.slice(0, 2)}-${d.slice(2, 5)}-${d.slice(5)}`);
+
+/** The membership-card photo: base64 of a JPEG, nothing else. */
+function jpegBase64(v: unknown): string {
+  if (typeof v !== "string" || v.length > MAX_PHOTO || !v.startsWith("/9j/") || !/^[A-Za-z0-9+/]+={0,2}$/.test(v)) throw new BadRequest("bad image");
+  return v;
+}
 
 function contact(v: unknown): Contact {
   const c = (v ?? {}) as Record<string, unknown>;
@@ -675,6 +684,25 @@ const handlers: Record<RelayEvent, Handler> = {
     return { ok: true, membership: { id: ms.id, until: String(ms.fields[S.renews] ?? ""), autoRenew: ms.fields[S.autoRenew] === true } };
   },
 
+  // The optional photo on the membership card. Someone signing up for the first time gets a member row (a lead, as
+  // with any other form); an existing member is touched only when the last name matches the phone's record, and a
+  // mismatch answers the same "ok" so the reply never says who is a member. One photo: a new one replaces the old.
+  async "member-photo"(at, b) {
+    const m = b as unknown as MemberPhotoMsg;
+    const c = contact(m.contact);
+    const image = m.image === null ? null : jpegBase64(m.image);
+    let member = await memberByPhone(at, c.phone);
+    if (member && String(member.fields[F.members.lastName] ?? "").trim().toLowerCase() !== c.lastName.toLowerCase()) return { ok: true };
+    if (!member) {
+      if (!image) return { ok: true };
+      member = await upsertMember(at, c, { lang: lang(m.lang), attribution: attribution(m.attribution) });
+    }
+    const P = F.members.photo;
+    if (Array.isArray(member.fields[P]) && (member.fields[P] as unknown[]).length) await at.update(T.members, member.id, { [P]: [] });
+    if (image) await at.attach(member.id, P, { contentType: "image/jpeg", filename: `${fullName(c)}.jpg`, file: image });
+    return { ok: true, id: member.id };
+  },
+
   async waitlist(at, b) {
     const m = b as unknown as WaitlistMsg;
     const c = contact(m.contact);
@@ -997,7 +1025,7 @@ export default {
     }
 
     const raw = await req.text();
-    if (raw.length > MAX_BODY) return json({ ok: false, error: "too large" }, 413);
+    if (raw.length > (event === "member-photo" ? MAX_PHOTO_BODY : MAX_BODY)) return json({ ok: false, error: "too large" }, 413);
     let body: Record<string, unknown>;
     try {
       body = JSON.parse(raw);

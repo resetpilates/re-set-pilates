@@ -42,6 +42,7 @@ export const F = {
     bookings: "fldUq9AGWE2REsefs", // links to the member's Bookings rows
     termsOn: "fldObNiMJJSXpGxyV",
     health: "fldX2zCZAjHgZ7EfG", // links to Health & Consent rows
+    photo: "fldi41kdBOO3rwn85", // attachment: the photo the member put on their membership card (optional, one image)
   },
   plans: {
     websiteId: "fldo0e3VGSWDNHDAU",
@@ -240,6 +241,16 @@ export class Airtable {
 
   async get(table: string, id: string): Promise<AirRecord> {
     return (await this.call("GET", `${table}/${id}?returnFieldsByFieldId=true`)) as AirRecord;
+  }
+
+  /** Upload one file into an attachment field (added after whatever the cell already holds). Base64 content, up to 5 MB. */
+  async attach(recordId: string, field: string, file: { contentType: string; filename: string; file: string }): Promise<void> {
+    const res = await fetch(`https://content.airtable.com/v0/${this.base}/${recordId}/${field}/uploadAttachment`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${this.token}`, "Content-Type": "application/json" },
+      body: JSON.stringify(file),
+    });
+    if (!res.ok) throw new AirtableError(res.status, (await res.text()).slice(0, 500));
   }
 
   /** First records matching an Airtable formula (field ids in braces work inside formulas). */
