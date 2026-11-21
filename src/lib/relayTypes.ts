@@ -108,6 +108,7 @@ export interface BookingMsg extends Base {
   bed: number | null; // 0-based on the site; Airtable shows 1-5
   showAs?: ShowAs; // name on the schedule beds (default "short")
   held?: boolean; // checkout before online payment is open: the bed is held (Airtable status "Held") until Orit takes payment
+  trial?: boolean; // the free trial class: booked at no charge (Airtable via "Free trial"), one per person
 }
 
 export interface CancelMsg extends Base {

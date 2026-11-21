@@ -28,7 +28,22 @@ export const founder: Person = {
 };
 
 // Instructors other than Orit are added here once they join (name, role, bio, portrait, approved: true).
-export const instructors: Person[] = [];
+export const instructors: Person[] = [
+  {
+    // Joined 21 Nov 2026 (owner). Hebrew bio in her own words; English is a close translation. Photo to follow.
+    id: "shenhav",
+    nameHe: "שנהב זבק",
+    nameEn: "Shenhav Zabak",
+    roleHe: "מדריכת פילאטיס מכשירים",
+    roleEn: "Reformer Pilates instructor",
+    bioHe:
+      "שמי שנהב, ואני מתאמנת בפילאטיס מכשירים כבר שנים. עבורי, פילאטיס מכשירים הוא הרבה מעבר לאימון: זו שפה של שליטה, מודעות ועבודה מדויקת עם הגוף. בשיעורים שלי אני מאמינה בשילוב שבין דיוק ותנועה נכונה שתחזק ותבנה אותך לבין החיבור שלך עם הגוף והנפש. המטרה שלי היא לייצר בשבילך מרחב שבו את מאתגרת את הגוף, דוחקת את גבולות המסוגלות שלך, ובעיקר יוצאת עם תחושת ביטחון וחיבור לעצמך. ❤️",
+    bioEn:
+      "I'm Shenhav, and I've been training on the Reformer for years. For me, Reformer Pilates is much more than a workout: it's a language of control, awareness and precise work with the body. In my classes I combine precision and correct movement, which strengthen and build you, with your connection to your body and mind. My goal is to give you a space where you challenge your body, push the limits of what you can do, and above all leave feeling confident and connected to yourself. ❤️",
+    // portrait: "/assets/shenhav.webp", // add once her photo arrives
+    approved: true,
+  },
+];
 /** Everyone who can be named on a class: the founder first, then the instructors. */
 export const roster: Person[] = [founder, ...instructors];
 

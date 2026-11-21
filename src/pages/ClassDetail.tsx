@@ -18,6 +18,7 @@ import { SHOW_AS, scheduleName, type Contact, type ShowAs, type SlotRef } from "
 import { useStore } from "../lib/store";
 import { ContactFields, readContact, TermsField } from "../components/forms";
 import { siteConfig } from "../config/site";
+import { scheduleConfig } from "../config/schedule";
 import { healthValid } from "../lib/health";
 
 export default function ClassDetail() {
@@ -30,6 +31,7 @@ export default function ClassDetail() {
   const [sheet, setSheet] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
   const [refused, setRefused] = useState(false); // the studio refused the hold: another class is already held before payment
+  const [trialRefused, setTrialRefused] = useState(false); // the studio says this person already had her free trial
   const [remind, setRemind] = useState(store.reminders);
   useSeo(t.meta.schedule);
 
@@ -79,7 +81,9 @@ export default function ClassDetail() {
   // Before payment only one class can be held at a time. Reserving here would hold another one when the plan is still
   // unpaid, or (no plan covering this class, payment closed) when the class would be held at checkout.
   const holdsUnpaid = plan ? !!store.planPending : !siteConfig.flags.paymentsLive;
-  const otherHeld = holdsUnpaid && store.held && store.held.slotId !== slot.id ? store.held : undefined;
+  // Trial week: a visitor with no plan books her first class free (one per person; the studio checks it too)
+  const trial = scheduleConfig.freeTrial && !store.planId && !trialRefused && !store.bookings.some((b) => b.trial && b.slotId !== slot.id);
+  const otherHeld = !trial && holdsUnpaid && store.held && store.held.slotId !== slot.id ? store.held : undefined;
   // One class bought on its own: a visitor's way in, and a member's when the plan is used up
   const singleLink = (primary: boolean) => (
     <Link
@@ -113,19 +117,23 @@ export default function ClassDetail() {
   const confirm = (e: FormEvent) => {
     e.preventDefault();
     if (atLimit) return;
-    const local = store.book(slot, isReformer ? bed : null, remind, { held: !!store.planPending });
+    const local = store.book(slot, isReformer ? bed : null, remind, trial ? { trial: true } : { held: !!store.planPending });
     if (!local) return;
     const contact = whoFrom(e.currentTarget as HTMLFormElement);
     // A plan ordered before online payment opened holds the bed (status "Held") until the studio takes payment
-    relay("booking", { lang, contact, slot: slotRef, bed: isReformer ? bed : null, showAs, ...(store.planPending ? { held: true } : {}) }, { ref: local.id }).then((r) => {
+    relay("booking", { lang, contact, slot: slotRef, bed: isReformer ? bed : null, showAs, ...(trial ? { trial: true } : store.planPending ? { held: true } : {}) }, { ref: local.id }).then((r) => {
       if (r.id) store.setRemoteId(local.id, r.id);
-      else if (r.error === "held limit") {
+      else if (r.error === "trial used") {
+        store.cancel(local.id);
+        setConfirmed(false);
+        setTrialRefused(true);
+      } else if (r.error === "held limit") {
         store.cancel(local.id);
         setConfirmed(false);
         setRefused(true);
       }
     });
-    track("booking_confirmed", { service: slot.service });
+    track("booking_confirmed", { service: slot.service, ...(trial ? { trial: true } : {}) });
     setConfirmed(true);
   };
   const joinWaitlist = (e: FormEvent) => {
@@ -249,9 +257,9 @@ export default function ClassDetail() {
         ) : (
           <div className="stack gap-12">
             <button className="btn btn--primary btn--block" onClick={() => setSheet(true)}>
-              {t.klass.reserve}
+              {trial ? t.trial.reserve : t.klass.reserve}
             </button>
-            <p className="tiny center">{!plan ? t.klass.payNoteVisitor : store.planPending ? t.klass.payNotePending : t.klass.payNote}</p>
+            <p className="tiny center">{trial ? t.trial.note : !plan ? t.klass.payNoteVisitor : store.planPending ? t.klass.payNotePending : t.klass.payNote}</p>
           </div>
         )}
       </div>
@@ -279,8 +287,8 @@ export default function ClassDetail() {
               )}
               <div className="kv">
                 <span>{t.confirm.payWith}</span>
-                <span className={plan ? "" : "hi"}>
-                  {plan ? (store.planPending ? t.confirm.payPlanPending : t.confirm.payPlan).replace("{plan}", planName(plan, t, store.planKind)) : t.confirm.payNone}
+                <span className={plan || trial ? "" : "hi"}>
+                  {plan ? (store.planPending ? t.confirm.payPlanPending : t.confirm.payPlan).replace("{plan}", planName(plan, t, store.planKind)) : trial ? t.trial.pay : t.confirm.payNone}
                 </span>
               </div>
               <div className="kv" style={{ alignItems: "center", borderBottom: 0 }}>
@@ -298,6 +306,11 @@ export default function ClassDetail() {
                       : t.confirm.passExpired
                     : (plan.billingType === "monthly" ? t.confirm.limitWeek : t.confirm.limitPass).replace("{used}", String(usage.used)).replace("{cap}", String(usage.cap))}
               </p>
+            )}
+            {trialRefused && (
+              <div className="notice" role="alert">
+                <span className="small">{t.trial.used}</span>
+              </div>
             )}
             {refused ? (
               <div className="notice" role="alert">
@@ -320,7 +333,7 @@ export default function ClassDetail() {
                 </Link>
                 {singleLink(false)}
               </>
-            ) : plan && usage ? (
+            ) : (plan && usage) || trial ? (
               <form className="stack gap-12" onSubmit={confirm}>
                 {needsDetails && (
                   <>
@@ -335,7 +348,7 @@ export default function ClassDetail() {
                 {healthValid(store.profile.health) ? (
                   <>
                     <button className="btn btn--sand btn--block">
-                      {redeemLabel(plan, usage, t)}
+                      {plan && usage ? redeemLabel(plan, usage, t) : t.trial.reserve}
                     </button>
                     {store.planPending && <p className="tiny center">{t.confirm.pending}</p>}
                   </>
@@ -374,12 +387,12 @@ export default function ClassDetail() {
         ) : (
           <div className="stack gap-16 center" style={{ paddingTop: 8 }}>
             <Check />
-            <h2 className="display d-md">{t.confirm.bookedTitle}</h2>
+            <h2 className="display d-md">{existing?.trial ? t.trial.bookedTitle : t.confirm.bookedTitle}</h2>
             <p className="muted small">
               {copy.name} · {fmtDate(day)} · <span className="nums">{slot.time}</span>
               {isReformer ? ` · ${bedLabel}` : ""}
               <br />
-              {t.confirm.bookedSub}
+              {existing?.trial ? t.trial.bookedSub : t.confirm.bookedSub}
             </p>
             {after && plan && after.cap !== null && <p className="plan-left">{planLeft(plan, after, t)}</p>}
             <button

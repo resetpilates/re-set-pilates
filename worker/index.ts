@@ -51,6 +51,8 @@ const MAX_PHOTO_BODY = MAX_PHOTO + MAX_BODY;
 
 class BadRequest extends Error {}
 /** The request is fine but would duplicate something that exists (e.g. the same membership is still running). */
+/** Bookings "via" value for the free trial class (config/schedule.ts freeTrial). */
+const TRIAL_VIA = "Free trial";
 /** Airtable formula: a booking that holds a bed (a paid booking, or a bed held at checkout before payment opened). */
 const ACTIVE_BOOKING = `OR({${F.bookings.status}}='Booked', {${F.bookings.status}}='Held')`;
 
@@ -308,6 +310,15 @@ async function heldElsewhere(at: Airtable, member: AirRecord, slotId: string): P
   });
 }
 
+/** Has the member already had the free trial? A trial cancelled in time gives it back; any other trial booking uses it. */
+async function trialUsed(at: Airtable, member: AirRecord): Promise<boolean> {
+  const ids = linkIds(member.fields[F.members.bookings]).slice(-50); // newest links are last
+  if (!ids.length) return false;
+  const B = F.bookings;
+  const rows = await at.find(T.bookings, `AND({${B.via}}='${TRIAL_VIA}',OR(${ids.map((id) => `RECORD_ID()=${q(id)}`).join(",")}))`, ids.length);
+  return rows.some((r) => r.fields[B.via] === TRIAL_VIA && r.fields[B.status] !== "Cancelled on time");
+}
+
 /** The member's current Active membership, if the studio has marked one active. */
 async function activeMembership(at: Airtable, member: AirRecord): Promise<string | undefined> {
   const ids = linkIds(member.fields[F.members.memberships]);
@@ -519,6 +530,9 @@ const handlers: Record<RelayEvent, Handler> = {
     const member = await upsertMember(at, c, { lang: lang(m.lang), attribution: attribution(m.attribution) });
     // Before payment, one held class at a time per person, whichever phone or browser they book from
     if (m.held && (await heldElsewhere(at, member, s.slotId))) throw new Conflict("held limit");
+    // The free trial is one per person, whichever phone or browser they book from
+    const trial = m.trial === true && !m.held;
+    if (trial && (await trialUsed(at, member))) throw new Conflict("trial used");
     const klass = await findOrCreateClass(at, s);
     const membership = await activeMembership(at, member);
     const booking = await at.create(T.bookings, {
@@ -529,7 +543,7 @@ const handlers: Record<RelayEvent, Handler> = {
       ...(s.service === "reformer" ? { [B.bed]: bed } : {}),
       [B.slotId]: s.slotId,
       [B.shownOn]: scheduleName(c, oneOf(m.showAs, SHOW_AS) ?? "short"),
-      [B.via]: m.held ? "Checkout (payment pending)" : "App",
+      [B.via]: trial ? TRIAL_VIA : m.held ? "Checkout (payment pending)" : "App",
       [B.status]: m.held ? "Held" : "Booked",
     });
     const stage = member.fields[F.members.lifecycle];

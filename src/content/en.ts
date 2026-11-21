@@ -347,6 +347,19 @@ export const en = {
     addCalendar: "Add to calendar",
     viewBookings: "View my classes",
   },
+  // Trial week (config/schedule.ts freeTrial): a visitor's first class is free, one per person
+  trial: {
+    eyebrow: "Trial week at re:set",
+    title: "Your first class is on us",
+    sub: "Reformer Pilates in small groups of up to 5. Pick a day and a time below and book your free trial.",
+    tag: "First class free",
+    reserve: "Book my free trial",
+    note: "Your first class is free. No payment needed.",
+    pay: "Free trial · ₪0",
+    bookedTitle: "Your free trial is booked",
+    bookedSub: "Your first class is on us. See you at the studio.",
+    used: "You've already used your free trial. You can book this class as a single class or with a plan.",
+  },
   pricing: {
     title: "Pricing",
     sub: "Memberships and passes for Reformer and Mat. Pick your class, pick your plan.",
@@ -681,7 +694,7 @@ export const en = {
     classLbl: "Which class?",
     classes: { Reformer: "Reformer", Mat: "Mat", Teens: "Teens (12–17)", "Gift card": "Gift card", "Not sure": "Not sure yet" },
     timeLbl: "When suits you?",
-    times: { "Adult morning": "Morning (adults, 08:00–12:00)", "Teen evening": "Evening (teens, 17:00–21:00)" },
+    times: { "Adult morning": "Morning (adults)", "Teen evening": "Evening (teens)" },
     cta: "Join the waitlist",
     note: "Nothing is charged. We only use your number to contact you about opening.",
     doneTitle: "You're on the list",
