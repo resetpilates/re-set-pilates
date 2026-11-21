@@ -706,6 +706,7 @@ const handlers: Record<RelayEvent, Handler> = {
     const interest = classType === "Reformer" || classType === "Mat" || classType === "Teens" ? classType : undefined;
     const member = await upsertMember(at, c, {
       lang: lg,
+      heard: oneOf(m.heard, HEARD_FROM), // the checkout form asks; without it every waitlist sign-up reads "Website"
       attribution: attribution(m.attribution),
       consent: m.consent === true,
       interests: interest ? [interest] : undefined,

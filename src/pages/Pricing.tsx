@@ -180,6 +180,7 @@ export function Checkout() {
       planId: plan.id,
       wanted: [`${planName(plan, t, slotLabel ? null : kind)} · ₪${effectivePrice(plan, kind)} · ${payLabel[method]}`, monthly && x.autoRenew ? t.checkout.autoRenewTag : ""].filter(Boolean).join(" · "),
       slot: slotLabel,
+      heard: x.heard,
       consent: x.consent,
       website: x.website,
     });
