@@ -1,6 +1,6 @@
 ---
 tags: [reset-pilates, routine]
-updated: 2026-11-20
+updated: 2026-11-21
 source: resetpilates.org/en/studio/help
 ---
 

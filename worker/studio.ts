@@ -3,8 +3,10 @@
 //   POST /api/studio/login   { code }  → { token }   the studio passcode (secret STUDIO_PASSCODE) for a 30-day pass
 //   GET  /api/studio/data    Bearer token → one snapshot of Airtable: classes, leads, members, payments, campaigns
 //   GET  /api/studio/member  ?id=rec…  → one customer in full: plans, payments with receipts, every class and enquiry
-//   GET  /api/studio/docs    ?folder= | ?q=  → the wiki's Documents: one Google Drive folder (worker/drive.ts)
-//   GET  /api/studio/file/<id>?e=&s=  → one of those files; the link is signed and lasts a few hours
+//   GET  /api/studio/docs        → the wiki's Documents (worker/docs.ts): every saved file with its labels
+//   POST /api/studio/docs        → a new document (multipart: file + labels), from Orit's phone
+//   POST /api/studio/docs/<id>   → new labels for a document;  DELETE /api/studio/docs/<id> → remove it
+//   GET  /api/studio/file/<id>?e=&s=  → one document; the link is signed and lasts a few hours
 //   POST /api/studio/act     Bearer token → one of three small edits: lead status, waitlist "contacted", attendance
 //
 // The hub reads member names, phones and emails, so every call needs the pass and nothing here is cached.
@@ -12,7 +14,7 @@
 import type { ReceiptData } from "../src/lib/receipt";
 import { ATTENDANCE, LEAD_STATUSES, type StBooking, type StEvent, type StMember, type StMeta, type StPayment, type StPlan, type StudioAction, type StudioData, type StudioDocs, type StudioMember, type StudioReply } from "../src/lib/studioTypes";
 import { Airtable, AirtableError, F, T, type AirRecord } from "./airtable";
-import { listDocs, openDoc } from "./drive";
+import { DOC_ID, deleteDoc, listDocs, openDoc, updateDoc, uploadDoc, type DocResult } from "./docs";
 import { receiptLink } from "./notify";
 
 declare global {
@@ -445,7 +447,20 @@ export async function studio(req: Request, env: Env, url: URL, sameOrigin: boole
         const exp = Date.now() + DOC_LINK_HOURS * 3600e3;
         return `${origin}/api/studio/file/${id}?e=${exp}&s=${await hmacHex(passcode, `file.${id}.${exp}`)}`;
       };
-      return reply(await listDocs(env, { folder: url.searchParams.get("folder") ?? undefined, q: (url.searchParams.get("q") ?? "").trim() || undefined }, link));
+      return reply(await listDocs(env, link));
+    }
+    if (route === "docs" || route.startsWith("docs/")) {
+      if (!sameOrigin) return reply({ ok: false, error: "origin" }, 403);
+      const id = route.slice(5);
+      const done: DocResult =
+        route === "docs" && req.method === "POST"
+          ? await uploadDoc(env, req)
+          : DOC_ID.test(id) && req.method === "POST"
+            ? await updateDoc(env, id, ((await req.json().catch(() => null)) ?? {}) as Record<string, unknown>)
+            : DOC_ID.test(id) && req.method === "DELETE"
+              ? await deleteDoc(env, id)
+              : { ok: false, status: 400, error: "bad request" };
+      return done.ok ? reply({ ok: true, ...(done.id ? { id: done.id } : {}) }) : reply({ ok: false, error: done.error }, done.status);
     }
     if (route === "member" && req.method === "GET") {
       const id = url.searchParams.get("id") ?? "";

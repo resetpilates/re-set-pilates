@@ -6,8 +6,8 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { siteConfig } from "../config/site";
 import { studioCopy, type StudioCopy, type TabId, type WikiArticle } from "../content/studio";
 import { useI18n } from "../lib/i18n";
-import { forgetPass, hasPass, loadDocs, loadMember, loadStudio, sendAction, signIn, waDigits } from "../lib/studio";
-import { LEAD_STATUSES, type Attendance, type LeadStatus, type StClass, type StDoc, type StLead, type StMember, type StPayment, type StPlan, type StudioAction, type StudioData, type StudioDocs, type StudioMember } from "../lib/studioTypes";
+import { forgetPass, hasPass, loadDocs, loadMember, loadStudio, removeDoc, saveDocLabels, sendAction, signIn, uploadDoc, waDigits } from "../lib/studio";
+import { DOC_CATEGORIES, LEAD_STATUSES, MONEY_CATEGORIES, type Attendance, type DocCategory, type DocMeta, type LeadStatus, type StClass, type StDoc, type StLead, type StMember, type StPayment, type StPlan, type StudioAction, type StudioData, type StudioDocs, type StudioMember } from "../lib/studioTypes";
 import "../styles/studio.css";
 
 const TZ = "Asia/Jerusalem";
@@ -925,54 +925,262 @@ function Articles({ items, forceOpen }: { items: WikiArticle[]; forceOpen?: bool
 }
 
 const DOC_ICON: Record<StDoc["kind"], string> = {
-  folder: "M3 6h6l2 2h10v11H3z",
   pdf: "M6 3h9l4 4v14H6zM15 3v4h4M9 13h6M9 17h6",
-  doc: "M6 3h9l4 4v14H6zM15 3v4h4M9 13h6M9 17h4",
-  sheet: "M4 5h16v14H4zM4 10h16M4 14h16M10 5v14",
   image: "M4 5h16v14H4zM4 16l5-5 4 4 3-3 4 4",
   file: "M6 3h9l4 4v14H6zM15 3v4h4",
 };
+const DOC_ACCEPT = "image/*,application/pdf,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt";
+const MAX_DOC_MB = 20;
+// Phone cameras name photos IMG_1234 / PXL_… / image.jpg: not worth offering as a name.
+const cameraName = (name: string) => /^(img|image|photo|pxl|dsc|scan|whatsapp image)[\s_-]?/i.test(name);
+/** Receipt amounts keep their agorot: ₪1,250.50, but ₪640 stays ₪640. */
+const shekels = (n: number) => `₪${n.toLocaleString("en-US", { minimumFractionDigits: Number.isInteger(n) ? 0 : 2, maximumFractionDigits: 2 })}`;
+const docSize = (n: number) => (n > 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
 
-function DocList({ f, items, onFolder }: { f: Fmt; items: StDoc[]; onFolder: (id: string) => void }) {
-  const row = (d: StDoc) => (
-    <>
-      <Icon d={DOC_ICON[d.kind]} />
-      <span className="st-doc__main">
-        <b>
-          <bdi>{d.name}</bdi>
-        </b>
-        {d.kind !== "folder" && <small>{[d.modified ? f.date(dayKey(d.modified)) : "", d.size ? (d.size > 1048576 ? `${(d.size / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(d.size / 1024))} KB`) : ""].filter(Boolean).join(" · ")}</small>}
-      </span>
-    </>
+/** Words to look for in a document: its name, note, who was paid, file name and category, in both languages. */
+const docText = (c: StudioCopy, d: StDoc) => `${d.title} ${d.note} ${d.payee} ${d.fileName} ${c.help.docs.cats[d.category]} ${d.category} ${d.amount ?? ""}`.toLowerCase();
+
+/** Add a new document (photo or file), or change the labels of one already saved. */
+function DocForm({ c, doc, onSaved, onCancel }: { c: StudioCopy; doc?: StDoc; onSaved: (msg: string) => void; onCancel: () => void }) {
+  const d = c.help.docs;
+  const [file, setFile] = useState<File | null>(null);
+  const [meta, setMeta] = useState<DocMeta>(() => (doc ? { title: doc.title, category: doc.category, date: doc.date, note: doc.note, amount: doc.amount, payee: doc.payee } : { title: "", category: "expense", date: dayKey(new Date()), note: "", amount: null, payee: "" }));
+  const [amount, setAmount] = useState(doc?.amount != null ? String(doc.amount) : "");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const set = (patch: Partial<DocMeta>) => (setMeta((m) => ({ ...m, ...patch })), setError(""));
+  const money = MONEY_CATEGORIES.includes(meta.category);
+
+  const take = (f: File | undefined) => {
+    if (!f) return;
+    if (f.size > MAX_DOC_MB * 1024 * 1024) return setError(d.tooBig);
+    setFile(f);
+    setError("");
+    const base = f.name.replace(/\.[a-z0-9]{1,5}$/i, "");
+    if (!meta.title && !cameraName(base)) set({ title: base.slice(0, 120) });
+  };
+
+  async function save(e: FormEvent) {
+    e.preventDefault();
+    if (busy) return;
+    if (!doc && !file) return setError(d.pick);
+    const n = amount.trim() === "" ? null : Number(amount.replace(/[,\s₪]/g, ""));
+    const m: DocMeta = { ...meta, amount: money && n !== null && Number.isFinite(n) && n >= 0 ? n : null, payee: money ? meta.payee : "" };
+    setBusy(true);
+    const r = doc ? await saveDocLabels(doc.id, m) : await uploadDoc(file!, m);
+    setBusy(false);
+    if (r.ok) return onSaved(d.saved);
+    setError(r.error === "too large" ? d.tooBig : d.failedSave);
+  }
+
+  return (
+    <form className="st-card st-docform" onSubmit={save}>
+      <h2 className="st-h2">{doc ? d.edit : d.add}</h2>
+      {!doc && (
+        <>
+          <p className="st-muted">{d.addHint}</p>
+          <div className="st-reach">
+            <label className="st-btn st-btn--ink">
+              {d.photo}
+              <input type="file" accept="image/*" capture="environment" hidden onChange={(e) => take(e.target.files?.[0])} />
+            </label>
+            <label className="st-btn">
+              {d.file}
+              <input type="file" accept={DOC_ACCEPT} hidden onChange={(e) => take(e.target.files?.[0])} />
+            </label>
+          </div>
+          {file && (
+            <p className="st-docform__file">
+              <Icon d={DOC_ICON[file.type === "application/pdf" ? "pdf" : file.type.startsWith("image/") ? "image" : "file"]} />
+              <bdi>{file.name}</bdi>
+              <small>{docSize(file.size)}</small>
+            </p>
+          )}
+        </>
+      )}
+      <label className="st-field">
+        <span>{d.title}</span>
+        <input value={meta.title} maxLength={120} placeholder={d.titlePh} onChange={(e) => set({ title: e.target.value })} />
+      </label>
+      <div className="st-field">
+        <span>{d.category}</span>
+        <div className="st-next__opts">
+          {DOC_CATEGORIES.map((k) => (
+            <button key={k} type="button" className={`st-pill${meta.category === k ? " is-on" : ""}`} aria-pressed={meta.category === k} onClick={() => set({ category: k })}>
+              {d.cats[k]}
+            </button>
+          ))}
+        </div>
+      </div>
+      <label className="st-field">
+        <span>{d.date}</span>
+        <input type="date" value={meta.date} max="2099-12-31" onChange={(e) => set({ date: e.target.value || dayKey(new Date()) })} />
+      </label>
+      {money && (
+        <div className="st-docform__row">
+          <label className="st-field">
+            <span>{d.amount}</span>
+            <input inputMode="decimal" value={amount} placeholder="0" onChange={(e) => (setAmount(e.target.value), setError(""))} />
+          </label>
+          <label className="st-field">
+            <span>{d.payee}</span>
+            <input value={meta.payee} maxLength={80} onChange={(e) => set({ payee: e.target.value })} />
+          </label>
+        </div>
+      )}
+      <label className="st-field">
+        <span>{d.note}</span>
+        <textarea rows={2} maxLength={400} value={meta.note} onChange={(e) => set({ note: e.target.value })} />
+      </label>
+      {error && (
+        <p className="st-error" role="alert">
+          {error}
+        </p>
+      )}
+      <div className="st-reach">
+        <button className="st-btn st-btn--ink" disabled={busy}>
+          {busy ? d.saving : d.save}
+        </button>
+        <button type="button" className="st-btn" disabled={busy} onClick={onCancel}>
+          {d.cancel}
+        </button>
+      </div>
+    </form>
   );
+}
+
+function DocRows({ c, f, items, onChanged }: { c: StudioCopy; f: Fmt; items: StDoc[]; onChanged: (msg: string) => void }) {
+  const d = c.help.docs;
+  const [open, setOpen] = useState<string | null>(null);
+  const [editing, setEditing] = useState<string | null>(null);
+  async function remove(doc: StDoc) {
+    if (!window.confirm(d.confirmRemove)) return;
+    const r = await removeDoc(doc.id);
+    onChanged(r.ok ? d.removed : d.failedSave);
+  }
   return (
     <ul className="st-card st-docs">
-      {items.map((d) => (
-        <li key={d.id}>
-          {d.kind === "folder" ? (
-            <button type="button" className="st-doc st-doc--folder" onClick={() => onFolder(d.id)}>
-              {row(d)}
+      {items.map((doc) =>
+        editing === doc.id ? (
+          <li key={doc.id} className="st-docs__edit">
+            <DocForm c={c} doc={doc} onCancel={() => setEditing(null)} onSaved={(msg) => (setEditing(null), onChanged(msg))} />
+          </li>
+        ) : (
+          <li key={doc.id} className={open === doc.id ? "is-open" : ""}>
+            <button type="button" className="st-doc" aria-expanded={open === doc.id} onClick={() => setOpen(open === doc.id ? null : doc.id)}>
+              <Icon d={DOC_ICON[doc.kind]} />
+              <span className="st-doc__main">
+                <b>
+                  <bdi>{doc.title}</bdi>
+                </b>
+                <small>
+                  {[d.cats[doc.category], f.date(doc.date)].join(" · ")}
+                  {doc.payee && (
+                    <>
+                      {" · "}
+                      <bdi>{doc.payee}</bdi>
+                    </>
+                  )}
+                </small>
+              </span>
+              {doc.amount != null && <strong className="st-doc__amount">{shekels(doc.amount)}</strong>}
             </button>
-          ) : (
-            <a className="st-doc" href={d.link} target="_blank" rel="noreferrer">
-              {row(d)}
-            </a>
-          )}
-        </li>
-      ))}
+            {open === doc.id && (
+              <div className="st-doc__more">
+                {doc.note && (
+                  <p className="st-pre">
+                    <bdi>{doc.note}</bdi>
+                  </p>
+                )}
+                <p className="st-muted st-doc__file">
+                  <bdi>{doc.fileName}</bdi> · {docSize(doc.size)}
+                </p>
+                <div className="st-reach">
+                  <a className="st-btn st-btn--ink" href={doc.link} target="_blank" rel="noreferrer">
+                    {d.open}
+                  </a>
+                  <button type="button" className="st-btn" onClick={() => setEditing(doc.id)}>
+                    {d.edit}
+                  </button>
+                  <button type="button" className="st-btn st-btn--quiet" onClick={() => void remove(doc)}>
+                    {d.remove}
+                  </button>
+                </div>
+              </div>
+            )}
+          </li>
+        ),
+      )}
     </ul>
   );
 }
 
-type WikiSection = "routines" | "rules" | "howto" | "docs";
+/** Expenses by period, and the list for the accountant as a spreadsheet file (opens in Excel and Google Sheets). */
+function Expenses({ c, items }: { c: StudioCopy; items: StDoc[] }) {
+  const d = c.help.docs;
+  const paid = items.filter((x) => MONEY_CATEGORIES.includes(x.category) && x.amount != null);
+  if (!paid.length) return null;
+  const today = dayKey(new Date());
+  const month = today.slice(0, 7);
+  const prev = addDays(`${month}-01`, -1).slice(0, 7);
+  const sum = (pre: string) => paid.filter((x) => x.date.startsWith(pre)).reduce((n, x) => n + (x.amount ?? 0), 0);
+  function download() {
+    const cell = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
+    const head = [d.date, d.title, d.category, d.payee, d.amount, d.note, d.chosen];
+    const rows = [...paid].sort((a, b) => a.date.localeCompare(b.date)).map((x) => [x.date, x.title, d.cats[x.category], x.payee, x.amount ?? "", x.note, x.fileName]);
+    // The byte-order mark lets Excel read the Hebrew correctly.
+    const csv = "\ufeff" + [head, ...rows].map((r) => r.map(cell).join(",")).join("\r\n");
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    a.download = `reset-pilates-expenses-${today}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => (URL.revokeObjectURL(a.href), a.remove()), 1000);
+  }
+  return (
+    <section className="st-sec">
+      <h2 className="st-h2">{d.spent}</h2>
+      <div className="st-stats st-stats--3">
+        {(
+          [
+            [shekels(Math.round(sum(month) * 100) / 100), d.thisMonth],
+            [shekels(Math.round(sum(prev) * 100) / 100), d.lastMonth],
+            [shekels(Math.round(sum(today.slice(0, 4)) * 100) / 100), d.thisYear],
+          ] as [string, string][]
+        ).map(([n, label]) => (
+          <div key={label} className="st-card st-stat">
+            <Num v={n} />
+            <span>{label}</span>
+          </div>
+        ))}
+      </div>
+      <button type="button" className="st-btn st-btn--block" onClick={download}>
+        {d.export}
+      </button>
+      <p className="st-muted st-sec__note">{d.exportNote}</p>
+    </section>
+  );
+}
 
-function Wiki({ c, f, other, onSignOut }: { c: StudioCopy; f: Fmt; other: { to: string; label: string }; onSignOut: () => void }) {
+type WikiSection = "docs" | "routines" | "rules" | "howto";
+type DocFilter = "all" | DocCategory;
+
+function Wiki({ c, f, other, onSignOut, say }: { c: StudioCopy; f: Fmt; other: { to: string; label: string }; onSignOut: () => void; say: (msg: string) => void }) {
   const { t } = useI18n();
-  const [sec, setSec] = useState<WikiSection>("routines");
+  const [sec, setSec] = useState<WikiSection>("docs");
   const [q, setQ] = useState("");
-  const [folder, setFolder] = useState<string | undefined>();
   const [docs, setDocs] = useState<StudioDocs | null>(null);
   const [failed, setFailed] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [cat, setCat] = useState<DocFilter>("all");
+
+  const reload = useCallback(async () => {
+    const r = await loadDocs();
+    if (r.ok) return setDocs(r), setFailed(false);
+    setFailed(true);
+  }, []);
+  useEffect(() => void reload(), [reload]);
+  const changed = (msg: string) => (say(msg), setAdding(false), void reload());
 
   // The studio terms customers accept are the studio's rules: same wording as the website, never a second copy.
   const rules = useMemo<WikiArticle[]>(() => t.terms.sections.map((x, i) => ({ id: `rule${i}`, q: x.h, a: x.items.map((line) => `• ${line}`) })), [t]);
@@ -980,22 +1188,12 @@ function Wiki({ c, f, other, onSignOut }: { c: StudioCopy; f: Fmt; other: { to: 
   const words = q.toLowerCase().split(/\s+/).filter(Boolean);
   const searching = words.length > 0;
   const found = searching ? [...groups.routines, ...groups.howto, ...groups.rules].filter((w) => words.every((x) => `${w.q} ${w.a.join(" ")}`.toLowerCase().includes(x))) : [];
-
-  // Documents come from Google Drive: the open folder, or (while searching) every document that mentions the words.
-  const term = q.trim();
-  const wanted = searching ? (term.length >= 2 ? { q: term } : null) : sec === "docs" ? { folder } : null;
-  const key = wanted ? JSON.stringify(wanted) : "";
-  useEffect(() => {
-    if (!key) return;
-    let live = true;
-    const timer = setTimeout(
-      () => void loadDocs(JSON.parse(key)).then((r) => live && (r.ok ? (setDocs(r), setFailed(false)) : (setDocs(null), setFailed(true)))),
-      searching ? 450 : 0, // wait for a pause in typing
-    );
-    return () => ((live = false), clearTimeout(timer));
-  }, [key, searching]);
-
+  const items = docs?.items ?? [];
+  const foundDocs = searching ? items.filter((x) => words.every((w) => docText(c, x).includes(w))) : [];
+  const count = (k: DocFilter) => (k === "all" ? items.length : items.filter((x) => x.category === k).length);
+  const shown = cat === "all" ? items : items.filter((x) => x.category === cat);
   const d = c.help.docs;
+
   return (
     <>
       <h1 className="st-h1">{c.help.title}</h1>
@@ -1004,18 +1202,18 @@ function Wiki({ c, f, other, onSignOut }: { c: StudioCopy; f: Fmt; other: { to: 
 
       {searching ? (
         <>
-          {found.length > 0 && <Articles items={found} forceOpen />}
-          {docs?.connected && docs.items.length > 0 && term.length >= 2 && (
+          {foundDocs.length > 0 && (
             <section className="st-sec">
               <h2 className="st-h2">{d.found}</h2>
-              <DocList f={f} items={docs.items} onFolder={() => undefined} />
+              <DocRows c={c} f={f} items={foundDocs} onChanged={changed} />
             </section>
           )}
-          {found.length === 0 && !(docs?.connected && docs.items.length > 0) && <Empty>{c.help.empty}</Empty>}
+          {found.length > 0 && <Articles items={found} forceOpen />}
+          {found.length === 0 && foundDocs.length === 0 && <Empty>{c.help.empty}</Empty>}
         </>
       ) : (
         <>
-          <Chips value={sec} onPick={setSec} options={[["routines", c.help.sections.routines], ["rules", c.help.sections.rules], ["howto", c.help.sections.howto], ["docs", c.help.sections.docs]]} />
+          <Chips value={sec} onPick={setSec} options={[["docs", c.help.sections.docs, items.length || undefined], ["routines", c.help.sections.routines], ["rules", c.help.sections.rules], ["howto", c.help.sections.howto]]} />
           {sec !== "docs" ? (
             <>
               {sec === "rules" && <p className="st-muted st-sec__note">{c.help.rulesNote}</p>}
@@ -1029,17 +1227,23 @@ function Wiki({ c, f, other, onSignOut }: { c: StudioCopy; f: Fmt; other: { to: 
             <p className="st-card st-note">{d.off}</p>
           ) : (
             <>
-              {docs.path.length > 1 && (
-                <nav className="st-crumbs" aria-label={d.home}>
-                  {docs.path.map((x, i) => (
-                    <button key={x.id} type="button" className="st-link" disabled={i === docs.path.length - 1} onClick={() => setFolder(i === 0 ? undefined : x.id)}>
-                      {i === 0 ? d.home : <bdi>{x.name}</bdi>}
-                    </button>
-                  ))}
-                </nav>
+              {adding ? (
+                <DocForm c={c} onCancel={() => setAdding(false)} onSaved={changed} />
+              ) : (
+                <button type="button" className="st-btn st-btn--ink st-btn--block st-add" onClick={() => setAdding(true)}>
+                  + {d.add}
+                </button>
               )}
-              {docs.items.length === 0 ? <Empty>{d.empty}</Empty> : <DocList f={f} items={docs.items} onFolder={setFolder} />}
-              <p className="st-muted st-foot">{d.add}</p>
+              {items.length === 0 ? (
+                <Empty>{d.empty}</Empty>
+              ) : (
+                <>
+                  <Chips value={cat} onPick={setCat} options={(["all", ...DOC_CATEGORIES] as DocFilter[]).filter((k) => k === "all" || count(k) > 0).map((k) => [k, d.cats[k], count(k)] as [DocFilter, string, number])} />
+                  {shown.length === 0 ? <Empty>{d.none}</Empty> : <DocRows c={c} f={f} items={shown} onChanged={changed} />}
+                  {docs.capped && <p className="st-muted st-foot">{d.capped}</p>}
+                  <Expenses c={c} items={items} />
+                </>
+              )}
             </>
           )}
         </>
@@ -1166,7 +1370,7 @@ export default function Studio() {
         </header>
         <main className="st-main">
           {tab === "help" ? (
-            <Wiki c={c} f={f} other={{ to: `/${lang === "he" ? "en" : "he"}${here}`, label: lang === "he" ? "English" : "עברית" }} onSignOut={signOut} />
+            <Wiki c={c} f={f} say={setToast} other={{ to: `/${lang === "he" ? "en" : "he"}${here}`, label: lang === "he" ? "English" : "עברית" }} onSignOut={signOut} />
           ) : !props ? (
             <Empty>{state === "failed" ? c.common.failed : c.common.loading}</Empty>
           ) : personId ? (

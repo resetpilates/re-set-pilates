@@ -1,6 +1,6 @@
 ---
 tags: [reset-pilates, home]
-updated: 2026-11-20
+updated: 2026-11-21
 source: resetpilates.org/en/studio/help
 ---
 
@@ -26,6 +26,7 @@ Everything about running the studio, in one place.
 - [[How do I put this on my phone's home screen]]
 - [[A new person wrote to us. What do I do]]
 - [[Someone paid. How do I confirm it]]
+- [[How do I save a receipt or a document]]
 - [[Where do I find a receipt]]
 - [[How do I see everything about one customer]]
 - [[How do I mark who came to class]]
@@ -40,4 +41,4 @@ Everything about running the studio, in one place.
 
 ## Documents
 
-To add a document, put it in the studio's Google Drive folder. It shows up here by itself.
+Receipts, invoices, tax papers and other documents are saved on the Studio page, under Wiki → Documents → “Add a document”.

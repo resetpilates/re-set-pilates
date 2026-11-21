@@ -206,6 +206,29 @@ html[lang="he"] .st .st-tab { font-size: 11.5px; }
 .st-step::before { content: ""; position: absolute; inset-inline-start: 4px; top: 0.6em; width: 8px; height: 8px; border-radius: 50%; background: var(--hy-sage); }
 
 .st-help__foot { margin-top: 10px; }
+
+/* Documents: the cabinet in the wiki (20 Nov 2026) */
+.st .st-add { min-height: 54px; font-size: 16px; }
+.st-docform { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.st-docform .st-h2 { margin: 0; }
+.st-docform .st-field { margin-top: 0; }
+.st-docform .st-field input, .st-docform .st-field textarea { min-height: 48px; padding: 10px 14px; border-radius: 14px; border: 1.5px solid var(--st-line); background: var(--hy-ivory); color: inherit; font: inherit; font-size: 16px; letter-spacing: normal; font-weight: 400; }
+.st-docform .st-field textarea { resize: vertical; min-height: 72px; }
+.st-docform .st-field input:focus, .st-docform .st-field textarea:focus { border-color: var(--hy-ink); outline: none; }
+.st-docform__row { display: grid; grid-template-columns: 1fr 1.4fr; gap: 10px; }
+.st-docform__file { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: var(--hy-sage-soft); color: var(--hy-sage-deep); font-weight: 600; overflow-wrap: anywhere; }
+.st-docform__file small { margin-inline-start: auto; font-weight: 500; white-space: nowrap; }
+.st label.st-btn { cursor: pointer; }
+.st .st-doc { text-align: start; }
+.st-doc__amount { font-variant-numeric: tabular-nums; white-space: nowrap; direction: ltr; }
+.st-doc__more { padding: 0 16px 16px; display: flex; flex-direction: column; gap: 10px; }
+.st-doc__file { font-size: 13px; overflow-wrap: anywhere; }
+.st-docs__edit { padding: 8px; }
+.st-docs__edit .st-docform { border: 0; padding: 8px; }
+.st .st-btn--quiet { border-color: var(--st-line); color: #8a3a2f; }
+.st-stats--3 { grid-template-columns: repeat(3, 1fr); }
+.st-stats--3 .st-stat { padding: 12px; }
+.st-stats--3 .st-stat b { font-size: 24px; }
 .st-docs li + li { border-top: 1px solid var(--st-line); }
 .st .st-doc { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 60px; padding: 10px 16px; color: inherit; }
 .st-doc .st-ico { color: var(--hy-blush-deep); }
