@@ -24,6 +24,7 @@ export interface Booking {
   remoteId?: string; // Airtable record id from the relay, used to cancel there too
   single?: boolean; // paid for on its own (single class) while a plan was active: it does not use the plan
   held?: boolean; // held before payment (checkout while payment is closed, or a plan still pending): one at a time
+  trial?: boolean; // the free trial class (config/schedule.ts freeTrial): one per person, never uses a plan
 }
 
 export interface Profile {
@@ -79,7 +80,7 @@ interface Store extends Persisted {
    * cover this class. `single` = the class was bought on its own, so the plan is neither checked nor used.
    * `held` = booked before payment: refused (null) while another unpaid class is still ahead.
    */
-  book: (slot: ClassSlot, bed: number | null, remind: boolean, opts?: { single?: boolean; held?: boolean }) => Booking | null;
+  book: (slot: ClassSlot, bed: number | null, remind: boolean, opts?: { single?: boolean; held?: boolean; trial?: boolean }) => Booking | null;
   /** `late` keeps the booking on the record (hidden from lists) so the plan still counts it. */
   cancel: (bookingId: string, late?: boolean) => void;
   joinWaitlist: (slotId: string) => void;
@@ -151,7 +152,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
   }, [s]);
 
-  const book = useCallback<Store["book"]>((slot, bed, remind, { single = false, held = false } = {}) => {
+  const book = useCallback<Store["book"]>((slot, bed, remind, { single = false, held = false, trial = false } = {}) => {
     // Never book past the plan's allowance; a booking for the same slot is being replaced, so it doesn't count
     const allowed = (p: Persisted) => {
       // A late cancel keeps the session used: the same class can't be taken again
@@ -159,6 +160,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       // Before payment, one held class at a time (the same class being re-booked doesn't count)
       if (held && heldClass(p.bookings.filter((x) => x.slotId !== slot.id), israelNow())) return false;
       const plan = p.planId ? planById(p.planId) : undefined;
+      if (trial) return !p.bookings.some((x) => x.trial && x.slotId !== slot.id); // one free trial per person
       if (!plan || single) return true;
       const others = p.bookings.filter((x) => x.slotId !== slot.id);
       return planCovers(plan, p.planKind, slot.service) && planUsage(plan, others, fromISO(slot.date), p.planStart, p.carry ?? 0, !!p.autoRenew && !p.planPending).left > 0;
@@ -177,6 +179,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       bookedAt: new Date().toISOString(),
       ...(single ? { single: true } : {}),
       ...(held ? { held: true } : {}),
+      ...(trial ? { trial: true } : {}),
     };
     setS((p) => (allowed(p) ? { ...p, bookings: [...p.bookings.filter((x) => x.slotId !== slot.id), b] } : p));
     return b;
