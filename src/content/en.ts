@@ -121,6 +121,13 @@ export const en = {
     nextClass: "Your next class",
     classesTitle: "Our classes",
     classesAll: "All services",
+    classesHead: "Who's coming?",
+    classesAlso: "Also here",
+    ways: {
+      group: { tab: "In a group", chip: "Up to 5 people", title: "Small groups, real attention." },
+      personal: { tab: "Personal", chip: "1 or 2 people", title: "Built around your body." },
+      studio: { tab: "Whole studio", chip: "The studio is yours", title: "We close the studio just for you.", cta: "Plan it with us" },
+    },
     whyEyebrow: "Why Reformer Pilates?",
     whyTitle: "Only 5 spots in every Reformer class",
     whyBody: "A small room changes everything. Your instructor sees every movement, adjusts every spring, and builds the class around the people in it.",

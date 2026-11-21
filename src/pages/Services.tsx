@@ -9,7 +9,7 @@ import { track } from "../lib/analytics";
 import { useI18n } from "../lib/i18n";
 import { useSeo } from "../lib/seo";
 
-/** Same cards as "Our classes" on the home page (the #classes styles); each card opens the service's page. */
+/** All services as photo cards (the #classes card styles); each card opens the service's page. The home page shows the classes as three ways to train instead (ClassWays). */
 export function Services() {
   const { t, href } = useI18n();
   useSeo(t.meta.services);
