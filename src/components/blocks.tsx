@@ -777,7 +777,6 @@ export function ScheduleBoard() {
           );
         })}
       </div>
-      <IntroPrices />
       <div className="stack list-in" key={`${service}-${date}`} aria-live="polite">
         {slots?.length === 0 && (
           <div className="card card--dashed stack gap-12 center">
