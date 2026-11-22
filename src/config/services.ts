@@ -13,17 +13,16 @@ export interface ServiceConfig {
   approved: boolean; // launch-approved to present as bookable
 }
 
-// Each photo is used once on the site (owner, 22 Nov 2026). The arches, the private session (class/private) and the closed
-// group (class/groups) belong to home "Our classes" (ClassWays) only, so Private shows the single Reformer framed by the
-// arch and Closed groups the room at dusk with the arch lights on.
+// Services photos show the studio without people (owner, 22 Nov 2026): the empty room, the equipment and the props, in the
+// style of the single Reformer under the arch. Rendered or real stills of the space; replace with shoot photos when there are any.
 export const services: ServiceConfig[] = [
-  { id: "reformer", slug: "reformer-groups", image: "/assets/real/room.webp", pos: "50% 50%", thumb: "/assets/real/room-sm.webp", bookable: true, capacity: 5, minutes: 50, approved: true },
-  { id: "mat", slug: "mat-pilates", image: "/assets/class/mat.webp", pos: "50% 50%", thumb: "/assets/class/tab-mat-sm.webp", bookable: false, minutes: 50, approved: true }, // by request until Mat instructors join (then true + slots in lib/booking.ts)
+  { id: "reformer", slug: "reformer-groups", image: "/assets/real/room.webp", pos: "50% 55%", thumb: "/assets/real/room-sm.webp", bookable: true, capacity: 5, minutes: 50, approved: true },
+  { id: "mat", slug: "mat-pilates", image: "/assets/real/flatlay.webp", pos: "50% 45%", thumb: "/assets/real/flatlay.webp", thumbPos: "50% 45%", bookable: false, minutes: 50, approved: true }, // by request until Mat instructors join (then true + slots in lib/booking.ts)
   { id: "private", slug: "private-1to1", image: "/assets/welcome/arch.webp", pos: "50% 62%", thumb: "/assets/welcome/arch.webp", thumbPos: "50% 62%", bookable: false, minutes: 50, approved: true },
-  { id: "duo", slug: "duo", image: "/assets/class/duo.webp", pos: "50% 50%", thumb: "/assets/class/duo-sm.webp", bookable: false, minutes: 50, approved: true },
-  { id: "women", slug: "women-only", image: "/assets/class/women.webp", pos: "50% 50%", thumb: "/assets/class/women-sm.webp", bookable: false, minutes: 50, approved: false },
-  // Teens (girls 12-17): a fixed weekly group, sold as its own monthly plan (pricing.ts: "teens"). Photo is a stand-in until the shoot.
-  { id: "teens", slug: "teens", image: "/assets/class/teens.webp", pos: "50% 50%", thumb: "/assets/class/teens-sm.webp", bookable: false, capacity: 5, minutes: 50, approved: true },
+  { id: "duo", slug: "duo", image: "/assets/real/entry.webp", pos: "50% 72%", thumb: "/assets/real/entry.webp", thumbPos: "50% 72%", bookable: false, minutes: 50, approved: true },
+  { id: "women", slug: "women-only", image: "/assets/welcome/aisle.webp", pos: "50% 58%", thumb: "/assets/welcome/aisle.webp", thumbPos: "50% 58%", bookable: false, minutes: 50, approved: false },
+  // Teens (girls 12-17): a fixed weekly group, sold as its own monthly plan (pricing.ts: "teens").
+  { id: "teens", slug: "teens", image: "/assets/welcome/above.webp", pos: "50% 60%", thumb: "/assets/welcome/above.webp", thumbPos: "50% 60%", bookable: false, capacity: 5, minutes: 50, approved: true },
   // Closed groups: the studio closes for your group. Two packages (packages.ts): private group and event.
   { id: "groups", slug: "closed-groups", image: "/assets/welcome/evening.webp", pos: "50% 60%", thumb: "/assets/welcome/evening.webp", thumbPos: "50% 60%", bookable: false, capacity: 5, minutes: 50, approved: true },
 ];

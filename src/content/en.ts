@@ -171,6 +171,10 @@ export const en = {
     duration: "Length",
     capacity: "Group size",
     upTo: "Up to",
+    price: "Price",
+    priceOnRequest: "Price on request",
+    askOnWhatsApp: "Ask us on WhatsApp",
+    samePrice: "per class, single or with a plan",
     items: {
       reformer: {
         name: "Reformer · Small Groups",

@@ -173,6 +173,10 @@ export const he: Content = {
     duration: "משך",
     capacity: "גודל הקבוצה",
     upTo: "עד",
+    price: "מחיר",
+    priceOnRequest: "מחיר לפי פנייה",
+    askOnWhatsApp: "שאלי אותנו בוואטסאפ",
+    samePrice: "לשיעור, בודד או במנוי",
     items: {
       reformer: {
         name: "רפורמר · קבוצות קטנות",
