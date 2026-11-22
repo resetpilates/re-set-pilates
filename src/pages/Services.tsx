@@ -4,40 +4,100 @@ import { classPrices, teensPlan } from "../config/pricing";
 
 /** Group classes that can also be bought one at a time (shows "Single class: ₪60", Mat ₪55, teens ₪50). */
 const SINGLE_CLASS = ["reformer", "mat", "teens"];
-import { serviceBySlug, services } from "../config/services";
+import { serviceBySlug, services, type ServiceId } from "../config/services";
+import { packages } from "../config/packages";
+import { waLink } from "../config/site";
 import { track } from "../lib/analytics";
 import { useI18n } from "../lib/i18n";
 import { useSeo } from "../lib/seo";
 
-/** Same cards as "Our classes" on the home page (the #classes styles); each card opens the service's page. */
+/** The price line a service shows on its card and page: single class and plan price, a group package price, or "price on request". */
+function ServicePrice({ id }: { id: ServiceId }) {
+  const { t } = useI18n();
+  if (SINGLE_CLASS.includes(id)) {
+    const cp = classPrices(id === "teens" ? "teen" : "adult", undefined, id === "mat" ? "mat" : "reformer");
+    if (cp.plan >= cp.single)
+      return (
+        <span className="svc__price">
+          <b className="nums">₪{cp.single}</b>
+          <small>{t.services.samePrice}</small>
+        </span>
+      );
+    return (
+      <span className="svc__price">
+        <b className="nums">₪{cp.single}</b>
+        <small>{t.schedule.introSingle}</small>
+        <i aria-hidden>·</i>
+        <span className="svc__from">
+          {t.schedule.introFrom}
+          <b className="nums">₪{cp.plan}</b> {t.schedule.introPlan}
+        </span>
+      </span>
+    );
+  }
+  if (id === "groups") {
+    const from = Math.min(...packages.filter((p) => p.approved).map((p) => p.price));
+    return (
+      <span className="svc__price">
+        <small>{t.schedule.introFrom.trim()}</small>
+        <b className="nums">₪{from}</b>
+        <small>{t.services.perGroup}</small>
+      </span>
+    );
+  }
+  return (
+    <span className="svc__price svc__price--ask">
+      <small>{t.services.priceOnRequest}</small>
+    </span>
+  );
+}
+
+/** All services as medium cards: a short people-free photo, the fuller description, tags and the price. Each card opens the service's page. */
 export function Services() {
   const { t, href } = useI18n();
   useSeo(t.meta.services);
   return (
     <div className="page tone-dark page--still">
       <PageHead title={t.services.title} sub={t.services.sub} />
-      <section id="classes" className="section--tight">
+      <section className="section--tight">
         <div className="wrap">
-          <div>
+          <div className="svcs">
             {services.map((s) => {
               const c = t.services.items[s.id];
+              const ask = !SINGLE_CLASS.includes(s.id) && s.id !== "groups";
               return (
-                <div key={s.id} className="reveal is-in">
-                  <Link to={href(`services/${s.slug}`)} className="flow-row ccard" onClick={() => track("service_view", { service: s.id })}>
-                    <span className="ccard__media" aria-hidden>
-                      <img src={s.image} alt="" style={{ objectPosition: s.pos }} loading="eager" decoding="async" />
-                      <span className="ccard__chip">{c.meta}</span>
-                    </span>
-                    <span className="ccard__body">
-                      <span className="display d-md ccard__title">{c.name}</span>
-                      <span className="ccard__blurb">{c.blurb}</span>
-                      <span className={`ccard__cta ${s.bookable ? "ccard__cta--book" : ""}`}>
-                        {t.common.learnMore}
-                        <span className="chev" aria-hidden />
-                      </span>
-                    </span>
-                  </Link>
-                </div>
+                <article key={s.id} className="svc">
+                  <figure className="svc__photo" aria-hidden>
+                    <img src={s.image} alt="" style={{ objectPosition: s.pos }} loading="lazy" decoding="async" />
+                    <figcaption>{c.meta}</figcaption>
+                  </figure>
+                  <div className="svc__body">
+                    <h2 className="display d-md svc__title">
+                      <Link to={href(`services/${s.slug}`)} className="svc__link" onClick={() => track("service_view", { service: s.id })}>
+                        {c.name}
+                      </Link>
+                    </h2>
+                    <p className="svc__desc">{c.desc}</p>
+                    <ul className="svc__tags">
+                      {c.tags.map((tag) => (
+                        <li key={tag}>{tag}</li>
+                      ))}
+                    </ul>
+                    <div className="svc__foot">
+                      <ServicePrice id={s.id} />
+                      {ask ? (
+                        <a href={waLink(`${t.services.priceOnRequest}: ${c.name}`)} target="_blank" rel="noreferrer" className="svc__ask">
+                          {t.services.askOnWhatsApp}
+                        </a>
+                      ) : (
+                        <span className="svc__more" aria-hidden>
+                          {t.common.learnMore}
+                          <span className="chev" />
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </article>
               );
             })}
           </div>
@@ -95,6 +155,17 @@ export function ServiceDetail() {
                   <Link to={href(s.id === "teens" ? "pricing" : `pricing?kind=${s.id}`)} className="link tiny">
                     {cp.plan < cp.single ? t.pricing.singlePlan.replace("{price}", String(cp.plan)) : t.pricing.concession}
                   </Link>
+                </span>
+              </div>
+            )}
+            {!SINGLE_CLASS.includes(s.id) && s.id !== "groups" && (
+              <div>
+                <span className="muted">{t.services.price}</span>
+                <span className="stack" style={{ alignItems: "flex-end", gap: 2, paddingBlock: 10 }}>
+                  <b>{t.services.priceOnRequest}</b>
+                  <a href={waLink(`${t.services.priceOnRequest}: ${c.name}`)} target="_blank" rel="noreferrer" className="link tiny">
+                    {t.services.askOnWhatsApp}
+                  </a>
                 </span>
               </div>
             )}

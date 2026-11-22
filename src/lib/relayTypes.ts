@@ -108,6 +108,7 @@ export interface BookingMsg extends Base {
   bed: number | null; // 0-based on the site; Airtable shows 1-5
   showAs?: ShowAs; // name on the schedule beds (default "short")
   held?: boolean; // checkout before online payment is open: the bed is held (Airtable status "Held") until Orit takes payment
+  trial?: boolean; // the free trial class: booked at no charge (Airtable via "Free trial"), one per person
 }
 
 export interface CancelMsg extends Base {
@@ -144,6 +145,16 @@ export interface RenewalMsg extends Base {
   membershipId: string; // Airtable record id returned by checkout
   phone: string; // must match the membership's member
   autoRenew: boolean;
+}
+
+/**
+ * The optional photo on the membership card, saved to the member's Airtable row. `image` is a JPEG as base64
+ * (the phone shrinks it first, see src/lib/photo.ts); null removes the photo. An existing member is changed
+ * only when the last name matches the phone's record (the same check as health-status).
+ */
+export interface MemberPhotoMsg extends Base {
+  contact: Contact;
+  image: string | null;
 }
 
 export interface WaitlistMsg extends Base {
@@ -203,6 +214,7 @@ export interface RelayMap {
   "health-declaration": HealthMsg; // not "health": /api/health is the Worker's status check
   "health-status": HealthStatusMsg;
   "plan-status": PlanStatusMsg;
+  "member-photo": MemberPhotoMsg;
   waitlist: WaitlistMsg;
   "launch-waitlist": LaunchWaitlistMsg;
   gift: GiftMsg;

@@ -1,4 +1,5 @@
-import type { ShowAs } from "./relayTypes";
+import { normalizePhone, type ShowAs } from "./relayTypes";
+import { photoBase64 } from "./photo";
 import type { HealthRecord } from "./health";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { planById, type ClassKind } from "../config/pricing";
@@ -6,7 +7,7 @@ import { siteConfig } from "../config/site";
 import { fromISO, israelNow, slotStart, type ClassSlot } from "./booking";
 import { heldClass, planCovers, planUsage } from "./plan";
 import type { ReceiptData } from "./receipt";
-import { RELAY_REPLY, relay, type RelayReplyDetail } from "./relay";
+import { RELAY_REPLY, ask, relay, type RelayReplyDetail } from "./relay";
 
 export interface Booking {
   id: string;
@@ -23,6 +24,7 @@ export interface Booking {
   remoteId?: string; // Airtable record id from the relay, used to cancel there too
   single?: boolean; // paid for on its own (single class) while a plan was active: it does not use the plan
   held?: boolean; // held before payment (checkout while payment is closed, or a plan still pending): one at a time
+  trial?: boolean; // the free trial class (config/schedule.ts freeTrial): one per person, never uses a plan
 }
 
 export interface Profile {
@@ -36,6 +38,8 @@ export interface Profile {
   termsAcceptedAt?: string; // ISO: when the studio terms were accepted on this device
   termsVersion?: string; // which version (siteConfig.policies.termsVersion) was accepted
   health?: HealthRecord; // the latest health declaration made on this device
+  photo?: string; // optional photo on the membership card: a small square JPEG data URL (src/lib/photo.ts)
+  photoPending?: boolean; // the photo was added, changed or removed here and the studio's record has not caught up yet
 }
 
 /** In-app notification (the bell on the profile). Purchases add one that opens the receipt. */
@@ -76,7 +80,7 @@ interface Store extends Persisted {
    * cover this class. `single` = the class was bought on its own, so the plan is neither checked nor used.
    * `held` = booked before payment: refused (null) while another unpaid class is still ahead.
    */
-  book: (slot: ClassSlot, bed: number | null, remind: boolean, opts?: { single?: boolean; held?: boolean }) => Booking | null;
+  book: (slot: ClassSlot, bed: number | null, remind: boolean, opts?: { single?: boolean; held?: boolean; trial?: boolean }) => Booking | null;
   /** `late` keeps the booking on the record (hidden from lists) so the plan still counts it. */
   cancel: (bookingId: string, late?: boolean) => void;
   joinWaitlist: (slotId: string) => void;
@@ -148,7 +152,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
   }, [s]);
 
-  const book = useCallback<Store["book"]>((slot, bed, remind, { single = false, held = false } = {}) => {
+  const book = useCallback<Store["book"]>((slot, bed, remind, { single = false, held = false, trial = false } = {}) => {
     // Never book past the plan's allowance; a booking for the same slot is being replaced, so it doesn't count
     const allowed = (p: Persisted) => {
       // A late cancel keeps the session used: the same class can't be taken again
@@ -156,6 +160,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       // Before payment, one held class at a time (the same class being re-booked doesn't count)
       if (held && heldClass(p.bookings.filter((x) => x.slotId !== slot.id), israelNow())) return false;
       const plan = p.planId ? planById(p.planId) : undefined;
+      if (trial) return !p.bookings.some((x) => x.trial && x.slotId !== slot.id); // one free trial per person
       if (!plan || single) return true;
       const others = p.bookings.filter((x) => x.slotId !== slot.id);
       return planCovers(plan, p.planKind, slot.service) && planUsage(plan, others, fromISO(slot.date), p.planStart, p.carry ?? 0, !!p.autoRenew && !p.planPending).left > 0;
@@ -174,6 +179,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       bookedAt: new Date().toISOString(),
       ...(single ? { single: true } : {}),
       ...(held ? { held: true } : {}),
+      ...(trial ? { trial: true } : {}),
     };
     setS((p) => (allowed(p) ? { ...p, bookings: [...p.bookings.filter((x) => x.slotId !== slot.id), b] } : p));
     return b;
@@ -233,6 +239,33 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setS((p) => ({ ...p, bookings: p.bookings.map((b) => (b.id === bookingId ? { ...b, remoteId } : b)) })),
     [],
   );
+  // The card photo is kept on the device first; the studio's Airtable row follows as soon as we know who this is
+  // (name and phone) and the relay can be reached. Retried on the next visit and when the phone is back online.
+  const photoBusy = useRef(false);
+  const syncPhoto = useCallback(async () => {
+    const pr = latest.current.profile;
+    if (!pr.photoPending || photoBusy.current || !pr.firstName.trim() || !pr.lastName.trim() || !normalizePhone(pr.phone)) return;
+    photoBusy.current = true;
+    const sent = pr.photo;
+    const reply = await ask("member-photo", {
+      lang: document.documentElement.lang === "en" ? "en" : "he",
+      contact: { firstName: pr.firstName, lastName: pr.lastName, phone: pr.phone, ...(pr.email ? { email: pr.email } : {}) },
+      image: sent ? photoBase64(sent) : null,
+    });
+    photoBusy.current = false;
+    if (latest.current.profile.photo !== sent) return void syncPhoto(); // changed again while this one was on its way
+    // Any answer settles it (a refusal will not change by asking again); no answer means try again later.
+    if (reply) setS((p) => (p.profile.photo === sent ? { ...p, profile: { ...p.profile, photoPending: false } } : p));
+  }, []);
+  useEffect(() => {
+    if (s.profile.photoPending) void syncPhoto();
+  }, [s.profile.photoPending, s.profile.photo, s.profile.firstName, s.profile.lastName, s.profile.phone, syncPhoto]);
+  useEffect(() => {
+    const again = () => void syncPhoto();
+    addEventListener("online", again);
+    return () => removeEventListener("online", again);
+  }, [syncPhoto]);
+
   const markWelcomeSeen = useCallback(() => setS((p) => (p.seenWelcome ? p : { ...p, seenWelcome: true })), []);
 
   // A booking that waited in the outbox gets its Airtable id when it is finally sent.

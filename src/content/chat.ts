@@ -283,7 +283,7 @@ export const intents: Intent[] = [
     reply: (he) => ({
       text: he
         ? `צוות המדריכות של re:set מלמד בקבוצות של עד חמש. ${founder.nameHe} הקימה את הסטודיו: ${founder.bioHe.split(".")[0]}.${
-            instructors.length ? ` לצידה מלמדות ${instructors.map((i) => i.nameHe).join(", ")}.` : " הצוות המלא יוצג לקראת הפתיחה."
+            instructors.length ? ` לצידה ${instructors.length === 1 ? "מלמדת" : "מלמדות"} ${instructors.map((i) => i.nameHe).join(", ")}.` : " הצוות המלא יוצג לקראת הפתיחה."
           }`
         : `re:set's team of instructors teaches in groups of up to five. ${founder.nameEn} founded the studio: ${founder.bioEn.split(".")[0]}.${
             instructors.length ? ` Teaching alongside her: ${instructors.map((i) => i.nameEn).join(", ")}.` : " The full team is announced before opening."

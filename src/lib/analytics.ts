@@ -5,6 +5,7 @@ export type AnalyticsEvent =
   | "membership_click"
   | "launch_waitlist_join" // waitlist form shown instead of checkout while payments are not live
   | "plan_kind_select" // Reformer / Mat switch on the price list
+  | "class_way" // In a group / Personal / Whole studio switch in "Our classes" on the home page
   | "package_request" // "Book your date" on a closed-group package
   | "terms_accepted" // studio terms (תקנון) ticked on the terms page
   | "health_declared" // health declaration sent (with whether a doctor's approval is needed)

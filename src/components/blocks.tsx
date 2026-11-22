@@ -3,6 +3,7 @@ import { useEffect, useState, type CSSProperties, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { classPrices, generalPlans, perClass, planClasses, priceFor, pricing, teensPlan, type ClassKind, type PricingItem } from "../config/pricing";
 import { packages } from "../config/packages";
+import { scheduleConfig } from "../config/schedule";
 import { services, type ServiceConfig, type ServiceId } from "../config/services";
 import { isTodo, mapsEmbedSrc, siteConfig } from "../config/site";
 import { reviews, roster, type Person } from "../config/team";
@@ -130,6 +131,94 @@ export const effectivePrice = (p: PricingItem, kind?: ClassKind | null) => price
 export const serviceTarget = (s: ServiceConfig, href: (p?: string) => string) =>
   s.bookable ? href(`schedule?service=${s.id}`) : href(`request?type=${s.id}`);
 
+/** Home "Our classes": three ways to train (in a group, personal, the whole studio). One photo per way, its classes as short
+ *  rows that open the class page, one action per way, and a line naming what the other two tabs hold. */
+type WayId = "group" | "personal" | "studio";
+const WAYS: { id: WayId; photo: string; pos: string; classes: ServiceId[] }[] = [
+  { id: "group", photo: "/assets/real/arches.webp", pos: "50% 45%", classes: ["reformer", "mat", "teens", "women"] },
+  { id: "personal", photo: "/assets/class/private.webp", pos: "50% 50%", classes: ["private", "duo"] },
+  { id: "studio", photo: "/assets/class/groups.webp", pos: "50% 80%", classes: [] }, // rows are the two packages
+];
+
+export function ClassWays() {
+  const { t, href } = useI18n();
+  const [way, setWay] = useState<WayId>("group");
+  const w = WAYS.find((x) => x.id === way)!;
+  const copy = t.home.ways[way];
+  const svc = (id: ServiceId) => services.find((s) => s.id === id)!;
+  const inside = (x: (typeof WAYS)[number]) =>
+    x.id === "studio" ? t.services.items.groups.name : x.classes.map((id) => t.services.items[id].short).join(" · ");
+  const rows =
+    way === "studio"
+      ? packages.map((p) => ({
+          key: p.id,
+          to: href(`services/${svc("groups").slug}`),
+          name: t.services.packages[p.id].name,
+          meta: `${t.services.upTo} ${p.capacity} · ${p.minutes} ${t.common.min}`,
+          id: "groups" as ServiceId,
+        }))
+      : w.classes.map((id) => ({ key: id, to: href(`services/${svc(id).slug}`), name: t.services.items[id].name, meta: t.services.items[id].meta, id }));
+  const cta =
+    way === "group"
+      ? { to: "#schedule", label: t.common.seeSchedule, primary: true }
+      : way === "personal"
+        ? { to: serviceTarget(svc("private"), href), label: t.common.requestSession, primary: false }
+        : { to: serviceTarget(svc("groups"), href), label: t.home.ways.studio.cta, primary: false };
+
+  return (
+    <div className="ways">
+      <div className="seg-wrap">
+        <Segmented
+          value={way}
+          onChange={(v) => {
+            setWay(v);
+            track("class_way", { way: v });
+          }}
+          options={WAYS.map((x) => ({ id: x.id, label: t.home.ways[x.id].tab }))}
+        />
+      </div>
+      <p className="ways__also tiny">
+        <span>{t.home.classesAlso}:</span>{" "}
+        {WAYS.filter((x) => x.id !== way).map((x, i) => (
+          <button key={x.id} type="button" onClick={() => setWay(x.id)}>
+            {i > 0 && <span aria-hidden> / </span>}
+            <b>{t.home.ways[x.id].tab}</b> ({inside(x)})
+          </button>
+        ))}
+      </p>
+      <div className="ways__panel" role="tabpanel" key={way}>
+        <figure className="ways__photo">
+          <img src={w.photo} alt="" style={{ objectPosition: w.pos }} loading="lazy" decoding="async" />
+          <figcaption>{copy.chip}</figcaption>
+        </figure>
+        <div className="ways__body">
+          <h3 className="display d-md ways__title">{copy.title}</h3>
+          <ul className="ways__list">
+            {rows.map((r) => (
+              <li key={r.key}>
+                <Link to={r.to} className="ways__row" onClick={() => track("service_view", { service: r.id })}>
+                  <span className="ways__name">{r.name}</span>
+                  <span className="ways__meta">{r.meta}</span>
+                  <span className="chev" aria-hidden />
+                </Link>
+              </li>
+            ))}
+          </ul>
+          {cta.to.startsWith("#") ? (
+            <a href={cta.to} className="btn btn--primary btn--arrow ways__cta" onClick={() => track("book_reformer_click", { source: "classes" })}>
+              {cta.label}
+            </a>
+          ) : (
+            <Link to={cta.to} className={`btn ${cta.primary ? "btn--primary" : "btn--secondary"} btn--arrow ways__cta`}>
+              {cta.label}
+            </Link>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function ServiceCard({ s, delay = 0 }: { s: ServiceConfig; delay?: number }) {
   const { t, href } = useI18n();
   const c = t.services.items[s.id];
@@ -146,9 +235,29 @@ export function ServiceCard({ s, delay = 0 }: { s: ServiceConfig; delay?: number
   );
 }
 
+/** Trial week: a visitor with no plan who hasn't had her free trial yet (config/schedule.ts freeTrial). */
+export function useFreeTrial() {
+  const { planId, bookings } = useStore();
+  return scheduleConfig.freeTrial && !planId && !bookings.some((b) => b.trial);
+}
+
+/** Trial week banner over the schedule, from the studio's poster. */
+export function TrialBanner() {
+  const { t } = useI18n();
+  if (!useFreeTrial()) return null;
+  return (
+    <div className="card trial-banner stack gap-8">
+      <span className="eyebrow">{t.trial.eyebrow}</span>
+      <h2 className="display d-sm">{t.trial.title}</h2>
+      <p className="small muted">{t.trial.sub}</p>
+    </div>
+  );
+}
+
 export function SlotRow({ slot, index = 0, roster }: { slot: ClassSlot; index?: number; roster?: RosterSlots | null }) {
   const { t, href, isHe } = useI18n();
   const { upcoming, profile } = useStore();
+  const freeTrial = useFreeTrial();
   const myBooking = upcoming.find((b) => b.slotId === slot.id);
   const mine = !!myBooking;
   const cap = slot.capacity;
@@ -179,6 +288,7 @@ export function SlotRow({ slot, index = 0, roster }: { slot: ClassSlot; index?: 
       <span className="small muted">
         {t.home.withInstructor} {instructorName(slot.instructorId, isHe)}
       </span>
+      {freeTrial && !mine && !full && <span className="pill slot2__trial">{t.trial.tag}</span>}
       <span className="slot2__price">
         <b>₪{classPrices("adult", undefined, slot.service).single}</b> {t.schedule.introSingle} <i aria-hidden>·</i> {t.schedule.introFrom}<b>₪{classPrices("adult", undefined, slot.service).plan}</b> {t.schedule.introPlan}
       </span>
@@ -410,9 +520,11 @@ export function Packages() {
           const c = t.services.packages[p.id];
           return (
             <article key={p.id} className="card pkg stack gap-12" style={{ "--i": i } as CSSProperties}>
-              <div className="pkg__photo" aria-hidden>
-                <img src={p.image} alt="" style={{ objectPosition: p.pos }} loading="lazy" />
-              </div>
+              {p.image && (
+                <div className="pkg__photo" aria-hidden>
+                  <img src={p.image} alt="" style={{ objectPosition: p.pos }} loading="lazy" />
+                </div>
+              )}
               <div className="row between gap-12" style={{ alignItems: "flex-start" }}>
                 <span className="stack gap-4">
                   <span className="eyebrow">{c.tagline}</span>
@@ -586,7 +698,7 @@ export function ScheduleBoard() {
   useEffect(() => {
     let alive = true;
     (async () => {
-      for (const d of upcomingDays(4)) {
+      for (const d of upcomingDays(7)) {
         if ((await bookingProvider.getSchedule(service, toISO(d))).length) {
           if (alive) setFirstOpen(toISO(d));
           return;
@@ -665,7 +777,6 @@ export function ScheduleBoard() {
           );
         })}
       </div>
-      <IntroPrices />
       <div className="stack list-in" key={`${service}-${date}`} aria-live="polite">
         {slots?.length === 0 && (
           <div className="card card--dashed stack gap-12 center">

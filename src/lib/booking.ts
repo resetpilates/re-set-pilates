@@ -1,8 +1,9 @@
 import { siteConfig } from "../config/site";
+import { scheduleConfig } from "../config/schedule";
 import { roster } from "../config/team";
 
-// Booking adapter. The UI only talks to `bookingProvider`; swap the mock for the
-// in-house booking backend (Worker + Airtable/D1) once it serves live availability.
+// Booking adapter. The UI only talks to `bookingProvider`: the published timetable (config/schedule.ts);
+// who is on which bed comes from the Worker's roster (lib/roster.ts).
 export type BookableService = "reformer" | "mat";
 
 export interface ClassSlot {
@@ -23,24 +24,16 @@ export interface BookingProvider {
   getSlot(id: string): Promise<ClassSlot | null>;
 }
 
-// Planned week (owner, 21 Oct 2026): 50-minute classes on the hour with a 10-minute changeover.
-// Adults train in the morning (08:00-12:00, Sun-Fri); the 17:00-21:00 evening slots (Sun-Thu) are for
-// the teens group, booked by request for now. Mornings are Reformer until Mat instructors join;
-// Mat has no slots yet, so its schedule tab is hidden. Final timetable is set closer to opening.
+// 50-minute classes on the hour with a 10-minute changeover. The days and times are the studio's latest poster,
+// kept in config/schedule.ts. Mat has no classes yet, so its schedule tab is hidden.
 export const CLASS_MINUTES = 50;
-const TEMPLATE: Record<BookableService, [time: string, instructor: number][]> = {
-  reformer: [["08:00", 0], ["09:00", 0], ["10:00", 0], ["11:00", 0]],
-  mat: [],
+const classesOn = (service: BookableService, date: string) => {
+  if (date < scheduleConfig.startsOn) return [];
+  const day = fromISO(date).getDay();
+  return scheduleConfig.week.filter((c) => c.service === service && c.day === day).sort((a, b) => a.time.localeCompare(b.time));
 };
 /** Formats with at least one class in the week (the others get no schedule tab). */
-export const hasClasses = (service: BookableService) => TEMPLATE[service].length > 0;
-const BED_ORDER = [2, 0, 4, 1, 3];
-
-const hash = (s: string) => {
-  let h = 2166136261;
-  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
-  return h >>> 0;
-};
+export const hasClasses = (service: BookableService) => scheduleConfig.week.some((c) => c.service === service);
 
 export const toISO = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -62,31 +55,27 @@ export const slotStart = (slot: Pick<ClassSlot, "date" | "time">) => {
   return d;
 };
 
-function build(service: BookableService, date: string, time: string, instructor: number): ClassSlot {
-  const id = `${service}_${date}_${time.replace(":", "")}`;
-  const cap = service === "reformer" ? siteConfig.capacity.reformerBeds : null;
-  const taken = cap ? hash(id) % (cap + 1) : 0;
+// Beds start empty here: the real bookings come from the studio's roster (lib/roster.ts) and fill them in.
+function build(service: BookableService, date: string, time: string, instructor: string): ClassSlot {
   return {
-    id,
+    id: `${service}_${date}_${time.replace(":", "")}`,
     service,
     date,
     time,
     minutes: CLASS_MINUTES,
-    instructorId: (roster[instructor] ?? roster[0]).id,
-    capacity: cap,
-    takenBeds: BED_ORDER.slice(0, taken),
-    full: !!cap && taken >= cap,
+    instructorId: (roster.find((p) => p.id === instructor) ?? roster[0]).id,
+    capacity: service === "reformer" ? siteConfig.capacity.reformerBeds : null,
+    takenBeds: [],
+    full: false,
   };
 }
 
-const mockProvider: BookingProvider = {
-  isLive: false,
+const timetableProvider: BookingProvider = {
+  isLive: true, // the studio's published timetable, with real bookings from the roster
   async getSchedule(service, date) {
-    const day = fromISO(date);
-    if (day.getDay() === 6) return []; // closed Saturdays
     const now = israelNow();
-    return TEMPLATE[service]
-      .map(([time, ins]) => build(service, date, time, ins))
+    return classesOn(service, date)
+      .map((c) => build(service, date, c.time, c.instructor))
       .filter((s) => slotStart(s) > now);
   },
   async getSlot(id) {
@@ -94,12 +83,12 @@ const mockProvider: BookingProvider = {
     if ((service !== "reformer" && service !== "mat") || !date || !hhmm) return null;
     if (toISO(fromISO(date)) !== date) return null; // malformed or impossible date
     const time = `${hhmm.slice(0, 2)}:${hhmm.slice(2)}`;
-    const row = TEMPLATE[service].find(([t]) => t === time);
-    return row ? build(service, date, time, row[1]) : null;
+    const row = classesOn(service, date).find((c) => c.time === time);
+    return row ? build(service, date, time, row.instructor) : null;
   },
 };
 
-export const bookingProvider: BookingProvider = mockProvider;
+export const bookingProvider: BookingProvider = timetableProvider;
 
 export const upcomingDays = (count = 10) =>
   Array.from({ length: count }, (_, i) => {

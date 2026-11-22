@@ -18,6 +18,7 @@ import type {
   HeardFrom,
   LaunchWaitlistMsg,
   LeadMsg,
+  MemberPhotoMsg,
   QuizContactMsg,
   QuizMsg,
   RelayEvent,
@@ -46,9 +47,13 @@ declare global {
 const TZ = "Asia/Jerusalem";
 const CANCEL_HOURS = siteConfig.policies.cancelHours; // same policy the site shows
 const MAX_BODY = 8 * 1024;
+const MAX_PHOTO = 400 * 1024; // base64 characters of the membership-card photo (the app sends about 60 KB)
+const MAX_PHOTO_BODY = MAX_PHOTO + MAX_BODY;
 
 class BadRequest extends Error {}
 /** The request is fine but would duplicate something that exists (e.g. the same membership is still running). */
+/** Bookings "via" value for the free trial class (config/schedule.ts freeTrial). */
+const TRIAL_VIA = "Free trial";
 /** Airtable formula: a booking that holds a bed (a paid booking, or a bed held at checkout before payment opened). */
 const ACTIVE_BOOKING = `OR({${F.bookings.status}}='Booked', {${F.bookings.status}}='Held')`;
 
@@ -115,6 +120,12 @@ function phoneDigits(raw: unknown): string {
   return d;
 }
 const phonePretty = (d: string) => (d.length === 10 ? `${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6)}` : `${d.slice(0, 2)}-${d.slice(2, 5)}-${d.slice(5)}`);
+
+/** The membership-card photo: base64 of a JPEG, nothing else. */
+function jpegBase64(v: unknown): string {
+  if (typeof v !== "string" || v.length > MAX_PHOTO || !v.startsWith("/9j/") || !/^[A-Za-z0-9+/]+={0,2}$/.test(v)) throw new BadRequest("bad image");
+  return v;
+}
 
 function contact(v: unknown): Contact {
   const c = (v ?? {}) as Record<string, unknown>;
@@ -298,6 +309,15 @@ async function heldElsewhere(at: Airtable, member: AirRecord, slotId: string): P
     if (r.fields[B.status] !== "Held" || id === slotId || !/^\d{4}-\d{2}-\d{2}$/.test(date ?? "") || !/^\d{4}$/.test(hhmm ?? "")) return false;
     return Date.parse(studioInstant(date, `${hhmm.slice(0, 2)}:${hhmm.slice(2)}`)) > now;
   });
+}
+
+/** Has the member already had the free trial? A trial cancelled in time gives it back; any other trial booking uses it. */
+async function trialUsed(at: Airtable, member: AirRecord): Promise<boolean> {
+  const ids = linkIds(member.fields[F.members.bookings]).slice(-50); // newest links are last
+  if (!ids.length) return false;
+  const B = F.bookings;
+  const rows = await at.find(T.bookings, `AND({${B.via}}='${TRIAL_VIA}',OR(${ids.map((id) => `RECORD_ID()=${q(id)}`).join(",")}))`, ids.length);
+  return rows.some((r) => r.fields[B.via] === TRIAL_VIA && r.fields[B.status] !== "Cancelled on time");
 }
 
 /** The member's current Active membership, if the studio has marked one active. */
@@ -511,6 +531,9 @@ const handlers: Record<RelayEvent, Handler> = {
     const member = await upsertMember(at, c, { lang: lang(m.lang), attribution: attribution(m.attribution) });
     // Before payment, one held class at a time per person, whichever phone or browser they book from
     if (m.held && (await heldElsewhere(at, member, s.slotId))) throw new Conflict("held limit");
+    // The free trial is one per person, whichever phone or browser they book from
+    const trial = m.trial === true && !m.held;
+    if (trial && (await trialUsed(at, member))) throw new Conflict("trial used");
     const klass = await findOrCreateClass(at, s);
     const membership = await activeMembership(at, member);
     const booking = await at.create(T.bookings, {
@@ -521,7 +544,7 @@ const handlers: Record<RelayEvent, Handler> = {
       ...(s.service === "reformer" ? { [B.bed]: bed } : {}),
       [B.slotId]: s.slotId,
       [B.shownOn]: scheduleName(c, oneOf(m.showAs, SHOW_AS) ?? "short"),
-      [B.via]: m.held ? "Checkout (payment pending)" : "App",
+      [B.via]: trial ? TRIAL_VIA : m.held ? "Checkout (payment pending)" : "App",
       [B.status]: m.held ? "Held" : "Booked",
     });
     const stage = member.fields[F.members.lifecycle];
@@ -674,6 +697,25 @@ const handlers: Record<RelayEvent, Handler> = {
       .sort((a, z) => String(z.fields[S.start] ?? "").localeCompare(String(a.fields[S.start] ?? "")))[0];
     if (!ms) return { ok: true };
     return { ok: true, membership: { id: ms.id, until: String(ms.fields[S.renews] ?? ""), autoRenew: ms.fields[S.autoRenew] === true } };
+  },
+
+  // The optional photo on the membership card. Someone signing up for the first time gets a member row (a lead, as
+  // with any other form); an existing member is touched only when the last name matches the phone's record, and a
+  // mismatch answers the same "ok" so the reply never says who is a member. One photo: a new one replaces the old.
+  async "member-photo"(at, b) {
+    const m = b as unknown as MemberPhotoMsg;
+    const c = contact(m.contact);
+    const image = m.image === null ? null : jpegBase64(m.image);
+    let member = await memberByPhone(at, c.phone);
+    if (member && String(member.fields[F.members.lastName] ?? "").trim().toLowerCase() !== c.lastName.toLowerCase()) return { ok: true };
+    if (!member) {
+      if (!image) return { ok: true };
+      member = await upsertMember(at, c, { lang: lang(m.lang), attribution: attribution(m.attribution) });
+    }
+    const P = F.members.photo;
+    if (Array.isArray(member.fields[P]) && (member.fields[P] as unknown[]).length) await at.update(T.members, member.id, { [P]: [] });
+    if (image) await at.attach(member.id, P, { contentType: "image/jpeg", filename: `${fullName(c)}.jpg`, file: image });
+    return { ok: true, id: member.id };
   },
 
   async waitlist(at, b) {
@@ -999,7 +1041,7 @@ export default {
     }
 
     const raw = await req.text();
-    if (raw.length > MAX_BODY) return json({ ok: false, error: "too large" }, 413);
+    if (raw.length > (event === "member-photo" ? MAX_PHOTO_BODY : MAX_BODY)) return json({ ok: false, error: "too large" }, 413);
     let body: Record<string, unknown>;
     try {
       body = JSON.parse(raw);

@@ -51,7 +51,7 @@ export function About() {
         </div>
       </section>
 
-      <SpaceGallery lead={siteConfig.studioMedia.real.arches} omit={[siteConfig.studioMedia.real.arches, siteConfig.studioMedia.real.coffee]} />
+      <SpaceGallery lead={siteConfig.studioMedia.real.aisle} omit={[siteConfig.studioMedia.real.arches, siteConfig.studioMedia.real.coffee]} />
 
       <section className="section tone-dark tone-raise">
         <div className="wrap stack gap-32">

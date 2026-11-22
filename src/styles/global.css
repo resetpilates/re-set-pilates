@@ -2944,3 +2944,112 @@ html[lang="he"] .welcome--c .welcome__eyebrow { font-size: 13px; letter-spacing:
    from just under the ceiling track down to the front reformer, so the arches and the props wall stay in frame. */
 .phero > img.phero__room { object-position: 46% 50%; }
 @media (min-width: 760px) { .phero > img.phero__room { object-position: 50% 20%; } }
+
+/* v6.2 (19 Nov 2026) — Optional member photo: the profile avatar becomes a button (photo, or the logo until one is
+   added) with a small camera badge, the membership card shows the photo with the member's name, and the sign-in and
+   photo sheets share one dashed "add a photo" row. */
+.avatar-btn { position: relative; flex: none; padding: 0; border: 0; background: none; border-radius: 20px; cursor: pointer; display: grid; place-items: center; color: inherit; }
+.avatar-btn--photo { width: 64px; height: 64px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 4px 14px rgba(63, 55, 51, 0.18); background: var(--b-peach, #cdbab6); }
+.avatar-btn--photo img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: block; }
+.avatar-btn__edit { position: absolute; inset-block-end: -4px; inset-inline-end: -4px; width: 24px; height: 24px; border-radius: 50%; background: #3f3733; color: #f6f2ee; display: grid; place-items: center; border: 2px solid #fff; }
+.avatar-btn:focus-visible { outline: 2px solid var(--hy-blush-deep, #3f3733); outline-offset: 3px; }
+.mcard__who { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.mcard__who b { font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mcard__photo { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255, 255, 255, 0.75); flex: none; }
+.photo-field { display: flex; align-items: center; gap: 14px; padding: 12px 14px; border: 1px dashed var(--line-strong, #cdbab6); border-radius: 18px; cursor: pointer; }
+.photo-field:focus-within { outline: 2px solid var(--hy-blush-deep, #3f3733); outline-offset: 2px; }
+.photo-field[aria-busy="true"] { opacity: 0.6; }
+.photo-field__ring { width: 56px; height: 56px; border-radius: 50%; background: var(--b-peach, #eadfd9); color: #3f3733; display: grid; place-items: center; flex: none; overflow: hidden; }
+.photo-field__ring img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* v6.2 · 21 Nov 2026: trial week (owner's poster "אימון ניסיון במתנה"). A blush banner over the schedule and a small
+   "first class free" tag on each class card, shown to visitors who haven't had their free trial yet. */
+.trial-banner { background: var(--hy-blush-soft); border: 1px solid var(--hy-blush); }
+.trial-banner .eyebrow { color: var(--hy-blush-deep); }
+.slot2__trial { justify-self: start; font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: var(--hy-blush-soft); color: var(--hy-blush-deep); }
+
+/* v6.3 (21 Nov 2026) — Home "Our classes" is now three ways to train (owner's pick, option B): a switch (In a group /
+   Personal / Whole studio), one line naming what the other two hold, then one photo, a title, the classes as short rows
+   and one action. Photos: the arches, the private session, the closed group. Replaces the seven photo cards on the home page. */
+.ways { display: grid; gap: 14px; }
+.ways .seg { background: var(--hy-blush-soft); border-color: transparent; }
+.ways .seg button { color: var(--hy-blush-deep); }
+.ways .seg button[aria-selected="true"] { color: var(--hy-ivory); }
+.ways .seg__thumb { background: var(--hy-ink); }
+.ways__also { margin: 0; color: var(--hy-mushroom); line-height: 1.6; }
+.ways__also button { background: none; border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer; text-align: start; }
+.ways__also b { color: var(--hy-blush-deep); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--hy-blush); }
+.ways__panel { display: grid; gap: 18px; animation: ways-in 320ms var(--ease-out, ease-out); }
+@keyframes ways-in { from { opacity: 0.4; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.ways__photo { position: relative; margin: 0; border-radius: 24px; overflow: hidden; aspect-ratio: 5 / 4; background: var(--hy-blush-soft); }
+.ways__photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.ways__photo figcaption {
+  position: absolute; inset-block-end: 12px; inset-inline-start: 12px; padding: 5px 12px; border-radius: 999px;
+  background: var(--hy-ivory); color: var(--hy-ink); font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+}
+html[lang="he"] .ways__photo figcaption { letter-spacing: 0; text-transform: none; font-size: 13px; }
+.ways__body { display: grid; gap: 14px; align-content: start; }
+.ways__title { margin: 0; color: var(--hy-ink); text-wrap: balance; } /* English: Cormorant at the d-md size (v2.3) */
+html[lang="he"] .ways__title { font-size: 26px; font-weight: 700; line-height: 1.2; }
+.ways__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.ways__row {
+  display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; align-items: center; padding: 13px 16px; border-radius: 18px;
+  background: var(--hy-card); border: 1px solid rgba(63, 55, 51, 0.12); color: var(--hy-ink); text-decoration: none;
+  transition: border-color var(--t-ui, 160ms) ease, transform var(--t-ui, 160ms) ease;
+}
+.ways__row:active { transform: scale(0.985); }
+.ways__name { font-size: 16px; font-weight: 600; }
+.ways__meta { grid-column: 1; font-size: 13px; color: var(--hy-mushroom); }
+.ways__row .chev { grid-column: 2; grid-row: 1 / span 2; color: var(--hy-blush-deep); }
+@media (hover: hover) and (pointer: fine) { .ways__row:hover { border-color: var(--hy-blush); } }
+.ways__cta { justify-self: start; }
+@media (min-width: 900px) {
+  .ways__panel { grid-template-columns: 1.1fr 1fr; gap: 32px; align-items: center; }
+  .ways__photo { aspect-ratio: 4 / 3; }
+}
+@media (prefers-reduced-motion: reduce) { .ways__panel { animation: none; } }
+
+/* ===== v5.4 · Services as medium cards (22 Nov 2026) =====
+   Owner: smaller tiles than the full-photo cards, people-free studio photos, more description, and the price on every card.
+   Hygge Haven tokens; one column on phones, two from 720px. The title link stretches over the whole card; the WhatsApp
+   link sits above it so it stays its own tap target. */
+.svcs { display: grid; gap: 16px; }
+@media (min-width: 720px) { .svcs { grid-template-columns: 1fr 1fr; gap: 20px; } }
+.svc {
+  position: relative; display: grid; grid-template-rows: auto 1fr; overflow: hidden; border-radius: 22px;
+  background: var(--hy-card); border: 1px solid rgba(63, 55, 51, 0.12); color: var(--hy-ink);
+  box-shadow: 0 1px 2px rgba(63, 55, 51, 0.04), 0 8px 24px rgba(63, 55, 51, 0.05);
+  transition: border-color var(--t-ui, 160ms) ease, transform var(--t-ui, 160ms) ease;
+}
+.svc:active { transform: scale(0.99); }
+@media (hover: hover) and (pointer: fine) { .svc:hover { border-color: var(--hy-blush); } .svc:hover .svc__photo img { transform: scale(1.03); } }
+.svc__photo { position: relative; margin: 0; aspect-ratio: 2 / 1; overflow: hidden; background: var(--hy-blush-soft); }
+.svc__photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: transform 600ms var(--ease-out, ease-out); }
+.svc__photo figcaption {
+  position: absolute; inset-block-end: 10px; inset-inline-start: 10px; padding: 4px 11px; border-radius: 999px;
+  background: var(--hy-ivory); color: var(--hy-ink); font-size: 10.5px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+}
+html[lang="he"] .svc__photo figcaption { letter-spacing: 0; text-transform: none; font-size: 12.5px; }
+.svc__body { display: grid; gap: 10px; align-content: start; padding: 16px 18px 16px; }
+.svc__title { margin: 0; line-height: 1.08; text-wrap: balance; }
+html[lang="he"] .svc__title { font-size: 24px; font-weight: 700; line-height: 1.2; }
+.svc__link { color: inherit; text-decoration: none; }
+.svc__link::after { content: ""; position: absolute; inset: 0; border-radius: inherit; z-index: 1; }
+.svc__link:focus-visible { outline: none; }
+.svc:has(.svc__link:focus-visible) { outline: 2px solid var(--hy-blush-deep); outline-offset: 2px; }
+.svc__desc { margin: 0; font-size: 15px; line-height: 1.5; color: rgba(63, 55, 51, 0.78); }
+.svc__tags { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.svc__tags li { padding: 3px 10px; border-radius: 999px; font-size: 12px; background: var(--hy-blush-soft); color: var(--hy-mushroom); }
+.svc__foot {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px;
+  margin-top: 4px; padding-top: 12px; border-top: 1px solid rgba(63, 55, 51, 0.1);
+}
+.svc__price { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px; font-size: 13px; color: var(--hy-mushroom); }
+.svc__price b { font-family: "Cormorant Garamond", serif; font-size: 26px; font-weight: 600; line-height: 1; color: var(--hy-ink); }
+.svc__price .svc__from b { font-size: 20px; color: var(--hy-blush-deep); }
+.svc__price i { font-style: normal; opacity: 0.5; }
+.svc__price--ask small { font-size: 14px; font-style: italic; }
+.svc__more, .svc__ask { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--hy-blush-deep); white-space: nowrap; }
+.svc__more .chev { width: 7px; height: 7px; border-width: 2px; }
+.svc__ask { position: relative; z-index: 2; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--hy-blush); }
+@media (prefers-reduced-motion: reduce) { .svc, .svc__photo img { transition: none; } }

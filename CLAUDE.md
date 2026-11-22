@@ -15,10 +15,11 @@ bun run build        # tsc (app + worker) + vite build; run before every PR
 ## Where things live
 
 - `src/config/pricing.ts` — the whole price list. Every page, checkout, receipt, chat answer and schema.org offer reads it; never hard-code a price in a component or in copy.
+- `src/config/schedule.ts` — the class timetable from the studio's latest poster (weekday, time, instructor), repeated weekly from `startsOn`, plus the `freeTrial` switch. A new poster = replace `week`, `source`, `startsOn`; update `src/lib/booking.test.ts`.
 - `src/config/packages.ts` — closed-group packages (private group, event). `src/config/shop.ts` — studio shop (coming soon).
 - `src/config/site.ts` — contact, flags (`launchPricing`, `paymentsLive`, `demoMode`), media slots (`studioMedia.ogImage` is the link-preview image).
 - `src/content/en.ts`, `he.ts` — all copy, same shape (`en.ts` defines the type). Add a key to both.
-- `src/components/blocks.tsx` — pricing list, teens plan, packages, class-price strip, lead form. `ui.tsx` — small pieces (`PayCards` = "We accept").
+- `src/components/blocks.tsx` — home "Our classes" (`ClassWays`: In a group / Personal / Whole studio), pricing list, teens plan, packages, class-price strip, lead form. `ui.tsx` — small pieces (`PayCards` = "We accept").
 - `src/components/Shell.tsx` — header (wordmark, language, WhatsApp, Book, menu), tab bar, footer.
 - `src/styles/global.css` — one stylesheet, appended in dated "v3.x" sections; later rules override earlier ones. Add a new section at the end rather than editing old ones.
 - `worker/preview.ts` — injects title / Open Graph / canonical tags per page for WhatsApp, Instagram, Facebook and Google (the app never runs there).
