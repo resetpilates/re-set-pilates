@@ -174,7 +174,8 @@ export default function Home() {
       )}
 
       {/* The real room, straight under the first screen */}
-      <SpaceGallery />
+      {/* The arches photo opens "In a group" in Our classes just below, so the strip leaves it out */}
+      <SpaceGallery omit={[siteConfig.studioMedia.real.arches]} />
 
       {/* Why */}
       <section className="section">

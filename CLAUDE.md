@@ -15,6 +15,7 @@ bun run build        # tsc (app + worker) + vite build; run before every PR
 ## Where things live
 
 - `src/config/pricing.ts` — the whole price list. Every page, checkout, receipt, chat answer and schema.org offer reads it; never hard-code a price in a component or in copy.
+- `src/config/schedule.ts` — the class timetable from the studio's latest poster (weekday, time, instructor), repeated weekly from `startsOn`, plus the `freeTrial` switch. A new poster = replace `week`, `source`, `startsOn`; update `src/lib/booking.test.ts`.
 - `src/config/packages.ts` — closed-group packages (private group, event). `src/config/shop.ts` — studio shop (coming soon).
 - `src/config/site.ts` — contact, flags (`launchPricing`, `paymentsLive`, `demoMode`), media slots (`studioMedia.ogImage` is the link-preview image).
 - `src/content/en.ts`, `he.ts` — all copy, same shape (`en.ts` defines the type). Add a key to both.

@@ -93,7 +93,7 @@ export const siteConfig = {
     layout: "a" as "a" | "b" | "c",
     // Live (owner, 18 Nov 2026): layout a, full screen, with the room seen from above (the photo first shown in c).
     photo: { a: "/assets/welcome/above.webp", b: "/assets/welcome/arch.webp", c: "/assets/welcome/above.webp" },
-    // Spares, same room: down the centre aisle (/assets/welcome/aisle.webp), at dusk with the arch lights on (/assets/welcome/evening.webp).
+    // The other shots of the same room: down the centre aisle (About, "The space"), at dusk with the arch lights on (Closed groups).
   },
   studioMedia: {
     // Home first screen (18 Nov 2026): Orit in a plank with a leg lift on a Reformer, set in the real studio room (arches, sheer curtains).
@@ -114,7 +114,8 @@ export const siteConfig = {
     // on Home and About with a slow zoom; `shots` is the swipeable strip under it, in the order of content `space.shots`.
     real: {
       lead: "/assets/real/room.webp",
-      arches: "/assets/real/arches.webp",
+      arches: "/assets/real/arches.webp", // home "Our classes" (In a group) only
+      aisle: "/assets/welcome/aisle.webp", // down the centre aisle: opens "The space" on About
       entry: "/assets/real/entry.webp",
       detail: "/assets/real/detail.webp",
       coffee: "/assets/real/coffee.webp",

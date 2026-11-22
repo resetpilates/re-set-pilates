@@ -1,5 +1,5 @@
 import { Link, useSearchParams } from "react-router-dom";
-import { PageHead, ScheduleBoard } from "../components/blocks";
+import { PageHead, ScheduleBoard, TrialBanner } from "../components/blocks";
 import { serviceById } from "../config/services";
 import { useI18n } from "../lib/i18n";
 import { useSeo } from "../lib/seo";
@@ -24,6 +24,7 @@ export default function Schedule() {
             </Link>
           </div>
         )}
+        <TrialBanner />
         <ScheduleBoard />
       </div>
     </div>

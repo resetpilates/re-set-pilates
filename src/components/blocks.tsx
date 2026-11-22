@@ -3,6 +3,7 @@ import { useEffect, useState, type CSSProperties, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { classPrices, generalPlans, perClass, planClasses, priceFor, pricing, teensPlan, type ClassKind, type PricingItem } from "../config/pricing";
 import { packages } from "../config/packages";
+import { scheduleConfig } from "../config/schedule";
 import { services, type ServiceConfig, type ServiceId } from "../config/services";
 import { isTodo, mapsEmbedSrc, siteConfig } from "../config/site";
 import { reviews, roster, type Person } from "../config/team";
@@ -234,9 +235,29 @@ export function ServiceCard({ s, delay = 0 }: { s: ServiceConfig; delay?: number
   );
 }
 
+/** Trial week: a visitor with no plan who hasn't had her free trial yet (config/schedule.ts freeTrial). */
+export function useFreeTrial() {
+  const { planId, bookings } = useStore();
+  return scheduleConfig.freeTrial && !planId && !bookings.some((b) => b.trial);
+}
+
+/** Trial week banner over the schedule, from the studio's poster. */
+export function TrialBanner() {
+  const { t } = useI18n();
+  if (!useFreeTrial()) return null;
+  return (
+    <div className="card trial-banner stack gap-8">
+      <span className="eyebrow">{t.trial.eyebrow}</span>
+      <h2 className="display d-sm">{t.trial.title}</h2>
+      <p className="small muted">{t.trial.sub}</p>
+    </div>
+  );
+}
+
 export function SlotRow({ slot, index = 0, roster }: { slot: ClassSlot; index?: number; roster?: RosterSlots | null }) {
   const { t, href, isHe } = useI18n();
   const { upcoming, profile } = useStore();
+  const freeTrial = useFreeTrial();
   const myBooking = upcoming.find((b) => b.slotId === slot.id);
   const mine = !!myBooking;
   const cap = slot.capacity;
@@ -267,6 +288,7 @@ export function SlotRow({ slot, index = 0, roster }: { slot: ClassSlot; index?: 
       <span className="small muted">
         {t.home.withInstructor} {instructorName(slot.instructorId, isHe)}
       </span>
+      {freeTrial && !mine && !full && <span className="pill slot2__trial">{t.trial.tag}</span>}
       <span className="slot2__price">
         <b>₪{classPrices("adult", undefined, slot.service).single}</b> {t.schedule.introSingle} <i aria-hidden>·</i> {t.schedule.introFrom}<b>₪{classPrices("adult", undefined, slot.service).plan}</b> {t.schedule.introPlan}
       </span>
@@ -498,9 +520,11 @@ export function Packages() {
           const c = t.services.packages[p.id];
           return (
             <article key={p.id} className="card pkg stack gap-12" style={{ "--i": i } as CSSProperties}>
-              <div className="pkg__photo" aria-hidden>
-                <img src={p.image} alt="" style={{ objectPosition: p.pos }} loading="lazy" />
-              </div>
+              {p.image && (
+                <div className="pkg__photo" aria-hidden>
+                  <img src={p.image} alt="" style={{ objectPosition: p.pos }} loading="lazy" />
+                </div>
+              )}
               <div className="row between gap-12" style={{ alignItems: "flex-start" }}>
                 <span className="stack gap-4">
                   <span className="eyebrow">{c.tagline}</span>
@@ -674,7 +698,7 @@ export function ScheduleBoard() {
   useEffect(() => {
     let alive = true;
     (async () => {
-      for (const d of upcomingDays(4)) {
+      for (const d of upcomingDays(7)) {
         if ((await bookingProvider.getSchedule(service, toISO(d))).length) {
           if (alive) setFirstOpen(toISO(d));
           return;

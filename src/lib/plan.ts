@@ -53,7 +53,7 @@ const slotStartOf = (b: Booking) => {
 };
 
 /** Classes redeemed from the plan bought at `start`: not the ones paid for one at a time, nor those of an earlier plan. */
-const onPlan = (bookings: Booking[], start: number) => bookings.filter((b) => !b.single && bookedAt(b) >= start);
+const onPlan = (bookings: Booking[], start: number) => bookings.filter((b) => !b.single && !b.trial && bookedAt(b) >= start);
 
 /** When a booking was made; older saved bookings only carry it in their `b<ms>` id. */
 const bookedAt = (b: Booking) => (b.bookedAt ? Date.parse(b.bookedAt) : Number(b.id.slice(1)) || 0);
@@ -131,7 +131,7 @@ function countInWeek(bookings: Booking[], d: Date) {
  * carried classes. Unlimited: nothing countable. An expired plan carries nothing.
  */
 export function carryOver(plan: PricingItem, all: Booking[], planStart: string | null, carry: number, now = new Date()): number {
-  const bookings = all.filter((b) => !b.single); // a class paid for on its own never used the plan
+  const bookings = all.filter((b) => !b.single && !b.trial); // a class paid for on its own, or the free trial, never used the plan
   const end = planEnd(plan, planStart);
   if (now >= end) return 0;
   const u = planUsage(plan, bookings, now, planStart, carry);

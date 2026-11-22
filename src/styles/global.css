@@ -2962,6 +2962,12 @@ html[lang="he"] .welcome--c .welcome__eyebrow { font-size: 13px; letter-spacing:
 .photo-field__ring { width: 56px; height: 56px; border-radius: 50%; background: var(--b-peach, #eadfd9); color: #3f3733; display: grid; place-items: center; flex: none; overflow: hidden; }
 .photo-field__ring img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
+/* v6.2 · 21 Nov 2026: trial week (owner's poster "אימון ניסיון במתנה"). A blush banner over the schedule and a small
+   "first class free" tag on each class card, shown to visitors who haven't had their free trial yet. */
+.trial-banner { background: var(--hy-blush-soft); border: 1px solid var(--hy-blush); }
+.trial-banner .eyebrow { color: var(--hy-blush-deep); }
+.slot2__trial { justify-self: start; font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: var(--hy-blush-soft); color: var(--hy-blush-deep); }
+
 /* v6.3 (21 Nov 2026) — Home "Our classes" is now three ways to train (owner's pick, option B): a switch (In a group /
    Personal / Whole studio), one line naming what the other two hold, then one photo, a title, the classes as short rows
    and one action. Photos: the arches, the private session, the closed group. Replaces the seven photo cards on the home page. */

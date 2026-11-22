@@ -531,6 +531,29 @@ test("before payment one held class per person: a second held class is refused, 
   expect((await hold(`${Y}-10-24`, 0)).status).toBe(200);
 });
 
+test("the free trial books a bed at no charge, once per person: a second trial is refused unless the first was cancelled in time", async () => {
+  const trial = (date: string, bed: number) => call("booking", { lang: "he", contact: maya, slot: { ...slot, date }, bed, trial: true });
+  expect((await trial(`${Y}-11-22`, 0)).status).toBe(200);
+  const first = db[T.bookings].at(-1)!;
+  expect(first.fields[F.bookings.via]).toBe("Free trial");
+  expect(first.fields[F.bookings.status]).toBe("Booked");
+  const member = db[T.members][0];
+  member.fields[F.members.bookings] = [first.id];
+
+  // A second trial, from any phone or browser, is refused; nothing is written
+  const second = await trial(`${Y}-11-24`, 1);
+  expect(second.status).toBe(409);
+  expect(((await second.json()) as { error?: string }).error).toBe("trial used");
+  expect(db[T.bookings].length).toBe(1);
+
+  // A late cancel still uses the trial; cancelling in time gives it back
+  first.fields[F.bookings.status] = "Late cancel";
+  expect((await trial(`${Y}-11-24`, 1)).status).toBe(409);
+  first.fields[F.bookings.status] = "Cancelled on time";
+  expect((await trial(`${Y}-11-24`, 1)).status).toBe(200);
+  expect(db[T.bookings].at(-1)!.fields[F.bookings.via]).toBe("Free trial");
+});
+
 test("member-photo saves one photo on the member's row, replaces it, removes it, and never touches someone else's", async () => {
   const P = F.members.photo;
   const jpeg = `/9j/${"A".repeat(4000)}`; // base64 of a JPEG starts with /9j/
