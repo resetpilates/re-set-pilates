@@ -35,6 +35,7 @@ import { Airtable, AirtableError, F, T, q, type AirRecord, type Fields } from ".
 import { isReceiptNumber, type ReceiptData } from "../src/lib/receipt";
 import { CLEARANCE_QUESTIONS, HEALTH_VALID_MONTHS, HEALTH_VERSION, PREGNANCY, clearanceReasons, guardianMissing, type HealthAnswers } from "../src/lib/health";
 import { channelsFor, receiptLink, sendReceipt, serveReceipt } from "./notify";
+import { bucketOf } from "./docs";
 import { studio } from "./studio";
 
 declare global {
@@ -747,6 +748,7 @@ const handlers: Record<RelayEvent, Handler> = {
     const interest = classType === "Reformer" || classType === "Mat" || classType === "Teens" ? classType : undefined;
     const member = await upsertMember(at, c, {
       lang: lg,
+      heard: oneOf(m.heard, HEARD_FROM), // the checkout form asks; without it every waitlist sign-up reads "Website"
       attribution: attribution(m.attribution),
       consent: m.consent === true,
       interests: interest ? [interest] : undefined,
@@ -1019,7 +1021,7 @@ export default {
     if (url.pathname === "/api/roster" && req.method === "GET") return roster(env, url, ectx);
     if (url.pathname.startsWith("/api/studio/")) return studio(req, env, url, sameOrigin(req)); // Orit's command center (passcode)
     if (url.pathname === "/api/health") {
-      return json({ ok: true, airtable: Boolean(env.AIRTABLE_TOKEN), turnstile: Boolean(env.TURNSTILE_SECRET), studio: (env.STUDIO_PASSCODE ?? "").length >= 8 } as RelayReply);
+      return json({ ok: true, airtable: Boolean(env.AIRTABLE_TOKEN), turnstile: Boolean(env.TURNSTILE_SECRET), studio: (env.STUDIO_PASSCODE ?? "").trim().length >= 8, documents: Boolean(bucketOf(env)) } as RelayReply);
     }
     // Pages: add link-preview and search tags for the language and page being served.
     if (!url.pathname.startsWith("/api/")) return withPreview(await env.ASSETS.fetch(req), url);

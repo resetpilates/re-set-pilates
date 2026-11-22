@@ -4,10 +4,10 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { siteConfig } from "../config/site";
-import { studioCopy, type StudioCopy, type TabId } from "../content/studio";
+import { studioCopy, type StudioCopy, type TabId, type WikiArticle } from "../content/studio";
 import { useI18n } from "../lib/i18n";
-import { forgetPass, hasPass, loadMember, loadStudio, sendAction, signIn, waDigits } from "../lib/studio";
-import { LEAD_STATUSES, type Attendance, type LeadStatus, type StClass, type StLead, type StMember, type StPayment, type StPlan, type StudioAction, type StudioData, type StudioMember } from "../lib/studioTypes";
+import { forgetPass, hasPass, loadDocs, loadMember, loadStudio, removeDoc, saveDocLabels, sendAction, signIn, uploadDoc, waDigits } from "../lib/studio";
+import { DOC_CATEGORIES, LEAD_STATUSES, MONEY_CATEGORIES, type Attendance, type DocCategory, type DocMeta, type LeadStatus, type StClass, type StDoc, type StLead, type StMember, type StPayment, type StPlan, type StudioAction, type StudioData, type StudioDocs, type StudioMember } from "../lib/studioTypes";
 import "../styles/studio.css";
 
 const TZ = "Asia/Jerusalem";
@@ -19,13 +19,15 @@ const ICONS: Record<TabId, string> = {
   members: "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21c0-4 3.6-6 8-6s8 2 8 6",
   money: "M4 7h16v11H4zM4 11h16M8 15h3",
   marketing: "M5 20V11M12 20V4M19 20v-6",
-  help: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM9.5 9.5a2.5 2.5 0 1 1 3.6 2.2c-.7.4-1.1 1-1.1 1.8M12 17h.01",
+  help: "M5 4h10a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3zM5 17a3 3 0 0 1 3-3h10M9 8h5",
 };
 
 const dayKey = (d: Date | string) => new Intl.DateTimeFormat("en-CA", { timeZone: TZ }).format(typeof d === "string" ? new Date(d) : d);
 const addDays = (key: string, n: number) => new Date(Date.parse(`${key}T12:00:00Z`) + n * 864e5).toISOString().slice(0, 10);
 const daysBetween = (a: string, b: string) => Math.round((Date.parse(`${b}T12:00:00Z`) - Date.parse(`${a}T12:00:00Z`)) / 864e5);
 const money = (n: number) => `₪${Math.round(n).toLocaleString("en-US")}`;
+/** A word from Airtable (a source, a payment method…) in the page's language when we know it. */
+const val = (c: StudioCopy, s: string) => c.values[s] ?? s;
 
 function useFmt(c: StudioCopy, lang: string, today: string) {
   return useMemo(() => {
@@ -82,15 +84,46 @@ function Reach({ c, phone, email }: { c: StudioCopy; phone: string; email?: stri
   );
 }
 
+/**
+ * "Maya Levi · 2× per week · Nov 2026": each piece keeps its own direction, so English plan names inside
+ * Hebrew stay in the order they were written. `drop` leaves a piece out (the customer's own name on her page).
+ */
+function Parts({ text, drop, or = "" }: { text: string; drop?: string; or?: string }) {
+  const parts = text.split(" · ").map((x) => x.trim()).filter((x) => x && x !== drop);
+  if (!parts.length) return <>{or}</>;
+  return (
+    <>
+      {parts.map((x, i) => (
+        <span key={i}>
+          {i > 0 && " · "}
+          <bdi>{x}</bdi>
+        </span>
+      ))}
+    </>
+  );
+}
+
+/** A big number. The shekel sign is set in the text font: the display serif draws it oddly. */
+function Num({ v }: { v: string }) {
+  return v.startsWith("₪") ? (
+    <b>
+      <i className="st-cur">₪</i>
+      {v.slice(1)}
+    </b>
+  ) : (
+    <b>{v}</b>
+  );
+}
+
 function Empty({ children }: { children: ReactNode }) {
   return <p className="st-empty">{children}</p>;
 }
 
 function Chips<T extends string>({ value, options, onPick }: { value: T; options: [T, string, number?][]; onPick: (v: T) => void }) {
   return (
-    <div className="st-chips" role="tablist">
+    <div className="st-chips">
       {options.map(([id, label, n]) => (
-        <button key={id} type="button" role="tab" aria-selected={value === id} className={`st-chip${value === id ? " is-on" : ""}`} onClick={() => onPick(id)}>
+        <button key={id} type="button" aria-pressed={value === id} className={`st-chip${value === id ? " is-on" : ""}`} onClick={() => onPick(id)}>
           {label}
           {n ? <b>{n}</b> : null}
         </button>
@@ -282,7 +315,7 @@ function Today({ c, f, d, go, act, air, who }: ScreenProps) {
         <div className="st-stats">
           {stats.map(([n, label]) => (
             <div key={label} className="st-card st-stat">
-              <b>{n}</b>
+              <Num v={n} />
               <span>{label}</span>
             </div>
           ))}
@@ -297,7 +330,9 @@ function Today({ c, f, d, go, act, air, who }: ScreenProps) {
               <li key={p.id}>
                 <Link to={p.memberId ? who(p.memberId) : "#"}>
                   <span>
-                    <b dir="auto">{p.name}</b>
+                    <b>
+                      <Parts text={p.name} />
+                    </b>
                     <small>{[p.autoRenew ? c.today.autoRenew : "", p.sessionsLeft != null ? c.today.left(p.sessionsLeft) : ""].filter(Boolean).join(" · ")}</small>
                   </span>
                   <strong>{f.date(p.renews)}</strong>
@@ -333,9 +368,9 @@ const LEAD_GROUP: Record<string, "open" | "progress" | "done"> = { New: "open", 
 
 function LeadCard({ c, f, lead, onStatus, link }: { c: StudioCopy; f: Fmt; lead: StLead; onStatus: (s: LeadStatus) => void; link: string }) {
   const facts: [string, string][] = [
-    [c.leads.wants, lead.interested.join(", ")],
-    [c.leads.time, lead.prefTime],
-    [c.leads.heard, lead.heard],
+    [c.leads.wants, lead.interested.map((x) => val(c, x)).join(", ")],
+    [c.leads.time, val(c, lead.prefTime)],
+    [c.leads.heard, val(c, lead.heard)],
   ];
   return (
     <article className="st-card st-lead">
@@ -507,8 +542,9 @@ function MemberLine({ c, f, m }: { c: StudioCopy; f: Fmt; m: StMember }) {
 
 // ---------- money: payments, receipts, memberships ----------
 
-function PaymentRow({ c, f, p, who, link }: { c: StudioCopy; f: Fmt; p: StPayment; who?: (id: string) => string; link: string }) {
-  const title = p.name.replace(p.no, "").split(" · ").filter((x) => x && x !== p.member).join(" · ") || p.what;
+function PaymentRow({ c, f, p, who, link }: { c: StudioCopy; f: Fmt; p: StPayment; who?: (id: string) => string; link?: string }) {
+  const title = p.name.replace(p.no, "");
+  const what = <Parts text={title} drop={p.member} or={val(c, p.what)} />;
   return (
     <li className="st-pay">
       <div className="st-pay__top">
@@ -518,15 +554,17 @@ function PaymentRow({ c, f, p, who, link }: { c: StudioCopy; f: Fmt; p: StPaymen
               {p.member || "—"}
             </Link>
           ) : (
-            <b dir="auto">{who ? p.member || p.name : title}</b>
+            <b>{who ? p.member || <Parts text={title} /> : what}</b>
           )}
-          <small dir="auto">{[who ? title : "", p.method, f.date(dayKey(p.paidOn || p.created || new Date()))].filter(Boolean).join(" · ")}</small>
+          <small>
+            {who && <>{what} · </>}
+            {[val(c, p.method), f.date(dayKey(p.paidOn || p.created || new Date()))].filter(Boolean).join(" · ")}
+          </small>
         </span>
         <strong>{money(p.amount)}</strong>
       </div>
       <div className="st-pay__foot">
         <span className={`st-tag${p.status === "Paid" ? " st-tag--on" : ""}`}>{c.money.pay[p.status] ?? p.status}</span>
-        {p.no && <small className="st-pay__no">{p.no}</small>}
         {p.receipt ? (
           <a className="st-link" href={p.receipt} target="_blank" rel="noreferrer">
             {c.money.receipt}
@@ -534,9 +572,12 @@ function PaymentRow({ c, f, p, who, link }: { c: StudioCopy; f: Fmt; p: StPaymen
         ) : (
           <small className="st-muted">{c.money.noReceipt}</small>
         )}
-        <a className="st-link" href={link} target="_blank" rel="noreferrer">
-          {c.common.airtable}
-        </a>
+        {p.no && <small className="st-pay__no">{p.no}</small>}
+        {link && (
+          <a className="st-link st-link--end" href={link} target="_blank" rel="noreferrer">
+            {c.common.airtable}
+          </a>
+        )}
       </div>
     </li>
   );
@@ -544,7 +585,7 @@ function PaymentRow({ c, f, p, who, link }: { c: StudioCopy; f: Fmt; p: StPaymen
 
 const planGroup = (p: StPlan) => (p.status === "Active" || p.status === "Paused" ? "active" : p.status === "" ? "waiting" : "ended");
 
-function PlanRow({ c, f, p, name, link }: { c: StudioCopy; f: Fmt; p: StPlan; name: ReactNode; link: string }) {
+function PlanRow({ c, f, p, name, link }: { c: StudioCopy; f: Fmt; p: StPlan; name: ReactNode; link?: string }) {
   return (
     <li className="st-pay">
       <div className="st-pay__top">
@@ -556,9 +597,11 @@ function PlanRow({ c, f, p, name, link }: { c: StudioCopy; f: Fmt; p: StPlan; na
       </div>
       <div className="st-pay__foot">
         <span className={`st-tag${p.status === "Active" ? " st-tag--on" : ""}`}>{c.money.plan[p.status] ?? p.status}</span>
-        <a className="st-link" href={link} target="_blank" rel="noreferrer">
-          {c.common.airtable}
-        </a>
+        {link && (
+          <a className="st-link st-link--end" href={link} target="_blank" rel="noreferrer">
+            {c.common.airtable}
+          </a>
+        )}
       </div>
     </li>
   );
@@ -583,11 +626,11 @@ function Money({ c, f, d, air, who }: ScreenProps) {
             <>
               <div className="st-card st-total">
                 <span>{c.money.total}</span>
-                <b>{money(rows.reduce((n, p) => n + p.amount, 0))}</b>
+                <Num v={money(rows.reduce((n, p) => n + p.amount, 0))} />
               </div>
               <ul className="st-card st-pays">
                 {rows.map((p) => (
-                  <PaymentRow key={p.id} c={c} f={f} p={p} who={who} link={air("payments", p.id)} />
+                  <PaymentRow key={p.id} c={c} f={f} p={p} who={who} link={tab === "pending" ? air("payments", p.id) : undefined} />
                 ))}
               </ul>
             </>
@@ -601,7 +644,7 @@ function Money({ c, f, d, air, who }: ScreenProps) {
           ) : (
             <ul className="st-card st-pays">
               {plans.map((p) => (
-                <PlanRow key={p.id} c={c} f={f} p={p} link={air("memberships", p.id)} name={p.memberId ? <Link className="st-name" to={who(p.memberId)} dir="auto">{p.name}</Link> : <b dir="auto">{p.name}</b>} />
+                <PlanRow key={p.id} c={c} f={f} p={p} link={group === "waiting" ? air("memberships", p.id) : undefined} name={p.memberId ? <Link className="st-name" to={who(p.memberId)}><Parts text={p.name} /></Link> : <b><Parts text={p.name} /></b>} />
               ))}
             </ul>
           )}
@@ -633,10 +676,10 @@ function Profile({ c, f, id, air, back, stamp }: { c: StudioCopy; f: Fmt; id: st
   const facts: [string, string][] = [
     [k.phone, m.phone],
     [k.email, m.email],
-    [k.source, m.source],
+    [k.source, val(c, m.source)],
     [k.added, m.added ? f.date(dayKey(m.added)) : ""],
     [k.since, f.date(p.memberSince)],
-    [k.language, p.language],
+    [k.language, val(c, p.language)],
     [k.health, p.health ? c.profile.yes : c.profile.no],
   ];
   const stats: [string, string][] = [
@@ -661,7 +704,7 @@ function Profile({ c, f, id, air, back, stamp }: { c: StudioCopy; f: Fmt; id: st
       <div className="st-stats">
         {stats.map(([n, label]) => (
           <div key={label} className="st-card st-stat">
-            <b>{n}</b>
+            <Num v={n} />
             <span>{label}</span>
           </div>
         ))}
@@ -690,7 +733,7 @@ function Profile({ c, f, id, air, back, stamp }: { c: StudioCopy; f: Fmt; id: st
         ) : (
           <ul className="st-card st-pays">
             {p.plans.map((x) => (
-              <PlanRow key={x.id} c={c} f={f} p={x} link={air("memberships", x.id)} name={<b dir="auto">{x.name.split(" · ").filter((t) => t !== m.name).join(" · ") || x.name}</b>} />
+              <PlanRow key={x.id} c={c} f={f} p={x} link={air("memberships", x.id)} name={<b><Parts text={x.name} drop={m.name} or={x.name} /></b>} />
             ))}
           </ul>
         )}
@@ -723,7 +766,7 @@ function Profile({ c, f, id, air, back, stamp }: { c: StudioCopy; f: Fmt; id: st
                     {c.profile.kinds[e.kind]}
                     {e.status && <span className="st-line__status">{(e.kind === "class" ? c.profile.booking[e.status] : e.kind === "payment" ? c.money.pay[e.status] : e.kind === "plan" ? c.money.plan[e.status] : c.leads.status[e.status]) ?? e.status}</span>}
                   </b>
-                  {e.title && <p dir="auto">{e.title}</p>}
+                  {e.title && <p>{e.kind === "inquiry" ? <bdi>{e.title}</bdi> : e.kind === "joined" ? val(c, e.title) : <Parts text={e.title} />}</p>}
                   {e.kind === "plan" && !e.status && <span className="st-line__status">{c.money.plan[""]}</span>}
                 </div>
                 {e.amount != null && <strong>{money(e.amount)}</strong>}
@@ -762,7 +805,7 @@ function Marketing({ c, f, d, air }: ScreenProps) {
           <ul className="st-card st-bars">
             {sources.map(([name, n]) => (
               <li key={name}>
-                <span>{name}</span>
+                <span>{val(c, name)}</span>
                 <i style={{ inlineSize: `${Math.max(6, (n / top) * 100)}%` }} />
                 <b>{n}</b>
               </li>
@@ -789,7 +832,7 @@ function Marketing({ c, f, d, air }: ScreenProps) {
               ] as [string, string][]
             ).map(([n, label]) => (
               <div key={label} className="st-card st-stat">
-                <b>{n}</b>
+                <Num v={n} />
                 <span>{label}</span>
               </div>
             ))}
@@ -806,7 +849,7 @@ function Marketing({ c, f, d, air }: ScreenProps) {
             <a key={k.id} className="st-card st-camp" href={air("campaigns", k.id)} target="_blank" rel="noreferrer">
               <header>
                 <h3>{k.name}</h3>
-                <small>{[k.channels.join(", "), [f.date(k.start), f.date(k.end)].filter(Boolean).join(" – ")].filter(Boolean).join(" · ")}</small>
+                <small>{[k.channels.map((x) => val(c, x)).join(", "), [f.date(k.start), f.date(k.end)].filter(Boolean).join(" – ")].filter(Boolean).join(" · ")}</small>
               </header>
               {k.offer && <p className="st-muted">{k.offer}</p>}
               <dl className="st-trio">
@@ -849,44 +892,371 @@ function Marketing({ c, f, d, air }: ScreenProps) {
   );
 }
 
-function Help({ c }: { c: StudioCopy }) {
+// ---------- the wiki: routines, studio rules, how-tos and the documents in Google Drive ----------
+
+function Articles({ items, forceOpen }: { items: WikiArticle[]; forceOpen?: boolean }) {
   const { href } = useI18n();
-  const [q, setQ] = useState("");
   const [open, setOpen] = useState<string | null>(null);
+  return (
+    <div className="st-card st-wiki">
+      {items.map((w) => {
+        const on = open === w.id || (forceOpen === true && items.length === 1);
+        return (
+          <section key={w.id} className={on ? "is-open" : ""}>
+            <button type="button" onClick={() => setOpen(on ? null : w.id)} aria-expanded={on}>
+              <span>{w.q}</span>
+              <Icon d="M6 9l6 6 6-6" className="st-ico st-ico--sm" />
+            </button>
+            {on && (
+              <div className="st-wiki__body">
+                {w.a.map((p) => (p.startsWith("• ") ? <p key={p} className="st-step">{p.slice(2)}</p> : <p key={p}>{p}</p>))}
+                {w.link && (
+                  <Link className="st-link" to={href(w.link.to)}>
+                    {w.link.label}
+                  </Link>
+                )}
+              </div>
+            )}
+          </section>
+        );
+      })}
+    </div>
+  );
+}
+
+const DOC_ICON: Record<StDoc["kind"], string> = {
+  pdf: "M6 3h9l4 4v14H6zM15 3v4h4M9 13h6M9 17h6",
+  image: "M4 5h16v14H4zM4 16l5-5 4 4 3-3 4 4",
+  file: "M6 3h9l4 4v14H6zM15 3v4h4",
+};
+const DOC_ACCEPT = "image/*,application/pdf,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt";
+const MAX_DOC_MB = 20;
+// Phone cameras name photos IMG_1234 / PXL_… / image.jpg: not worth offering as a name.
+const cameraName = (name: string) => /^(img|image|photo|pxl|dsc|scan|whatsapp image)[\s_-]?/i.test(name);
+/** Receipt amounts keep their agorot: ₪1,250.50, but ₪640 stays ₪640. */
+const shekels = (n: number) => `₪${n.toLocaleString("en-US", { minimumFractionDigits: Number.isInteger(n) ? 0 : 2, maximumFractionDigits: 2 })}`;
+const docSize = (n: number) => (n > 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
+
+/** Words to look for in a document: its name, note, who was paid, file name and category, in both languages. */
+const docText = (c: StudioCopy, d: StDoc) => `${d.title} ${d.note} ${d.payee} ${d.fileName} ${c.help.docs.cats[d.category]} ${d.category} ${d.amount ?? ""}`.toLowerCase();
+
+/** Add a new document (photo or file), or change the labels of one already saved. */
+function DocForm({ c, doc, onSaved, onCancel }: { c: StudioCopy; doc?: StDoc; onSaved: (msg: string) => void; onCancel: () => void }) {
+  const d = c.help.docs;
+  const [file, setFile] = useState<File | null>(null);
+  const [meta, setMeta] = useState<DocMeta>(() => (doc ? { title: doc.title, category: doc.category, date: doc.date, note: doc.note, amount: doc.amount, payee: doc.payee } : { title: "", category: "expense", date: dayKey(new Date()), note: "", amount: null, payee: "" }));
+  const [amount, setAmount] = useState(doc?.amount != null ? String(doc.amount) : "");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const set = (patch: Partial<DocMeta>) => (setMeta((m) => ({ ...m, ...patch })), setError(""));
+  const money = MONEY_CATEGORIES.includes(meta.category);
+
+  const take = (f: File | undefined) => {
+    if (!f) return;
+    if (f.size > MAX_DOC_MB * 1024 * 1024) return setError(d.tooBig);
+    setFile(f);
+    setError("");
+    const base = f.name.replace(/\.[a-z0-9]{1,5}$/i, "");
+    if (!meta.title && !cameraName(base)) set({ title: base.slice(0, 120) });
+  };
+
+  async function save(e: FormEvent) {
+    e.preventDefault();
+    if (busy) return;
+    if (!doc && !file) return setError(d.pick);
+    const n = amount.trim() === "" ? null : Number(amount.replace(/[,\s₪]/g, ""));
+    const m: DocMeta = { ...meta, amount: money && n !== null && Number.isFinite(n) && n >= 0 ? n : null, payee: money ? meta.payee : "" };
+    setBusy(true);
+    const r = doc ? await saveDocLabels(doc.id, m) : await uploadDoc(file!, m);
+    setBusy(false);
+    if (r.ok) return onSaved(d.saved);
+    setError(r.error === "too large" ? d.tooBig : d.failedSave);
+  }
+
+  return (
+    <form className="st-card st-docform" onSubmit={save}>
+      <h2 className="st-h2">{doc ? d.edit : d.add}</h2>
+      {!doc && (
+        <>
+          <p className="st-muted">{d.addHint}</p>
+          <div className="st-reach">
+            <label className="st-btn st-btn--ink">
+              {d.photo}
+              <input type="file" accept="image/*" capture="environment" hidden onChange={(e) => take(e.target.files?.[0])} />
+            </label>
+            <label className="st-btn">
+              {d.file}
+              <input type="file" accept={DOC_ACCEPT} hidden onChange={(e) => take(e.target.files?.[0])} />
+            </label>
+          </div>
+          {file && (
+            <p className="st-docform__file">
+              <Icon d={DOC_ICON[file.type === "application/pdf" ? "pdf" : file.type.startsWith("image/") ? "image" : "file"]} />
+              <bdi>{file.name}</bdi>
+              <small>{docSize(file.size)}</small>
+            </p>
+          )}
+        </>
+      )}
+      <label className="st-field">
+        <span>{d.title}</span>
+        <input value={meta.title} maxLength={120} placeholder={d.titlePh} onChange={(e) => set({ title: e.target.value })} />
+      </label>
+      <div className="st-field">
+        <span>{d.category}</span>
+        <div className="st-next__opts">
+          {DOC_CATEGORIES.map((k) => (
+            <button key={k} type="button" className={`st-pill${meta.category === k ? " is-on" : ""}`} aria-pressed={meta.category === k} onClick={() => set({ category: k })}>
+              {d.cats[k]}
+            </button>
+          ))}
+        </div>
+      </div>
+      <label className="st-field">
+        <span>{d.date}</span>
+        <input type="date" value={meta.date} max="2099-12-31" onChange={(e) => set({ date: e.target.value || dayKey(new Date()) })} />
+      </label>
+      {money && (
+        <div className="st-docform__row">
+          <label className="st-field">
+            <span>{d.amount}</span>
+            <input inputMode="decimal" value={amount} placeholder="0" onChange={(e) => (setAmount(e.target.value), setError(""))} />
+          </label>
+          <label className="st-field">
+            <span>{d.payee}</span>
+            <input value={meta.payee} maxLength={80} onChange={(e) => set({ payee: e.target.value })} />
+          </label>
+        </div>
+      )}
+      <label className="st-field">
+        <span>{d.note}</span>
+        <textarea rows={2} maxLength={400} value={meta.note} onChange={(e) => set({ note: e.target.value })} />
+      </label>
+      {error && (
+        <p className="st-error" role="alert">
+          {error}
+        </p>
+      )}
+      <div className="st-reach">
+        <button className="st-btn st-btn--ink" disabled={busy}>
+          {busy ? d.saving : d.save}
+        </button>
+        <button type="button" className="st-btn" disabled={busy} onClick={onCancel}>
+          {d.cancel}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function DocRows({ c, f, items, onChanged }: { c: StudioCopy; f: Fmt; items: StDoc[]; onChanged: (msg: string) => void }) {
+  const d = c.help.docs;
+  const [open, setOpen] = useState<string | null>(null);
+  const [editing, setEditing] = useState<string | null>(null);
+  async function remove(doc: StDoc) {
+    if (!window.confirm(d.confirmRemove)) return;
+    const r = await removeDoc(doc.id);
+    onChanged(r.ok ? d.removed : d.failedSave);
+  }
+  return (
+    <ul className="st-card st-docs">
+      {items.map((doc) =>
+        editing === doc.id ? (
+          <li key={doc.id} className="st-docs__edit">
+            <DocForm c={c} doc={doc} onCancel={() => setEditing(null)} onSaved={(msg) => (setEditing(null), onChanged(msg))} />
+          </li>
+        ) : (
+          <li key={doc.id} className={open === doc.id ? "is-open" : ""}>
+            <button type="button" className="st-doc" aria-expanded={open === doc.id} onClick={() => setOpen(open === doc.id ? null : doc.id)}>
+              <Icon d={DOC_ICON[doc.kind]} />
+              <span className="st-doc__main">
+                <b>
+                  <bdi>{doc.title}</bdi>
+                </b>
+                <small>
+                  {[d.cats[doc.category], f.date(doc.date)].join(" · ")}
+                  {doc.payee && (
+                    <>
+                      {" · "}
+                      <bdi>{doc.payee}</bdi>
+                    </>
+                  )}
+                </small>
+              </span>
+              {doc.amount != null && <strong className="st-doc__amount">{shekels(doc.amount)}</strong>}
+            </button>
+            {open === doc.id && (
+              <div className="st-doc__more">
+                {doc.note && (
+                  <p className="st-pre">
+                    <bdi>{doc.note}</bdi>
+                  </p>
+                )}
+                <p className="st-muted st-doc__file">
+                  <bdi>{doc.fileName}</bdi> · {docSize(doc.size)}
+                </p>
+                <div className="st-reach">
+                  <a className="st-btn st-btn--ink" href={doc.link} target="_blank" rel="noreferrer">
+                    {d.open}
+                  </a>
+                  <button type="button" className="st-btn" onClick={() => setEditing(doc.id)}>
+                    {d.edit}
+                  </button>
+                  <button type="button" className="st-btn st-btn--quiet" onClick={() => void remove(doc)}>
+                    {d.remove}
+                  </button>
+                </div>
+              </div>
+            )}
+          </li>
+        ),
+      )}
+    </ul>
+  );
+}
+
+/** Expenses by period, and the list for the accountant as a spreadsheet file (opens in Excel and Google Sheets). */
+function Expenses({ c, items }: { c: StudioCopy; items: StDoc[] }) {
+  const d = c.help.docs;
+  const paid = items.filter((x) => MONEY_CATEGORIES.includes(x.category) && x.amount != null);
+  if (!paid.length) return null;
+  const today = dayKey(new Date());
+  const month = today.slice(0, 7);
+  const prev = addDays(`${month}-01`, -1).slice(0, 7);
+  const sum = (pre: string) => paid.filter((x) => x.date.startsWith(pre)).reduce((n, x) => n + (x.amount ?? 0), 0);
+  function download() {
+    const cell = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
+    const head = [d.date, d.title, d.category, d.payee, d.amount, d.note, d.chosen];
+    const rows = [...paid].sort((a, b) => a.date.localeCompare(b.date)).map((x) => [x.date, x.title, d.cats[x.category], x.payee, x.amount ?? "", x.note, x.fileName]);
+    // The byte-order mark lets Excel read the Hebrew correctly.
+    const csv = "\ufeff" + [head, ...rows].map((r) => r.map(cell).join(",")).join("\r\n");
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    a.download = `reset-pilates-expenses-${today}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => (URL.revokeObjectURL(a.href), a.remove()), 1000);
+  }
+  return (
+    <section className="st-sec">
+      <h2 className="st-h2">{d.spent}</h2>
+      <div className="st-stats st-stats--3">
+        {(
+          [
+            [shekels(Math.round(sum(month) * 100) / 100), d.thisMonth],
+            [shekels(Math.round(sum(prev) * 100) / 100), d.lastMonth],
+            [shekels(Math.round(sum(today.slice(0, 4)) * 100) / 100), d.thisYear],
+          ] as [string, string][]
+        ).map(([n, label]) => (
+          <div key={label} className="st-card st-stat">
+            <Num v={n} />
+            <span>{label}</span>
+          </div>
+        ))}
+      </div>
+      <button type="button" className="st-btn st-btn--block" onClick={download}>
+        {d.export}
+      </button>
+      <p className="st-muted st-sec__note">{d.exportNote}</p>
+    </section>
+  );
+}
+
+type WikiSection = "docs" | "routines" | "rules" | "howto";
+type DocFilter = "all" | DocCategory;
+
+function Wiki({ c, f, other, onSignOut, say }: { c: StudioCopy; f: Fmt; other: { to: string; label: string }; onSignOut: () => void; say: (msg: string) => void }) {
+  const { t } = useI18n();
+  const [sec, setSec] = useState<WikiSection>("docs");
+  const [q, setQ] = useState("");
+  const [docs, setDocs] = useState<StudioDocs | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [cat, setCat] = useState<DocFilter>("all");
+
+  const reload = useCallback(async () => {
+    const r = await loadDocs();
+    if (r.ok) return setDocs(r), setFailed(false);
+    setFailed(true);
+  }, []);
+  useEffect(() => void reload(), [reload]);
+  const changed = (msg: string) => (say(msg), setAdding(false), void reload());
+
+  // The studio terms customers accept are the studio's rules: same wording as the website, never a second copy.
+  const rules = useMemo<WikiArticle[]>(() => t.terms.sections.map((x, i) => ({ id: `rule${i}`, q: x.h, a: x.items.map((line) => `• ${line}`) })), [t]);
+  const groups: Record<Exclude<WikiSection, "docs">, WikiArticle[]> = { routines: c.help.routines, rules, howto: c.help.wiki };
   const words = q.toLowerCase().split(/\s+/).filter(Boolean);
-  const shown = c.help.wiki.filter((w) => words.every((x) => `${w.q} ${w.a.join(" ")}`.toLowerCase().includes(x)));
+  const searching = words.length > 0;
+  const found = searching ? [...groups.routines, ...groups.howto, ...groups.rules].filter((w) => words.every((x) => `${w.q} ${w.a.join(" ")}`.toLowerCase().includes(x))) : [];
+  const items = docs?.items ?? [];
+  const foundDocs = searching ? items.filter((x) => words.every((w) => docText(c, x).includes(w))) : [];
+  const count = (k: DocFilter) => (k === "all" ? items.length : items.filter((x) => x.category === k).length);
+  const shown = cat === "all" ? items : items.filter((x) => x.category === cat);
+  const d = c.help.docs;
+
   return (
     <>
       <h1 className="st-h1">{c.help.title}</h1>
       <p className="st-muted">{c.help.lede}</p>
       <input className="st-search" type="search" placeholder={c.help.search} value={q} onChange={(e) => setQ(e.target.value)} aria-label={c.help.search} />
-      {shown.length === 0 ? (
-        <Empty>{c.help.empty}</Empty>
+
+      {searching ? (
+        <>
+          {foundDocs.length > 0 && (
+            <section className="st-sec">
+              <h2 className="st-h2">{d.found}</h2>
+              <DocRows c={c} f={f} items={foundDocs} onChanged={changed} />
+            </section>
+          )}
+          {found.length > 0 && <Articles items={found} forceOpen />}
+          {found.length === 0 && foundDocs.length === 0 && <Empty>{c.help.empty}</Empty>}
+        </>
       ) : (
-        <div className="st-card st-wiki">
-          {shown.map((w) => {
-            const on = open === w.id || (words.length > 0 && shown.length === 1);
-            return (
-              <section key={w.id} className={on ? "is-open" : ""}>
-                <button type="button" onClick={() => setOpen(on ? null : w.id)} aria-expanded={on}>
-                  <span>{w.q}</span>
-                  <Icon d="M6 9l6 6 6-6" className="st-ico st-ico--sm" />
+        <>
+          <Chips value={sec} onPick={setSec} options={[["docs", c.help.sections.docs, items.length || undefined], ["routines", c.help.sections.routines], ["rules", c.help.sections.rules], ["howto", c.help.sections.howto]]} />
+          {sec !== "docs" ? (
+            <>
+              {sec === "rules" && <p className="st-muted st-sec__note">{c.help.rulesNote}</p>}
+              <Articles key={sec} items={groups[sec]} />
+            </>
+          ) : failed ? (
+            <Empty>{d.failed}</Empty>
+          ) : !docs ? (
+            <Empty>{c.common.loading}</Empty>
+          ) : !docs.connected ? (
+            <p className="st-card st-note">{d.off}</p>
+          ) : (
+            <>
+              {adding ? (
+                <DocForm c={c} onCancel={() => setAdding(false)} onSaved={changed} />
+              ) : (
+                <button type="button" className="st-btn st-btn--ink st-btn--block st-add" onClick={() => setAdding(true)}>
+                  + {d.add}
                 </button>
-                {on && (
-                  <div className="st-wiki__body">
-                    {w.a.map((p) => (p.startsWith("• ") ? <p key={p} className="st-step">{p.slice(2)}</p> : <p key={p}>{p}</p>))}
-                    {w.link && (
-                      <Link className="st-link" to={href(w.link.to)}>
-                        {w.link.label}
-                      </Link>
-                    )}
-                  </div>
-                )}
-              </section>
-            );
-          })}
-        </div>
+              )}
+              {items.length === 0 ? (
+                <Empty>{d.empty}</Empty>
+              ) : (
+                <>
+                  <Chips value={cat} onPick={setCat} options={(["all", ...DOC_CATEGORIES] as DocFilter[]).filter((k) => k === "all" || count(k) > 0).map((k) => [k, d.cats[k], count(k)] as [DocFilter, string, number])} />
+                  {shown.length === 0 ? <Empty>{d.none}</Empty> : <DocRows c={c} f={f} items={shown} onChanged={changed} />}
+                  {docs.capped && <p className="st-muted st-foot">{d.capped}</p>}
+                  <Expenses c={c} items={items} />
+                </>
+              )}
+            </>
+          )}
+        </>
       )}
+
+      <div className="st-reach st-help__foot">
+        <Link className="st-btn" to={other.to}>
+          {other.label}
+        </Link>
+        <button type="button" className="st-btn" onClick={onSignOut}>
+          {c.common.signOut}
+        </button>
+      </div>
     </>
   );
 }
@@ -904,13 +1274,16 @@ export default function Studio() {
   const [data, setData] = useState<StudioData | null>(null);
   const [state, setState] = useState<"loading" | "ready" | "failed">("loading");
   const [toast, setToast] = useState("");
+  const [busy, setBusy] = useState(false);
   const [, tick] = useState(0);
   const f = useFmt(c, lang, data?.today ?? dayKey(new Date()));
   const go = useCallback((t: TabId) => (nav(`/${lang}/studio${t === "today" ? "" : `/${t}`}`), window.scrollTo(0, 0)), [nav, lang]);
 
   const refresh = useCallback(async () => {
     setState((s) => (s === "ready" ? s : "loading"));
+    setBusy(true);
     const r = await loadStudio();
+    setBusy(false);
     if (r.ok) return setData(r), setState("ready");
     if (r.error === "auth") return forgetPass(), setSignedIn(false);
     setState((s) => (s === "ready" ? s : "failed"));
@@ -951,6 +1324,7 @@ export default function Studio() {
 
   if (!signedIn) return <div className="st"><Gate c={c} onOpen={() => setSignedIn(true)} /></div>;
 
+  const signOut = () => (forgetPass(), setSignedIn(false), setData(null));
   const mins = data ? Math.floor((Date.now() - Date.parse(data.at)) / 60000) : 0;
   const badge: Partial<Record<TabId, number>> = data ? { leads: data.leads.filter((l) => l.status === "New").length + data.waitlist.filter((w) => !w.contacted).length } : {};
   const here = `/studio${tab === "today" ? "" : `/${tab}`}${personId ? `/${personId}` : ""}`;
@@ -975,7 +1349,7 @@ export default function Studio() {
           <Link className="st-link" to={`/${lang === "he" ? "en" : "he"}${here}`}>
             {lang === "he" ? "English" : "עברית"}
           </Link>
-          <button type="button" className="st-link" onClick={() => (forgetPass(), setSignedIn(false), setData(null))}>
+          <button type="button" className="st-link" onClick={signOut}>
             {c.common.signOut}
           </button>
         </div>
@@ -987,8 +1361,8 @@ export default function Studio() {
             <img src={siteConfig.studioMedia.wordmark} alt="re:set pilates" />
           </Link>
           <span className="st-top__time">{data ? `${c.common.updated} ${mins < 1 ? c.common.justNow : c.common.minAgo(mins)}` : ""}</span>
-          <button type="button" className="st-btn st-btn--sm" onClick={() => void refresh()}>
-            {c.common.refresh}
+          <button type="button" className="st-btn st-btn--sm" disabled={busy} onClick={() => void refresh()}>
+            {busy ? c.common.refreshing : c.common.refresh}
           </button>
           <Link className="st-top__lang" to={`/${lang === "he" ? "en" : "he"}${here}`}>
             {lang === "he" ? "EN" : "עב"}
@@ -996,7 +1370,7 @@ export default function Studio() {
         </header>
         <main className="st-main">
           {tab === "help" ? (
-            <Help c={c} />
+            <Wiki c={c} f={f} say={setToast} other={{ to: `/${lang === "he" ? "en" : "he"}${here}`, label: lang === "he" ? "English" : "עברית" }} onSignOut={signOut} />
           ) : !props ? (
             <Empty>{state === "failed" ? c.common.failed : c.common.loading}</Empty>
           ) : personId ? (

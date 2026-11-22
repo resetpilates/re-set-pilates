@@ -171,6 +171,7 @@ export interface LaunchWaitlistMsg extends Base {
   planId?: string; // Plans & Prices > Website ID, when they picked a plan
   wanted?: string; // what they tried to buy, as they saw it
   slot?: string; // the class they were booking, as they saw it
+  heard?: HeardFrom; // "How did you hear about us?" on the checkout form: saved as the member's Source
   consent: boolean;
 }
 

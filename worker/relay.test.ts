@@ -410,7 +410,7 @@ test("receipts are sent after the reply, through every configured channel", asyn
 test("launch waitlist: saves the person, their class and time, and links the member", async () => {
   const r = await call("launch-waitlist", {
     lang: "he", contact: maya, classType: "Teens", prefTime: "Teen evening", source: "Booking",
-    planId: "single", wanted: "Single class · ₪50", slot: "Reformer · Sun 25 Oct · 08:00", consent: true,
+    planId: "single", wanted: "Single class · ₪50", slot: "Reformer · Sun 25 Oct · 08:00", heard: "Instagram", consent: true,
   });
   expect(r.status).toBe(200);
   const [row] = db[T.launchWaitlist];
@@ -422,6 +422,7 @@ test("launch waitlist: saves the person, their class and time, and links the mem
   expect(row.fields[W.consent]).toBe(true);
   expect(row.fields[W.member]).toEqual([db[T.members][0].id]);
   expect(db[T.members][0].fields[F.members.prefTimes]).toEqual(["Evening"]);
+  expect(db[T.members][0].fields[F.members.source]).toBe("Instagram"); // "How did you hear about us?" from the checkout form
 });
 
 test("launch waitlist: a class sign-up needs a time; a gift card does not", async () => {

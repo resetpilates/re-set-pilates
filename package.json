@@ -10,7 +10,8 @@
     "check:worker": "tsc -p worker",
     "test:worker": "bun test worker/",
     "test": "bun test worker/ src/",
-    "types:worker": "wrangler types worker/worker-configuration.d.ts"
+    "types:worker": "wrangler types worker/worker-configuration.d.ts",
+    "wiki:export": "bun scripts/export-wiki.ts"
   },
   "dependencies": {
     "motion": "^11.15.0",

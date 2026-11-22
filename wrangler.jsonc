@@ -9,6 +9,8 @@
   "name": "re-set-pilates",
   "main": "worker/index.ts",
   "compatibility_date": "2026-10-13",
+  // Publishing keeps variables that were added in the Cloudflare dashboard (a passcode saved as "Text" is no longer wiped).
+  "keep_vars": true,
   "upload_source_maps": true,
   "assets": {
     "directory": "./dist",
@@ -34,6 +36,10 @@
       "simple": { "limit": 20, "period": 60 }
     }
   ],
+  // Orit's documents (receipts, invoices, tax, health, contracts) uploaded in the Studio hub's wiki: worker/docs.ts.
+  // The bucket must exist before this is published: Cloudflare > R2 > Create bucket > "reset-studio-docs".
+  // Private: no public access, no custom domain. Files are only reachable through the passcode-protected hub.
+  "r2_buckets": [{ "binding": "DOCS", "bucket_name": "reset-studio-docs" }],
   // Receipts by email: onboard resetpilates.org in Cloudflare Email Service (Email > Email Sending), then uncomment.
   // Without it the receipt still shows in the app and on its /r/ link; WhatsApp/SMS need their secrets (see worker/notify.ts).
   // "send_email": [{ "name": "EMAIL" }],

@@ -158,9 +158,39 @@ export interface StudioMember {
   capped: boolean; // true when only the latest 100 classes are listed
 }
 
+/** What a document is, chosen by Orit when she saves it. Expenses and invoices can carry an amount. */
+export const DOC_CATEGORIES = ["expense", "invoice", "tax", "health", "contract", "other"] as const;
+export type DocCategory = (typeof DOC_CATEGORIES)[number];
+export const MONEY_CATEGORIES: DocCategory[] = ["expense", "invoice"];
+
+/** The labels Orit gives a document (worker/docs.ts checks them). */
+export interface DocMeta {
+  title: string;
+  category: DocCategory;
+  date: string; // YYYY-MM-DD: the date on the document, not the upload
+  note: string;
+  amount: number | null; // ₪, for expenses and invoices
+  payee: string; // who was paid
+}
+/** One saved document in the wiki's Documents section. */
+export interface StDoc extends DocMeta {
+  id: string;
+  fileName: string;
+  kind: "pdf" | "image" | "file";
+  size: number;
+  uploaded: string; // ISO
+  link: string; // opens the file; good for a few hours
+}
+export interface StudioDocs {
+  ok: true;
+  connected: boolean; // false until the document storage (R2 bucket) is switched on
+  items: StDoc[]; // newest first
+  capped: boolean; // more than the hub lists at once
+}
+
 export type StudioAction =
   | { kind: "lead"; id: string; status: LeadStatus }
   | { kind: "wait"; id: string; contacted: boolean }
   | { kind: "booking"; id: string; status: Attendance };
 
-export type StudioReply = { ok: true; token?: string; status?: string } | { ok: false; error: "code" | "setup" | "auth" | "slow down" | "bad request" | "unavailable" | "origin" };
+export type StudioReply = { ok: true; token?: string; status?: string; id?: string } | { ok: false; error: "code" | "setup" | "auth" | "slow down" | "bad request" | "unavailable" | "origin" | "too large" | "not found" };
