@@ -20,7 +20,7 @@ export const services: ServiceConfig[] = [
   { id: "mat", slug: "mat-pilates", image: "/assets/real/flatlay.webp", pos: "50% 45%", thumb: "/assets/real/flatlay.webp", thumbPos: "50% 45%", bookable: false, minutes: 50, approved: true }, // by request until Mat instructors join (then true + slots in lib/booking.ts)
   { id: "private", slug: "private-1to1", image: "/assets/welcome/arch.webp", pos: "50% 62%", thumb: "/assets/welcome/arch.webp", thumbPos: "50% 62%", bookable: false, minutes: 50, approved: true },
   { id: "duo", slug: "duo", image: "/assets/real/entry.webp", pos: "50% 72%", thumb: "/assets/real/entry.webp", thumbPos: "50% 72%", bookable: false, minutes: 50, approved: true },
-  { id: "women", slug: "women-only", image: "/assets/welcome/aisle.webp", pos: "50% 58%", thumb: "/assets/welcome/aisle.webp", thumbPos: "50% 58%", bookable: false, minutes: 50, approved: false },
+  { id: "women", slug: "women-only", image: "/assets/real/detail.webp", pos: "50% 32%", thumb: "/assets/real/detail.webp", thumbPos: "50% 32%", bookable: false, minutes: 50, approved: false },
   // Teens (girls 12-17): a fixed weekly group, sold as its own monthly plan (pricing.ts: "teens").
   { id: "teens", slug: "teens", image: "/assets/welcome/above.webp", pos: "50% 60%", thumb: "/assets/welcome/above.webp", thumbPos: "50% 60%", bookable: false, capacity: 5, minutes: 50, approved: true },
   // Closed groups: the studio closes for your group. Two packages (packages.ts): private group and event.
